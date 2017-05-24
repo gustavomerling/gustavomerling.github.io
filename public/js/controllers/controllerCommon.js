@@ -1,0 +1,1 @@
+function controllerCommon(){console.log("controllerCommon")}controllerCommon();

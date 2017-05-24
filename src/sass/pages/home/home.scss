@@ -1,0 +1,81 @@
+/*
+ *
+ * HOME STYLE
+ *
+ */
+
+h1{
+	position:absolute;
+	font-size:100px;
+	color:#fff;
+	width:100%;
+	text-align: center;
+	top:21%;
+	line-height:80%;
+	font-weight: 700;
+	@include text-shadow(0px 0px 10px rgba(0,0,0,0));
+	@include transition(0.5s ease-in-out);
+	padding:0px 20px;
+	span{
+		@include transition(0s ease-in-out);
+	}
+	&.active{
+		@include text-shadow(0px 0px 20px rgba(0,0,0,0.2));
+		top:20%;
+	}
+}
+
+h2{
+	font-weight: 400;
+	color:#333;
+	position:absolute;
+	top:21%;
+	margin-top:180px;
+	width:100%;
+	text-align: center;
+	color:#fff;
+	@include transition(0.5s ease-in-out);
+	padding:0px 20px;
+	span{
+		position:relative;
+		z-index:2;
+	}
+	&.active{
+		color:#333;
+		top:20%;
+	}
+}
+
+@media(max-width:999px){
+	h1,h1.active{
+		top:10%;
+		font-size:80px;
+	}
+	h2,h2.active{
+		top:10%;
+		margin-top:140px;
+	}
+}
+
+@media(max-width:699px){
+	h1,h1.active{
+		top:40px;
+		font-size:60px;
+		span{
+			@include transition(0.5s ease-in-out);
+		}
+	}
+	h2,h2.active{
+		top:40px;
+		margin-top:100px;
+	}
+}
+
+@media(max-width:599px){
+	h1{
+		span{
+			font-size:0px;
+			@include transition(0s ease-in-out);
+		}
+	}
+}
