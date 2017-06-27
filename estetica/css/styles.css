@@ -85,14 +85,15 @@ body{
 	float:left;
 	font-size:40px;
 	font-weight: 400;
-	font-family: 'Pacifico', cursive;
+	font-family: 'Righteous', cursive;
 	-webkit-text-shadow:0px 0px 30px rgba(255,255,255,0.5);
 	-moz-text-shadow:0px 0px 30px rgba(255,255,255,0.5);
 	-ms-text-shadow:0px 0px 30px rgba(255,255,255,0.5);
 	-o-text-shadow:0px 0px 30px rgba(255,255,255,0.5);
 	text-shadow:0px 0px 30px rgba(255,255,255,0.5);
 	line-height:80px;
-	color:#000;
+	color:#fff;
+	text-transform: uppercase;
 
 }
 .nav_button{
