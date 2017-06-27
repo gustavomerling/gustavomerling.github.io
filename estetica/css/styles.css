@@ -10,12 +10,56 @@ body{
 	font-family: 'Spectral', serif;
 	font-size:14px;
 	color:#212121;
-	padding-top:100px;
 	background:#EEEEEE;
+	-webkit-font-smoothing:antialiased;
+	-moz-font-smoothing:antialiased;
+	-ms-font-smoothing:antialiased;
+	-o-font-smoothing:antialiased;
+	font-smoothing:antialiased;
 }
 
 *{
 	box-sizing: border-box;
+}
+
+.hero{
+	display: table;
+	height:100vh;
+	width:100%;
+	background-color: #797572;
+	background-image: 
+	linear-gradient(-173deg, rgba(255,255,255,0.20) 0%, #000000 100%),
+	linear-gradient(72deg, rgba(255,255,255,0.25) 25%, rgba(0,0,0,0.25) 100%),
+	radial-gradient(47% 102%, rgba(255,255,255,0.50) 0%, rgba(21,24,32,0.60) 120%);
+	background-blend-mode: multiply;
+	padding-top:80px;
+	text-align: center;
+}
+
+.hero span{
+	display: table-cell;
+	vertical-align: middle;
+	color:#fafafa;
+	-webkit-text-shadow:2px 2px 10px rgba(0,0,0,0.5);
+	-moz-text-shadow:2px 2px 10px rgba(0,0,0,0.5);
+	-ms-text-shadow:2px 2px 10px rgba(0,0,0,0.5);
+	-o-text-shadow:2px 2px 10px rgba(0,0,0,0.5);
+	text-shadow:2px 2px 10px rgba(0,0,0,0.5);
+	font-weight: 300;
+}
+
+.hero_title{
+	font-size:80px;
+}
+.hero_description{
+	font-size:20px;
+	line-height:150%;
+}
+
+.hero_description b{
+	font-size:22px;
+	line-height:150%;
+	letter-spacing: 1px;
 }
 
 .nav{
@@ -41,8 +85,15 @@ body{
 	float:left;
 	font-size:40px;
 	font-weight: 400;
-	font-family: 'Indie Flower', cursive;
+	font-family: 'Pacifico', cursive;
+	-webkit-text-shadow:0px 0px 30px rgba(255,255,255,0.5);
+	-moz-text-shadow:0px 0px 30px rgba(255,255,255,0.5);
+	-ms-text-shadow:0px 0px 30px rgba(255,255,255,0.5);
+	-o-text-shadow:0px 0px 30px rgba(255,255,255,0.5);
+	text-shadow:0px 0px 30px rgba(255,255,255,0.5);
 	line-height:80px;
+	color:#000;
+
 }
 .nav_button{
 	float:right;
@@ -163,7 +214,7 @@ body{
 	width:100%;
 	margin:0px auto;
 	box-shadow:0px 0px 30px rgba(0,0,0,0.1);
-	margin-top:40px;
+	margin-top:80px;
 	margin-bottom:80px;
 	min-height:1000px;
 	padding:40px 0px;
