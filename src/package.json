@@ -1,17 +1,16 @@
 {
-    "devDependencies" :
-    {
-        "gulp"            : "*",
-        "gulp-sass"       : "*",
-        "gulp-uglify"     : "*",
-        "gulp-plumber"    : "*",
-        "gulp-ftp"        : "*",
-        "gulp-notify"     : "*",
-        "gulp-concat"     : "*",
-        "gulp-if"         : "*",
-        "gulp-minify-css" : "*",
-        "gulp-changed"    : "*",
-        "rsyncwrapper"    : "*",
-        "colors"          : "*"
+    "devDependencies": {
+        "colors": "*",
+        "gulp": "^3.9.1",
+        "gulp-changed": "*",
+        "gulp-concat": "*",
+        "gulp-ftp": "*",
+        "gulp-if": "*",
+        "gulp-minify-css": "*",
+        "gulp-notify": "*",
+        "gulp-plumber": "*",
+        "gulp-sass": "*",
+        "gulp-uglify": "*",
+        "rsyncwrapper": "*"
     }
 }

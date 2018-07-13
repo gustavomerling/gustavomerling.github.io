@@ -8,7 +8,7 @@ function controllerCommon(){
 	$('body').on('click','.add_button',controllerCommon.addNote);
 	$('body').on('click','.remove',controllerCommon.removeNote);
 
-	$('.simple_notes').html(localStorage.getItem("notes"));
+	$('.soft_notes').html(localStorage.getItem("notes"));
 
 }
 
@@ -26,14 +26,14 @@ window.controllerCommon.buttonEffect = function buttonEffect(e){
 window.controllerCommon.addNote = function addNote(e){
 	var note = prompt('Digite uma nota:');
 	if( note != null ){
-		$('.simple_notes').prepend('<div class="simple_notes-note">' + note + '<div class="remove"></div></div>');
+		$('.soft_notes').prepend('<div class="soft_notes-note">' + note + '<div class="remove"></div></div>');
 	}
-	localStorage.setItem("notes", $('.simple_notes').html());
+	localStorage.setItem("notes", $('.soft_notes').html());
 }
 
 window.controllerCommon.removeNote = function removeNote(e){
 	$(this).parent().remove();
-	localStorage.setItem("notes", $('.simple_notes').html());
+	localStorage.setItem("notes", $('.soft_notes').html());
 }
 
 //_END
