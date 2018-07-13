@@ -1,0 +1,15 @@
+{
+  "short_name": "Soft-Notes",
+  "name": "Soft-Notes",
+  "theme_color": "#009688",
+  "background_color": "#000000",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "images/favicon.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": "/"
+}
