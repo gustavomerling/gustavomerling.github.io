@@ -1,0 +1,1 @@
+function moduleCommon(){$(".zoom_container").each(function(){var o=$(this).find("img");o.parent().zoom({url:o.data("zoom")})})}moduleCommon();
