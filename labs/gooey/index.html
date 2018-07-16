@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Gooey</title>
+	<style>
+		body{
+  			filter:url('#goo');
+  			background:url(http://www.portoalegre.travel/upload/b/157/1570178_wallpaper-%E0%B8%AB%E0%B8%B4%E0%B8%99%E0%B8%AD%E0%B9%88%E0%B8%AD%E0%B8%99.jpg) no-repeat center center;
+  			background-size:cover;
+  			min-height:100vh;
+  			margin:0px;
+		}
+		.circle{
+			position: fixed;
+			width:100px;
+			height:100px;
+			background:#f00;
+			border-radius:100px;
+			left:0px;
+			top:0px;
+			font-family: helvetica;
+			color:#fff;
+			text-align: center;
+			line-height:100px;
+			z-index:2;
+		}
+		.circle2{
+			position: fixed;
+			width:100px;
+			height:100px;
+			background:#fff;
+			left:50%;
+			margin-left:-200px;
+			top:50%;
+			margin-top:-50px;
+			border-radius:100px;
+		}
+		.circle:hover{
+			color:transparent;
+			cursor: none;
+		}
+		.square{
+			position: fixed;
+			width:100px;
+			height:100px;
+			background:#f00;
+			left:50%;
+			margin-left:-50px;
+			top:50%;
+			margin-top:-50px;
+		}
+		.menu_button{
+			position: absolute;
+			right:20px;
+			top:20px;
+			background:#fff;
+			color:#fff;
+			padding:20px;
+			text-transform: uppercase;
+			font-family: helvetica;
+			color:#333;
+		}
+		.menu{
+			position: absolute;
+			right:20px;
+			top:80px;
+			background:#fff;
+			color:#fff;
+			padding:20px 40px;
+			text-transform: uppercase;
+			font-family: helvetica;
+			color:#333;
+			display: none;
+		}
+		.menu a{
+			color:#333;
+			display: block;
+			line-height:40px;
+		}
+	</style>
+</head>
+<body>
+	<svg xmlns="http://www.w3.org/2000/svg" version="1.1">
+	<defs>
+	<filter id="goo">
+	<feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+	<feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo" />
+	<feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+	</filter>
+	</defs>
+	</svg>
+	<div class='circle'>click me</div>
+	<div class='circle2'></div>
+	<div class='menu_button'>Menu</div>
+	<div class='menu'>
+		<a href='#'>Item #1</a>
+		<a href='#'>Item #2</a>
+		<a href='#'>Item #3</a>
+		<a href='#'>Item #4</a>
+	</div>
+	<div class='square'></div>
+	<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+	<script>
+		$(document).ready(function(){
+			var clicked = -1;
+			$(document).on('mousemove', function(e){
+				if(clicked == 1){
+					$('.circle').css({
+						left:  e.pageX - 50,
+						top:   e.pageY - 50
+					});
+				}
+			});
+			$('.circle').click(function(){
+				clicked = clicked * -1;
+			});
+			$('.menu_button').click(function(){
+				$('.menu').fadeToggle();
+			});
+		});
+	</script>
+</body>
+</html>
