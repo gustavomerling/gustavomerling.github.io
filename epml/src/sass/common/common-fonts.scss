@@ -1,0 +1,15 @@
+/*
+ *
+ * COMMON FONTS
+ *
+ */
+
+@font-face {
+  font-family: 'nome_da_font';
+  src: url('../fonts/nome_da_font.eot');
+  src: url('../fonts/nome_da_font.eot?#iefix') format('embedded-opentype'),
+       url('../fonts/nome_da_font.woff2') format('woff2'),
+       url('../fonts/nome_da_font.woff') format('woff'),
+       url('../fonts/nome_da_font.ttf')  format('truetype'),
+       url('../fonts/nome_da_font.svg#nomeDaFont') format('svg');
+}

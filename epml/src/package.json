@@ -1,0 +1,16 @@
+{
+    "devDependencies": {
+        "gulp": "*",
+        "gulp-sass": "*",
+        "gulp-uglify": "*",
+        "gulp-plumber": "*",
+        "gulp-ftp": "*",
+        "gulp-notify": "*",
+        "gulp-concat": "*",
+        "gulp-if": "*",
+        "gulp-minify-css": "*",
+        "gulp-changed": "*",
+        "rsyncwrapper": "*",
+        "colors": "*"
+    }
+}
