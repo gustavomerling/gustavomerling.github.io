@@ -1,0 +1,91 @@
+//
+//
+// BASE MIXINS
+//
+//
+
+@mixin font-smoothing($smoothing){
+    -webkit-font-smoothing: $smoothing;
+    -moz-font-smoothing: $smoothing;
+    -ms-font-smoothing: $smoothing;
+    -o-font-smoothing: $smoothing;
+    font-smoothing: $smoothing;
+}
+
+@mixin border-radius($radius){
+    -webkit-border-radius: $radius;
+    -moz-border-radius: $radius;
+    -ms-border-radius: $radius;
+    -o-border-radius: $radius;
+    border-radius: $radius;
+}
+
+@mixin box-shadow($shadow){
+    -webkit-box-shadow: $shadow;
+    -moz-box-shadow: $shadow;
+    -ms-box-shadow: $shadow;
+    -o-box-shadow: $shadow;
+    box-shadow: $shadow;
+}
+
+@mixin transition($transition){
+    -webkit-transition: $transition;
+    -moz-transition: $transition;
+    -ms-transition: $transition;
+    -o-transition: $transition;
+    transition: $transition;
+}
+
+@mixin transform($transform){
+    -webkit-transform: $transform;
+    -moz-transform: $transform;
+    -ms-transform: $transform;
+    -o-transform: $transform;
+    transform: $transform;
+}
+
+@mixin filter($filter){
+    -webkit-filter: $filter;
+    -moz-filter: $filter;
+    -ms-filter: $filter;
+    -o-filter: $filter;
+    filter: $filter;
+}
+
+@mixin text-shadow($shadow){
+    -webkit-text-shadow: $shadow;
+    -moz-text-shadow: $shadow;
+    -ms-text-shadow: $shadow;
+    -o-text-shadow: $shadow;
+    text-shadow: $shadow;
+}
+
+@mixin opacity($value){
+    $IEValue: $value*100;
+    opacity: $value;
+    -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity="+$IEValue+")";
+    filter: alpha(opacity=$IEValue);
+}
+
+@mixin tableCentering(){
+    display: table;
+    table-layout: fixed;
+    span{
+        display: table-cell;
+        vertical-align: middle;
+    }
+}
+
+@function z($name) {
+    @if index($z-indexes, $name) {
+        @return (length($z-indexes) - index($z-indexes, $name)) + 1;
+    } @else {
+        @warn 'There is no item "#{$name}" in this list; choose one of: #{$z-indexes}';
+        @return null;
+    }
+}
+$z-indexes: (
+    "layer-top",
+    "layer-middle",
+    "layer-bottom"
+);
