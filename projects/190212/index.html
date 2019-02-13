@@ -8,10 +8,33 @@
 
     <title>CNA</title>
 
-    <link rel='stylesheet' href='public/css/style.css?v=1.0'>
+    <link rel='stylesheet' href='public/css/style.css?v=1.1'>
 </head>
 
 <body data-baseurl='.'>
+
+    <div class='download_overlay'></div>
+    <div class='download_modal hidden'>
+        <div class='download_modal-close'>x</div>
+        <div class='register-form modal'>
+                <div class='register-form-title'>
+                    Preencha os Dados Abaixo
+                </div>
+                <form method='POST' action='#' class='register_form'>
+                    <div class='row'>
+                        <div class='col-12'>
+                            <input type='text' name='name' placeholder='Nome' required='required'>
+                        </div>
+                        <div class='col-12'>
+                            <input type='email' name='email' placeholder='E-mail' required='required'>
+                        </div>
+                        <div class='col-12'>
+                            <button type='submit' class='download'>Baixar E-Book</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+    </div>
 
     <header class='header'>
         <div class='container'>
@@ -167,8 +190,8 @@
         <div class='container'>
             <a href='https://www.cna.com.br/CNAOla' class='overfooter-ola' target='_blank' title='CNA Olá'></a>
             <div class='overfooter-links'>
-                <a href='#' title='Política de Privacidade'>Política de Privacidade</a>
-                <a href='#' title='Termos de Uso'>Termos de Uso</a>
+                <a href='politica.html' title='Política de Privacidade'>Política de Privacidade</a>
+                <a href='termos.html' title='Termos de Uso'>Termos de Uso</a>
             </div>
             <a href='https://www.cna.com.br/' class='overfooter-cna' target='_blank'
                 title='Acessar a Página Inicial CNA'></a>
@@ -178,7 +201,7 @@
         <div class='container'>CNA 2019 &reg; Todos os Direitos Reservados</div>
     </footer>
 
-    <script src='public/js/main.js'></script>
+    <script src='public/js/main.js?v=1.1'></script>
 
 </body>
 

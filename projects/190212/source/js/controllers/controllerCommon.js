@@ -3,9 +3,22 @@
 //
 
 function controllerCommon() {
+
     setTimeout(function(){$('.header-bubble_1').addClass('active');},1000);
     setTimeout(function(){$('.header-bubble_2').addClass('active');},1500);
     setTimeout(function(){$('.header-towel').addClass('active');},200);
+
+    $('.download_modal-close,.download_overlay').click(function(){
+        $('.download_modal').addClass('hidden');
+        $('.download_overlay').fadeOut();
+    });
+
+    $('.travel-content-link').click(function(e){
+        e.preventDefault();
+        $('.download_modal').removeClass('hidden');
+        $('.download_overlay').fadeIn();
+    });
+
     if($(window).width() >= 1280){
         $(document).on('mousemove', function (e) {
 
@@ -27,11 +40,11 @@ function controllerCommon() {
             });
 
             $('.register-call').css({
-                'transform': 'translate(' + xCenter / 50 + 'px,' + yCenter / 50 + 'px)',
+                'transform': 'translate(0px,' + yCenter / 100 + 'px)',
             });
 
             $('.travel-tablet').css({
-                'transform': 'translate(' + xCenter / 30 + 'px,' + yCenter / 30 + 'px)',
+                'transform': 'translate(' + xCenter / 30 + 'px,0px)',
             });
 
         });

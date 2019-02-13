@@ -42,7 +42,8 @@ function controllerForms(){
     applyCepMask();
     
     //Validação de Formulários
-    $('form').validate();
+    $('form:eq(0)').validate();
+    $('form:eq(1)').validate();
 
     $('.state').change(function(){
         $('.school option').show();
