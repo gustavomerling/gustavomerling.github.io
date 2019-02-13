@@ -61,13 +61,13 @@ gulp.task('controllers', function() {
 
 gulp.task('w', function () {
 
-    gulp.watch( srcPath + 'sass/*.sass', ['sass']);
-    gulp.watch( srcPath + 'sass/**/*.scss', ['sass']);
+    gulp.watch( srcPath + 'sass/*.sass', gulp.series('sass'));
+    gulp.watch( srcPath + 'sass/**/*.scss', gulp.series('sass'));
 
-    gulp.watch( srcPath + 'js/app.js', ['scripts']);
-    gulp.watch( srcPath + 'js/vendor/*.js', ['scripts']);
+    gulp.watch( srcPath + 'js/app.js', gulp.series('scripts'));
+    gulp.watch( srcPath + 'js/vendor/*.js', gulp.series('scripts'));
 
-    gulp.watch( srcPath + 'js/controllers/*.js', ['controllers']);
+    gulp.watch( srcPath + 'js/controllers/*.js', gulp.series('controllers'));
 
 });
 
