@@ -1,0 +1,45 @@
+//
+//
+// BASE STYLE - a , h1 , input , table
+//
+//
+
+@font-face {
+font-family: 'cardenio-bold';
+src: url('../fonts/cardenio-bold.eot'); /* IE9 Compat Modes */
+src: url('../fonts/cardenio-bold.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+url('../fonts/cardenio-bold.woff2') format('woff2'), /* Super Modern Browsers */
+url('../fonts/cardenio-bold.woff') format('woff'), /* Pretty Modern Browsers */
+url('../fonts/cardenio-bold.ttf')  format('truetype'), /* Safari, Android, iOS */
+url('../fonts/cardenio-bold.svg#svgCardenioBold') format('svg'); /* Legacy iOS */
+}
+
+@font-face {
+font-family: 'cardenio-normal';
+src: url('../fonts/cardenio-normal.eot'); /* IE9 Compat Modes */
+src: url('../fonts/cardenio-normal.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+url('../fonts/cardenio-normal.woff2') format('woff2'), /* Super Modern Browsers */
+url('../fonts/cardenio-normal.woff') format('woff'), /* Pretty Modern Browsers */
+url('../fonts/cardenio-normal.ttf')  format('truetype'), /* Safari, Android, iOS */
+url('../fonts/cardenio-normal.svg#svgCardenioNormal') format('svg'); /* Legacy iOS */
+}
+
+@font-face {
+font-family: 'mbvinatage-bold';
+src: url('../fonts/mb-vinatage-bold.eot'); /* IE9 Compat Modes */
+src: url('../fonts/mb-vinatage-bold.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+url('../fonts/mb-vinatage-bold.woff2') format('woff2'), /* Super Modern Browsers */
+url('../fonts/mb-vinatage-bold.woff') format('woff'), /* Pretty Modern Browsers */
+url('../fonts/mb-vinatage-bold.ttf')  format('truetype'), /* Safari, Android, iOS */
+url('../fonts/mb-vinatage-bold.svg#svgMBVinatageBold') format('svg'); /* Legacy iOS */
+}
+
+@font-face {
+font-family: 'mbvinatage-medium';
+src: url('../fonts/mb-vinatage-medium.eot'); /* IE9 Compat Modes */
+src: url('../fonts/mb-vinatage-medium.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+url('../fonts/mb-vinatage-medium.woff2') format('woff2'), /* Super Modern Browsers */
+url('../fonts/mb-vinatage-medium.woff') format('woff'), /* Pretty Modern Browsers */
+url('../fonts/mb-vinatage-medium.ttf')  format('truetype'), /* Safari, Android, iOS */
+url('../fonts/mb-vinatage-medium.svg#svgMBVinatageMedium') format('svg'); /* Legacy iOS */
+}
