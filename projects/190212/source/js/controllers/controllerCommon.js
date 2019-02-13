@@ -28,18 +28,18 @@ function controllerCommon() {
             var yPercentCenter = ((Math.abs(yCenter) * 2) * 100 / $(document).height()) / 100;
 
             $('.header-bubble_1').css({
-                'margin-left' : xCenter / 20 + 'px',
-                'margin-top' : (yCenter) / 20 + 'px',
+                'margin-left' : xCenter / 50 + 'px',
+                'margin-top' : (yCenter) / 50 + 'px',
             });
 
             $('.header-bubble_2').css({
-                'margin-left' : xCenter / 20 + 'px',
-                'margin-top' : (yCenter) / 20 + 'px',
+                'margin-left' : xCenter / 50 + 'px',
+                'margin-top' : (yCenter) / 50 + 'px',
             });
 
             $('.header-towel').css({
-                'margin-left' : xCenter / 10 + 'px',
-                'margin-top' : (yCenter) / 10 + 'px',
+                'margin-left' : xCenter / 20 + 'px',
+                'margin-top' : (yCenter) / 20 + 'px',
             });
 
             $('.register-call').css({

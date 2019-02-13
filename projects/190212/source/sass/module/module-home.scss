@@ -89,11 +89,15 @@
         height:100%;
         position: relative;
         @include transform(translate(-5%,0%));
-        @media(max-width:1399px){
+        @include transition(1s cubic-bezier(.63,-0.03,.45,1.23))
+        @media(max-height:799px){
+            @include transform(translate(-5%,0%) scale(0.9));
+        }
+        @media(max-height:699px){
             @include transform(translate(-5%,0%) scale(0.8));
         }
-        @media(max-width:1279px){
-            @include transform(translate(-5%,0%) scale(0.7));
+        @media(max-height:599px){
+            @include transform(translate(-5%,0%) scale(0.6));
         }
     }
     &-bubble_1{
