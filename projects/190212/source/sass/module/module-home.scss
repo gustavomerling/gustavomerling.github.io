@@ -90,10 +90,10 @@
         position: relative;
         @include transform(translate(-5%,0%));
         @media(max-width:1399px){
-            @include transform(translate(-5%,0%) scale(0.9));
+            @include transform(translate(-5%,0%) scale(0.8));
         }
         @media(max-width:1279px){
-            @include transform(translate(-5%,0%) scale(0.8));
+            @include transform(translate(-5%,0%) scale(0.7));
         }
     }
     &-bubble_1{
