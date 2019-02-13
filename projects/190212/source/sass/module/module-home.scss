@@ -347,6 +347,23 @@
     }
 }
 
+.content{
+    color:#fff;
+    font-family: 'mbvinatage-medium';
+    h1,h2,h3,h4,h5,h6{
+        font-family: 'mbvinatage-bold';
+        margin:0px;
+        padding:0px;
+        margin-bottom:20px;
+        margin-top:40px;
+    }
+    p{
+        line-height:160%;
+        margin-bottom:20px;
+        margin-top:0px;
+    }
+}
+
 .overfooter{
     background:#45a6a8;
     height:200px;
