@@ -58,6 +58,27 @@ body{
     font-family: 'mbvinatage-medium';
     background:url(../images/bg-pmg.png) repeat center center;
     -webkit-font-smoothing:antialiased;
+    &.p{
+        background: #669e79;
+        background: -moz-linear-gradient(left, #669e79 0%, #84b494 50%, #7fb293 100%);
+        background: -webkit-linear-gradient(left, #669e79 0%,#84b494 50%,#7fb293 100%);
+        background: linear-gradient(to right, #669e79 0%,#84b494 50%,#7fb293 100%);
+        filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#669e79', endColorstr='#7fb293',GradientType=1 );
+    }
+    &.m{
+        background: #5f88c0;
+        background: -moz-linear-gradient(left, #5f88c0 0%, #7297ce 50%, #7297ce 100%);
+        background: -webkit-linear-gradient(left, #5f88c0 0%,#7297ce 50%,#7297ce 100%);
+        background: linear-gradient(to right, #5f88c0 0%,#7297ce 50%,#7297ce 100%);
+        filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#5f88c0', endColorstr='#7297ce',GradientType=1 );
+    }
+    &.g{
+        background: #c89083;
+        background: -moz-linear-gradient(left, #c89083 0%, #d1998c 50%, #cf958a 100%);
+        background: -webkit-linear-gradient(left, #c89083 0%,#d1998c 50%,#cf958a 100%);
+        background: linear-gradient(to right, #c89083 0%,#d1998c 50%,#cf958a 100%);
+        filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#c89083', endColorstr='#cf958a',GradientType=1 );
+    }
 }
 
 .container{
