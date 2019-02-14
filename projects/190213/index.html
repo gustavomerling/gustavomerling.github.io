@@ -12,8 +12,537 @@
 </head>
 
 <body data-baseurl='.'>
-    
-    
+
+    <header class='header'>
+        <a href='https://www.cna.com.br/' title='Ir para CNA' target='_blank'>
+            <img src='public/images/logo-cna-topo.png' alt='Logo CNA'>
+        </a>
+    </header>
+
+    <section class='pmg_header'>
+        <div class='container'>
+            <h1 class='pmg_header-title'>O CNA possui três modelos de negócios: P, M e G.</h1>
+            <h2 class='pmg_header-subtitle'>Escolha qual se encaixa melhor com seu perfil!</h2>
+            <div class='pmg_header-letters'></div>
+        </div>
+    </section>
+
+    <section class='pmg_form'>
+        <div class='container'>
+            <div class='pmg_form-call'>
+                <img src='public/images/pmg-call.png' alt='50 Mil'>
+            </div>
+            <div class='pmg_form-form'>
+                <div class='pmg_form-form-title'>Preencha seus dados</div>
+                <div class='pmg_form-form-subtitle'>Receba a apresentação comercial e o retorno da nossa equipe de
+                    franquias:</div>
+                <form method='POST' action='obrigado.html' class='register_form'>
+                    <div class='row'>
+                        <div class='col-12'>
+                            <input type='text' name='name' placeholder='Nome' required='required'>
+                        </div>
+                        <div class='col-12'>
+                            <select name='profile' required='required'>
+                                <option value=''>Seu perfil - selecione o modelo</option>
+                                <option value='Quer ser dono do meu próprio negócio'>Quer ser dono do meu próprio
+                                    negócio</option>
+                                <option value='Pretendo diversificar meus investimentos'>Pretendo diversificar meus
+                                    investimentos</option>
+                                <option value='Tenho escola própria e pretendo migrar para o CNA'>Tenho escola própria e
+                                    pretendo migrar para o CNA</option>
+                                <option value='Sou professor e quero empreender no ramo'>Sou professor e quero
+                                    empreender no ramo</option>
+                            </select>
+                        </div>
+                        <div class='col-12'>
+                            <input type='tel' name='birthdate' class='birthdate' placeholder='Data de Nascimento'
+                                required='required'>
+                        </div>
+                        <div class='col-12'>
+                            <input id='email' type='email' name='email' placeholder='E-mail' required='required'>
+                        </div>
+                        <div class='col-12'>
+                            <input type='email' name='email_confirm' data-rule-equalto='email'
+                                placeholder='Confirmar e-mail' required='required'>
+                        </div>
+                        <div class='col-12'>
+                            <input type='tel' name='phone' class='phone' placeholder='Telefone' required='required'>
+                        </div>
+                        <div class='col-12'>
+                            <input type='tel' name='cellphone' class='phone' placeholder='Celular/WhatsApp'
+                                required='required'>
+                        </div>
+                        <div class='col-12 col-sm-4'>
+                            <select type='text' name='state' class='state' required='required'>
+                                <option value=''>Estado</option>
+                                <option value="AC">AC</option>
+                                <option value="AL">AL</option>
+                                <option value="AP">AP</option>
+                                <option value="AM">AM</option>
+                                <option value="BA">BA</option>
+                                <option value="CE">CE</option>
+                                <option value="DF">DF</option>
+                                <option value="ES">ES</option>
+                                <option value="GO">GO</option>
+                                <option value="MA">MA</option>
+                                <option value="MT">MT</option>
+                                <option value="MS">MS</option>
+                                <option value="MG">MG</option>
+                                <option value="PA">PA</option>
+                                <option value="PB">PB</option>
+                                <option value="PR">PR</option>
+                                <option value="PE">PE</option>
+                                <option value="PI">PI</option>
+                                <option value="RJ">RJ</option>
+                                <option value="RN">RN</option>
+                                <option value="RS">RS</option>
+                                <option value="RO">RO</option>
+                                <option value="RR">RR</option>
+                                <option value="SC">SC</option>
+                                <option value="SP">SP</option>
+                                <option value="SE">SE</option>
+                                <option value="TO">TO</option>
+                                <option value="ES">ES</option>
+                            </select>
+                        </div>
+                        <div class='col-12 col-sm-8'>
+                            <select type='text' name='city' class='city' required='required'>
+                                <option value=''>Cidade</option>
+                            </select>
+                        </div>
+                        <div class='col-12'>
+                            <select name='money' required='required'>
+                                <option value=''>Qual a sua disponibilidade financeira?</option>
+                                <option value='R$50mil a R$100mil'>R$50mil a R$100mil</option>
+                                <option value='R$100mil a R$200mil'>R$100mil a R$200mil</option>
+                                <option value='R$200mil a R$300mil'>R$200mil a R$300mil</option>
+                                <option value='Acima de R$300mil'>Acima de R$300mil</option>
+                            </select>
+                        </div>
+                        <div class='col-12'>
+                            <button type='submit'>Solicitar Contato</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class='pmg_form-content'>
+                <div class='pmg_form-content-text'>Em todos os modelos, os franqueados contam com ótima rentabilidade,
+                    fácil implementação, baixo custo operacional e outros benefícios.</div>
+                <ul class='pmg_form-content-list'>
+                    <li><b>•</b> Espaço CNA Go;</li>
+                    <li><b>•</b> Formatos compactos para até 150 alunos;</li>
+                    <li><b>•</b> Todos os cursos e produtos CNA;</li>
+                    <li><b>•</b> Ideal para pequenos municípios.</li>
+                </ul>
+                <div class='pmg_form-content-obs'>* consultar condições</div>
+            </div>
+        </div>
+    </section>
+
+    <section class='pmg_columns'>
+        <div class='container'>
+            <div class='pmg_columns-title'>O CNA TEM FORMATOS DE NEGÓCIOS<br>PARA QUALQUER TAMANHO DE INVESTIMENTO.
+            </div>
+            <div class='pmg_columns-subtitle'>Compare e escolha:</div>
+            <div class='pmg_columns-columns'>
+                <div class='row'>
+                    <div class='col-12 col-md-4'>
+                        <div class='pmg_columns-columns-column'>
+                            <div class='pmg_columns-columns-column-title'>Investimento</div>
+                            <div class='pmg_columns-columns-column-value'>R$<b>50 Mil</b> a R$<b>200 Mil</b></div>
+                            <div class='pmg_columns-columns-column-divisor'></div>
+                            <div class='pmg_columns-columns-column-letter letter_p'></div>
+                            <div class='pmg_columns-columns-column-list'>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                            </div>
+                            <div class='pmg_columns-columns-column-link'>Saiba Mais</div>
+                        </div>
+                    </div>
+                    <div class='col-12 col-md-4'>
+                        <div class='pmg_columns-columns-column'>
+                            <div class='pmg_columns-columns-column-title'>Investimento</div>
+                            <div class='pmg_columns-columns-column-value'>R$<b>200 Mil</b> a R$<b>300 Mil</b></div>
+                            <div class='pmg_columns-columns-column-divisor'></div>
+                            <div class='pmg_columns-columns-column-letter letter_m'></div>
+                            <div class='pmg_columns-columns-column-list'>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                            </div>
+                            <div class='pmg_columns-columns-column-link'>Saiba Mais</div>
+                        </div>
+                    </div>
+                    <div class='col-12 col-md-4'>
+                        <div class='pmg_columns-columns-column'>
+                            <div class='pmg_columns-columns-column-title'>Investimento a partir de</div>
+                            <div class='pmg_columns-columns-column-value'>R$<b>300 Mil</b></div>
+                            <div class='pmg_columns-columns-column-divisor'></div>
+                            <div class='pmg_columns-columns-column-letter letter_g'></div>
+                            <div class='pmg_columns-columns-column-list'>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                                <div class='pmg_columns-columns-column-list-item'>xxx</div>
+                            </div>
+                            <div class='pmg_columns-columns-column-link'>Saiba Mais</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class='pmg_faq'>
+        <div class='container'>
+            <div class='pmg_faq-title'>Dúvidas Frequentes</div>
+            <div class='pmg_faq-search'>
+                <input type='text' placeholder='Digite aqui sua dúvida'>
+            </div>
+            <div class='pmg_faq-questions'>
+                <div class='pmg_faq-questions-item'>
+                    <div class='pmg_faq-questions-item-question'>Qual é o tamanho do mercado de ensino de idiomas no
+                        Brasil? Ainda cabem mais escolas?</div>
+                    <div class='pmg_faq-questions-item-answer'>O segmento de idiomas é um dos poucos que não saem de
+                        moda. Aprender um segundo idioma é essencial na preparação para o mercado de trabalho e para
+                        toda a vida... Nesse contexto, estamos falando de um mercado gigantesco e que não para de
+                        crescer. Para se ter uma ideia, pesquisa recente aponta que apenas 2% da população brasileira
+                        estuda, neste momento, um outro idioma. Essa mesma pesquisa identificou que esse mercado tem
+                        potencial para quadruplicar de tamanho, ou seja, 8% da população possui a intenção de estudar
+                        uma segunda língua no curto e médio prazo. O CNA atualmente possui perto de 600 escolas e já
+                        mapeou mais de 1000 oportunidades em todo o território nacional.</div>
+                </div>
+
+                <div class='pmg_faq-questions-item'>
+                    <div class='pmg_faq-questions-item-question'>Preciso ter experiência no segmento de ensino de
+                        idiomas para abertura de uma escola CNA? </div>
+                    <div class='pmg_faq-questions-item-answer'>Não, não é necessário ter experiência no segmento de
+                        idiomas para se abrir uma escola CNA. Aliás, a maior vantagem do sistema de franquias é poder
+                        contar com o know-how do franqueador. O CNA, por exemplo, oferece completo suporte ao franqueado
+                        desde o início dessa relação. Auxilia na busca do ponto comercial, na orientação para a montagem
+                        do negócio, no entendimento do mercado local e na formação de preços, na contratação de
+                        colaboradores, nos treinamentos do próprio franqueado e das suas equipes, enfim, uma ampla
+                        preparação e um enorme acompanhamento para uma operação da escola com excelência. Isso inclui a
+                        seleção e treinamento do Coordenador Pedagógico, que é o especialista em ensino de idiomas que,
+                        ele sim, deve ter experiência e ser o braço direito do franqueado na condução dos aspectos
+                        educacionais da franquia CNA.</div>
+                </div>
+
+                <div class='pmg_faq-questions-item'>
+                    <div class='pmg_faq-questions-item-question'>As escolas bilíngues oferecem alguma ameaça ao negócio
+                        de ensino de idiomas?</div>
+                    <div class='pmg_faq-questions-item-answer'>Não, muito pelo contrário! As escolas bilíngues
+                        representam um fortalecimento do setor, demonstrando o quanto o inglês é importantíssimo na
+                        formação das nossas crianças e jovens. Além do mais, o CNA possui excelentes soluções para que
+                        os seus franqueados possam oferecer ao mercado de ensino regular, seja para as escolas que atuam
+                        como bilíngues, seja para aquelas que desejam incrementar o ensino de idiomas, tanto na grade
+                        curricular ou com atividades </div>
+                </div>
+
+                <div class='pmg_faq-questions-item'>
+                    <div class='pmg_faq-questions-item-question'>Preciso falar inglês para ter uma franquia de idiomas?
+                    </div>
+                    <div class='pmg_faq-questions-item-answer'>Não, assim como não é necessária experiência, não é
+                        necessário falar inglês. O que você precisa é querer e saber administrar um negócio que ensina
+                        inglês... Veja, um dono de um restaurante não necessariamente precisa saber cozinhar, mas
+                        certamente ele precisa ter um bom chef e saber administrar seus estoques de alimentos, cuidar
+                        das instalações e atender a seus clientes com excelência. Na escola acontece o mesmo. O CNA
+                        exige que cada franquia tenha um responsável pela área de Educação, o Coordenador Pedagógico,
+                        que obrigatoriamente deverá ser proficiente na língua inglesa. Esse profissional responde pela
+                        área, contrata e avalia os professores, acompanha o desenvolvimento dos alunos e preza pela
+                        correta aplicação do nosso método de ensino. O CNA ajuda a contratar (por meio das ferramentas
+                        de recrutamento disponíveis) e a avaliar a capacidade e habilidades desses profissionais, além
+                        de oferecer, sem nenhum custo, os treinamentos presenciais e a distância necessários para sua
+                        formação. </div>
+                </div>
+
+                <div class='pmg_faq-questions-item'>
+                    <div class='pmg_faq-questions-item-question'>Quais são as taxas que o franqueador CNA cobra do
+                        franqueado? O CNA cobra Royalties?</div>
+                    <div class='pmg_faq-questions-item-answer'>O CNA não cobra taxas extras ou royalties dos seus
+                        franqueados. Nosso contrato é por tempo indeterminado e, portanto, também não há renovação ou a
+                        cobrança de uma nova taxa de franquia. A única fonte de renda do CNA é a venda de livros, que se
+                        dá na escola, no ato da matrícula. Essa é uma relação perfeita, de total convergência de
+                        interesses. Antes de haver a venda de um livro, ocorre uma matrícula. E é por isso que você vai
+                        ver em todas as peças de comunicação, nas propagandas, a expressão “matricule-se já” ou “faça a
+                        sua matrícula agora”. </div>
+                </div>
+
+                <div class='pmg_faq-questions-item' style='display:none;'>
+                    <div class='pmg_faq-questions-item-question'>Como é feita a comprovação do aprendizado? O CNA
+                        oferece certificação internacional para os alunos?</div>
+                    <div class='pmg_faq-questions-item-answer'>Sim, o CNA é a única rede de escolas de idiomas que tem
+                        como prova final do curso de inglês o FCE, da universidade de Cambridge; e para os alunos de
+                        espanhol tem o SIELE. E o que isso significa? Que, além de contar com o prestígio e a tradição
+                        dessas importantes instituições para atestar eficácia no aprendizado do nosso aluno, essas
+                        certificações operam como verdadeiro passaporte, proporcionando acesso às maiores e melhores
+                        universidades de todo o mundo, que exigem proficiência nestas línguas, além de empresas
+                        multinacionais. E quer saber o melhor? Nem o aluno, nem o franqueado, pagam nada a mais por
+                        isso. Esse é mais um diferencial que somente o CNA oferece ao mercado.</div>
+                </div>
+
+                <div class='pmg_faq-questions-item' style='display:none;'>
+                    <div class='pmg_faq-questions-item-question'>O CNA exige do franqueado uma compra mínima de
+                        materiais?</div>
+                    <div class='pmg_faq-questions-item-answer'>Não, muito pelo contrário. Aliás, o CNA nem recomenda que
+                        o franqueado tenha qualquer livro em estoque. Não entendemos que isso possa representar ganho
+                        para nenhuma das partes. Além do mais, o aluno, ao se matricular em uma de nossas unidades,
+                        poderá comprar o material didático direto do franqueador, por intermédio de uma plataforma de
+                        e-commerce, com a possibilidade de parcelar o pagamento do livro e recebê-lo na escola, sem
+                        pagar frete, dias antes do início das suas aulas. </div>
+                </div>
+
+                <div class='pmg_faq-questions-item' style='display:none;'>
+                    <div class='pmg_faq-questions-item-question'>O CNA oferece treinamentos para franqueados e suas
+                        equipes?</div>
+                    <div class='pmg_faq-questions-item-answer'>Sim, o CNA oferece uma ampla e diversificada gama de
+                        treinamentos para o franqueado e suas equipes, contemplando todas as áreas de atuação da escola.
+                        São treinamento presenciais e a distância, eventos regionais e nacionais, materiais de estudo e
+                        referência... e, acredite, todos eles são gratuitos!</div>
+                </div>
+
+                <div class='pmg_faq-questions-item' style='display:none;'>
+                    <div class='pmg_faq-questions-item-question'>O CNA oferece soluções de ensino de idiomas para serem
+                        ofertadas às empresas, faculdades, escolas públicas e/ou privadas?</div>
+                    <div class='pmg_faq-questions-item-answer'>Sim, o CNA, com o intuito de ampliar a oferta de
+                        produtos, e visando a oferecer maiores e melhores chances de sucesso para os seus franqueados,
+                        criou e disponibiliza uma ampla gama de ofertas de cursos em diferentes formatos, para atender,
+                        por intermédio de convênios e parcerias, a instituições de ensino regular, como escolas e
+                        universidades, públicas e particulares, com enorme sucesso. São mais do que produtos, aqui
+                        estamos falando de programas desenvolvidos de forma personalizada em parceria entre a franquia
+                        CNA e cada instituição de ensino. São programas adaptados à necessidade de cada público, e tudo
+                        isso com uma única exigência da nossa parte: a manutenção da qualidade CNA, conquistada e
+                        mantida há mais de quatro décadas. Esse mesmo raciocínio é usado para formatar propostas para
+                        atender a empresas que queiram oferecer aos seus colaboradores um ensino de qualidade. Essas
+                        aulas podem acontecer tanto na escola CNA como no ambiente do parceiro. Além disso,
+                        desenvolvemos um curso híbrido (semipresencial), com aulas presenciais quinzenais e a maior
+                        parte de seus componentes online, pensado para profissionais e estudantes que não dispõem de
+                        tempo cursos presenciais. Este curso, chamado CNA Go, traz muitos componentes de tecnologia,
+                        atividades interessantes, conteúdos online, e pode ser feito com o uso do smartphone, a qualquer
+                        hora, e ainda conta com professores online. É por isso que no CNA nós colecionamos uma série de
+                        cases muito bem-sucedidos.</div>
+                </div>
+
+                <div class='pmg_faq-questions-item' style='display:none;'>
+                    <div class='pmg_faq-questions-item-question'>Como funciona a contratação dos colaboradores para a
+                        escola CNA? O franqueador me ajuda a recrutar?</div>
+                    <div class='pmg_faq-questions-item-answer'>
+                        Nesse quesito, atuamos em três frentes.
+                        A primeira delas é orientando o franqueado a como contratar. Nesse sentido, oferecemos um perfil
+                        detalhado para cada função, descrevendo as responsabilidades de cada colaborador. Isso ajuda
+                        bastante na hora de recrutar cada colaborador.
+                        A segunda frente é na atração de candidatos e organização de currículos, por meio de uma
+                        plataforma comumente conhecida como “trabalhe conosco”. Os candidatos preenchem o seu cadastro e
+                        o franqueado dispõe desse banco de dados, além de uma ferramenta para auxiliá-los na triagem de
+                        currículos.
+                        Por fim, a terceira frente é no auxílio quanto à seleção propriamente dita, por meio da
+                        aplicação de testes que verificam as habilidades de cada candidato, independentemente da função
+                        que ele vai desempenhar, através de uma plataforma que chamamos de CNA Jobs.
+                    </div>
+                </div>
+
+                <div class='pmg_faq-questions-item' style='display:none;'>
+                    <div class='pmg_faq-questions-item-question'>Qual o valor de investimento para a abertura de uma
+                        franquia CNA? Em quanto tempo obtenho o retorno do capital investido?</div>
+                    <div class='pmg_faq-questions-item-answer'>
+                        Temos diferentes formatos de franquias para diferentes mercados e contextos, justamente para que
+                        o empreendedor que se torna nosso franqueado tenha as melhores chances de competir, com
+                        investimento adequado, e obtenção de retorno no menor prazo possível.
+                        Por este motivo, já é possível abrir uma franquia CNA com apenas R$ 50 mil de investimento
+                        inicial, para franquias em municípios condizentes e mercados específicos.
+                        Avaliamos, em conjunto com o interessado, em que cidade, bairro ou localidade ele pretende abrir
+                        a escola, e a partir dessa informação, apresentamos estudos de potencial da região e
+                        posteriormente valores dos investimentos necessários. O retorno do capital terá seu início, em
+                        média, após 36 meses da operação
+                    </div>
+                </div>
+
+                <div class='pmg_faq-questions-item' style='display:none;'>
+                    <div class='pmg_faq-questions-item-question'>O CNA possui algum tipo de cobrança de taxa de
+                        propaganda? Como se dá essa cobrança?</div>
+                    <div class='pmg_faq-questions-item-answer'>O CNA fez uma escolha diferente da maioria das redes de
+                        franquia. No CNA não há cobrança de royalties ou taxas, nem mesmo para esse fim. Então, como
+                        fazemos tanta propaganda no CNA? O franqueador instituiu um fundo de propaganda formado a partir
+                        da arrecadação na venda de livros. São 10% da receita de livros do aluno destinados a uma conta
+                        de marketing e propaganda. O raciocínio é simples e o resultado, justo. Na prática, escolas que
+                        possuem mais alunos contribuem mais do que as que estão começando, por exemplo, pois tudo está
+                        embutido no valor do livro, a preços alinhados e por vezes inferiores aos praticados no nosso
+                        mercado. </div>
+                </div>
+
+                <div class='pmg_faq-questions-item' style='display:none;'>
+                    <div class='pmg_faq-questions-item-question'>Qual o perfil ideal de um franqueado CNA? </div>
+                    <div class='pmg_faq-questions-item-answer'>Para o CNA, o franqueado ideal é o empreendedor criativo.
+                        Aquele que está eternamente inquieto. Aqui ele encontrará o terreno perfeito para crescer e se
+                        desenvolver. Queremos pessoas comprometidas com a sociedade, dispostas a construir um mundo
+                        melhor por meio da educação. Queremos jovens de todas as idades, inclusive aqueles que são
+                        jovens há bastante tempo e dispostos a crescer e a construir seu futuro. Também é preciso ser
+                        líder. E liderança é algo que se aprimora, se refina... E no CNA esse empreendedor contará com o
+                        cenário ideal e as ferramentas certas para se aprimorar, gerir seu negócio e colocar em prática
+                        tudo o que é preciso para alcançar o seu sonho.</div>
+                </div>
+
+                <div class='pmg_faq-questions-item' style='display:none;'>
+                    <div class='pmg_faq-questions-item-question'>Quem é responsável pela contratação da mídia na minha
+                        cidade, sou eu ou o CNA?</div>
+                    <div class='pmg_faq-questions-item-answer'>O CNA desenvolve anualmente uma campanha nacional e apoia
+                        o desmembramento dessa campanha para a viabilização de ações regionais e locais. Assim, temos a
+                        unidade e a padronização da nossa linguagem. O franqueado é, portanto, o responsável pela
+                        contratação da mídia local – e o franqueador incentiva que ele o faça junto com outros
+                        franqueados da mesma região! Para dar conta dessa demanda, o CNA criou e disponibiliza, sem
+                        nenhum custo para seus franqueados, uma ferramenta que possibilita customizar peças
+                        publicitárias, como um outdoor por exemplo, inserindo os dados de sua escola. Usando essa mesma
+                        ferramenta, o franqueado pode solicitar uma arte para divulgar uma ação local, por exemplo. E
+                        volto a dizer: Não há custo nenhum para isso. O franqueador também auxilia na tomada de decisão:
+                        se o franqueado estiver inseguro e ou se não souber se uma determinada mídia é eficiente,
+                        podemos orientá-lo por meio da consultoria de campo. </div>
+                </div>
+
+                <div class='pmg_faq-questions-item' style='display:none;'>
+                    <div class='pmg_faq-questions-item-question'>Preciso ter todo o capital indicado para abertura da
+                        franquia CNA? Posso ter um sócio?</div>
+                    <div class='pmg_faq-questions-item-answer'>A formação do capital inicial é uma escolha do franqueado
+                        e o CNA respeita e acolhe as decisões, seja com a apresentação de um sócio-investidor, seja com
+                        a composição dos recursos através de uma linha de crédito, por exemplo. Em relação a este último
+                        recurso, considerando a proximidade e o respeito que o CNA possui junto às instituições
+                        financeiras, nossa área de expansão tem canal direto com os principais bancos, com linhas de
+                        crédito pré-aprovadas, com carência e taxas muito atraentes e bem abaixo do que se pratica no
+                        mercado.
+                        No caso das franquias de menor porte, os valores de investimento são baixos e muito
+                        convidativos, facilitando o uso de recursos próprios, sem necessidade de se recorrer a bancos ou
+                        similares.
+                    </div>
+                </div>
+
+                <div class='pmg_faq-questions-item' style='display:none;'>
+                    <div class='pmg_faq-questions-item-question'>O CNA tem alguma iniciativa ligada à responsabilidade
+                        social?</div>
+                    <div class='pmg_faq-questions-item-answer'>Sim, O CNA possui diversas iniciativas ligadas à área
+                        social e ambiental. A mais relevante delas é o Instituto CNA, responsável por levar educação,
+                        melhores condições de saúde e alimentação para mais de 600 crianças e suas famílias em uma
+                        região carente de São Paulo. Além disso, todos os nossos livros possuem o selo de
+                        responsabilidade socioambiental, indicando que o papel que utilizamos é proveniente de áreas de
+                        reflorestamento. E aqui estamos falando apenas do franqueador: se a questão for ampliada para a
+                        nossa rede, há uma infinidade de ações anônimas e outras muito reconhecidas feitas o tempo todo.
+                        Só para citar, eu destacaria uma ação maravilhosa chamada Speaking Exchange. Nela, nossos alunos
+                        praticam inglês conversando com idosos norte-americanos, residentes em casas de repouso. Essa
+                        iniciativa do CNA foi noticiada no mundo inteiro, sendo que a campanha que a divulgou foi
+                        premiada nos principais festivais de publicidade do mundo. Somente no festival de publicidade de
+                        Cannes, foram 10 leões! </div>
+                </div>
+
+
+                <div class='pmg_faq-questions-item' style='display:none;'>
+                    <div class='pmg_faq-questions-item-question'>Com a apresentação de capital necessário, vocês
+                        entregam a escola pronta para operação?</div>
+                    <div class='pmg_faq-questions-item-answer'>A montagem da escola é responsabilidade do franqueado, e
+                        para isso o CNA presta assistência e apoio desde o primeiro dia do ingresso para deste novo
+                        parceiro na rede. Após a assinatura do contrato, o novo franqueado é convidado a participar de
+                        uma reunião de implantação. Esse encontro é importantíssimo um marco nessa relação, pois é nele
+                        que se inicia a transmissão de know-how do franqueador para o franqueado, com instruções claras
+                        e precisas para que se faça a busca do ponto comercial, bem como o detalhamento de todo o
+                        processo posterior. A partir dessa data o acompanhamento constante passa a ser conduzido pela
+                        equipe de implantação, até que a nova escola consiga alcançar o seu ponto de equilíbrio e possa
+                        andar pelas próprias pernas. Nesse momento há uma "passagem de bastão", e a escola sai da fase
+                        de implantação e passa a compor a base de acompanhamento da área de desenvolvimento, dentro do
+                        departamento de operações.
+                        O CNA oferece apoio para o desenvolvimento de propaganda na minha área de atuação? Preciso
+                        contratar uma agência local?
+                        A propaganda feita localmente é responsabilidade do franqueado, apoiada pelo franqueador.
+                        Funciona assim: o franqueador desenvolve a campanha nacional e apresenta para a rede, juntamente
+                        com o plano de mídia que será veiculado nos meses que antecedem as duas grandes captações de
+                        alunos no ano (por volta de fevereiro e agosto). Com base nesses planos, as escolas podem se
+                        preparar e fazer o seu planejamento local, que acaba contribuindo para dar mais força e
+                        visibilidade à marca. Temos um dia para o lançamento da campanha, que é quando todo mundo vai ao
+                        mercado para mostrar a nossa "cara" naquele período. Tudo sincronizado. A rigor, essas campanhas
+                        locais podem ser feitas e coordenadas pelo franqueado, sem a necessidade de contratação de uma
+                        agência local. Mas, não há restrição caso as escolas desejem ter uma agência para dar suporte na
+                        sua cidade. Nossa única exigência é que sejam utilizadas as peças da nossa campanha nacional e
+                        que a agência local sempre submeta seus planos à aprovação do franqueador. Somos os guardiões da
+                        marca e tudo precisa ser feito sob a nossa supervisão.
+                    </div>
+                </div>
+
+                <div class='pmg_faq-questions-item' style='display:none;'>
+                    <div class='pmg_faq-questions-item-question'>Como funciona a busca de imóvel para implantação da
+                        franquia CNA? E se eu já possuir o ponto, o franqueador poderá visita-lo e me dizer se é viável?
+                    </div>
+                    <div class='pmg_faq-questions-item-answer'>Essa pergunta é importantíssima! O ponto essencial para o
+                        sucesso de todo negócio, e no CNA não é diferente. Algumas pessoas acham que a marca, por si só,
+                        é capaz de atrair clientes, o que não é verdade. A localização, a facilidade de acesso e a
+                        praticidade são elementos que fazem absoluta diferença na tomada de decisão pelo cliente. É por
+                        isso que somos tão criteriosos na aprovação de um ponto comercial. O investimento é muito
+                        relevante e, nesse aspecto, somos extremamente conservadores. Não é possível errar. Eu costumo
+                        dizer que você transforma um imóvel, mas não consegue transformar um ponto comercial. Para dar
+                        jeito em um imóvel com problemas estruturais e ou estéticos, existe a arquitetura, mas não
+                        inventaram nada até agora que seja capaz de mudar um ponto. São muitos os fatores que interferem
+                        positiva ou negativamente na definição. O franqueador CNA está habilitado para orientar,
+                        acompanhar e aprovar um ponto, e nossa diretriz é somente aprovar aquele que reúne as
+                        características e dimensões adequadas ao nosso negócio. Frequentemente ocorre de candidatos
+                        chegarem com um ponto que pertence à família, apresentando-o como possível local para a escola.
+                        Muitas vezes, até, foi o ponto que deu origem à ideia de se empreender. Em muitos casos, foi
+                        possível aproveitar a indicação, mas já houve situações em que não foi viável. Nesses casos, não
+                        foi difícil justificar nossa decisão, que é totalmente técnica. Como eu disse, em se tratando de
+                        ponto comercial, errar não é uma opção.</div>
+                </div>
+
+                <div class='pmg_faq-questions-item' style='display:none;'>
+                    <div class='pmg_faq-questions-item-question'>Que tipo de apoio o CNA oferece para elaboração do
+                        planejamento de ações e eventos na minha região?</div>
+                    <div class='pmg_faq-questions-item-answer'>O CNA oferece um calendário de eventos com uma série de
+                        ações que podem ser realizadas localmente, e para todas elas existe um “cardápio” de roteiros e
+                        peças de comunicação que darão suporte à divulgação e desenvolvimento de ações. Além disso, o
+                        franqueador apresenta uma série de ações que já foram realizadas pelas escolas da rede, na forma
+                        de um almanaque de ideias. É um material muito rico em detalhes e na quantidade de ações. Nós,
+                        no CNA, brincamos que nossas escolas são verdadeiras fábricas de eventos e eles são fundamentais
+                        tanto para atrair novos alunos (aqui nos referimos aos eventos feitos fora da escola), quanto
+                        para fidelizar aqueles que já são alunos, pois há uma ampla gama de eventos feitos para o nosso
+                        público interno. De qualquer forma, seja qual for a finalidade, o CNA apoia e incentiva a
+                        realização de eventos, disponibilizando ou desenvolvendo as artes para os materiais que
+                        necessitam de impressão. Ah, também ajudamos a divulgar esses eventos por intermédio da nossa
+                        assessoria de imprensa. Afinal, a notícia positiva, divulgada pela imprensa séria, tem efeitos
+                        muito mais eficientes do que qualquer propaganda.</div>
+                </div>
+            </div>
+            <div class='pmg_faq-loadmore'>Carregar mais dúvidas...</div>
+            <div class='pmg_faq-still_in_doubt'>Ainda está com dúvidas?</div>
+            <a class='pmg_faq-link'>Fale conosco pelo WhatsApp</a>
+        </div>
+    </section>
+
+    <section class='pmg_overfooter'>
+        <div class='container'>
+            <div class='pmg_overfooter-badges'></div>
+            <div class='pmg_overfooter-links'>
+                <a href='#' title='Política de Privacidade'>Política de Privacidade</a>
+                <a href='#' title='Termos de Uso'>Termos de Uso</a>
+            </div>
+            <a class='pmg_overfooter-logo' href='https://www.cna.com.br/' title='Ir para CNA' target='_blank'>
+                <img src='public/images/logo-cna-rodape.png' alt='Logo CNA'>
+            </a>
+        </div>
+    </section>
+
+    <footer class='pmg_footer'>
+        <div class='container'>
+            CNA FRANQUIAS &reg; 2019 Todos os Direitos Reservados
+        </div>
+    </footer>
 
     <script src='public/js/main.js?v=1.0'></script>
 

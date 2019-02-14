@@ -46,10 +46,7 @@ function controllerForms(){
     $('form:eq(1)').validate();
 
     $('.state').change(function(){
-        $('.school option').show();
-        console.log(cidades.estados);
         for(var i = 0;i < cidades.estados.length;i++){
-            console.log(cidades.estados[i].sigla +'=='+ $('.state option:selected').val());
             if($('.state option:selected').val() == cidades.estados[i].sigla){
                 $('.city').empty();
                 $('.city').append('<option value="">Cidade</option>');
@@ -58,37 +55,6 @@ function controllerForms(){
                 }
             }
         }
-        $('.city option').each(function(){
-            var city = $(this).val();
-            if( city != '' ){
-                var happened = 0;
-                $('.school option').each(function(){
-                    if( $(this).val() != '' ){
-                        if( $(this).data('city') == city ){
-                            happened++;
-                        }
-                    }
-                });
-                if( happened == 0 ){
-                    $(this).remove();
-                }
-            }
-        });
-    });
-
-    $('.city').change(function(){
-        $('.school option').show();
-        $('.school').val('');
-        var city = $(this).val();
-        $('.school option').each(function(){
-            if( $(this).val() != '' ){
-                if( $(this).data('city') != city ){
-                    $(this).hide();
-                }else{
-                    $(this).show();
-                }
-            }
-        });
     });
 
 }
