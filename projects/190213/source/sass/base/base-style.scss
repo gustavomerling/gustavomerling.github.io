@@ -54,6 +54,16 @@ url('../fonts/mb-vinatage-book.ttf')  format('truetype'),
 url('../fonts/mb-vinatage-book.svg#svgMBVinatageBook') format('svg'); 
 }
 
+@font-face {
+font-family: 'mbvinatage-heavy';
+src: url('../fonts/mb-vinatage-heavy.eot'); 
+src: url('../fonts/mb-vinatage-heavy.eot?#iefix') format('embedded-opentype'), 
+url('../fonts/mb-vinatage-heavy.woff2') format('woff2'), 
+url('../fonts/mb-vinatage-heavy.woff') format('woff'), 
+url('../fonts/mb-vinatage-heavy.ttf')  format('truetype'), 
+url('../fonts/mb-vinatage-heavy.svg#svgMBVinatageHeavy') format('svg'); 
+}
+
 body{
     font-family: 'mbvinatage-medium';
     background:url(../images/bg-pmg.png) repeat center center;
