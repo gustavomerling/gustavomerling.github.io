@@ -10,7 +10,7 @@
     left:0px;   
     top:0px;
     width:100%;
-    z-index:2;
+    z-index:10;
     &-back_link{
         position: absolute;
         right:0px;
@@ -941,5 +941,24 @@
             max-height:40vh;
             width:auto;
         }
+    }
+}
+
+.wp_floater{
+    position: fixed;
+    right:20px;
+    bottom:20px;
+    width:80px;
+    height:80px;
+    z-index:10;
+    background:url(../images/icon-whatsapp.png) no-repeat center center;
+    background-size:contain;
+    @include transition(1s cubic-bezier(.58,-0.36,.21,1.27));
+    @media(max-width:767px){
+        width:50px;
+        height:50px;
+    }
+    &.active{
+        @include transform(scale(0.8));
     }
 }

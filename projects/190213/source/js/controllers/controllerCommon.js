@@ -4,6 +4,12 @@
 
 function controllerCommon() {
 
+    $('body').append('<a href="https://api.whatsapp.com/send?phone=5511976213562" target="_blank" class="wp_floater"></a>');
+
+    setInterval(function(){
+        $('.wp_floater').toggleClass('active');
+    },5000);
+
     $('.pmg_faq-questions-item-question').click(function () {
         if ($(this).hasClass('active')) {
             $(this).removeClass('active');
