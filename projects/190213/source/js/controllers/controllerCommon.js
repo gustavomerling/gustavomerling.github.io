@@ -24,6 +24,7 @@ function controllerCommon() {
 
     $('.pmg_faq-loadmore').click(function () {
         $('.pmg_faq-questions-item').slideDown();
+        $(this).slideUp();
     });
 
     $('.pmg_faq-search input').keyup(function () {
