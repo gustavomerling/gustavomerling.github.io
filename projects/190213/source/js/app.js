@@ -7,7 +7,7 @@
 $(document).ready(function(){
 
     //CONFIGS
-    var appVersion = '1.2';
+    var appVersion = '1.3';
     var baseUrl = $('body').data('baseurl');
 
     //CONTROLLER COMMON SEMPRE SERÁ CHAMADO

@@ -4,6 +4,22 @@
 
 function controllerCommon() {
 
+    if( $('.pmg_header-letters').length ){
+        setTimeout(function(){ $('.header').addClass('active'); },500);
+        setTimeout(function(){ $('.pmg_header-title').addClass('active'); },1000);
+        setTimeout(function(){ $('.pmg_header-subtitle').addClass('active'); },1300);
+        setTimeout(function(){ $('.pmg_header-letters img:eq(0)').addClass('active'); },2000);
+        setTimeout(function(){ $('.pmg_header-letters img:eq(1)').addClass('active'); },2500);
+        setTimeout(function(){ $('.pmg_header-letters img:eq(2)').addClass('active'); },3000);
+        setTimeout(function(){ $('.pmg_header-letters img:eq(2)').addClass('active'); },3000);
+    }else{
+        $('.header').addClass('fast_active');
+    }
+
+    $('.pmg_header-letters').click(function(){
+        $('body,html').animate({ 'scrollTop' : $('.pmg_form-form').offset().top },500);
+    });
+
     $('body').append('<a href="https://api.whatsapp.com/send?phone=5511976213562" target="_blank" class="wp_floater"></a>');
 
     setInterval(function(){
