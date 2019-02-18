@@ -108,7 +108,7 @@
         }
         &:hover{
             img{
-                @include transform(scale(0.9) !important);
+                @include transform(translate(0%,8%) scale(0.9) !important);
                 @include transition(0.3s cubic-bezier(.75,-0.22,.2,1.26));
             }
         }
