@@ -434,11 +434,12 @@
                     background:url(../images/check-green.svg) no-repeat left center;
                 }
                 .pmg_columns-columns-column-link{
-                    color:#6f9e83;
+                    color:#fff;
                     border-color:#6f9e83;
+                    background:#6f9e83;
                     &:hover{
-                        color:#ffffff;
-                        background:#6f9e83;
+                        color:#6f9e83;
+                        background:transparent;
                     }
                 }
             }
@@ -450,11 +451,12 @@
                     background:url(../images/check-blue.svg) no-repeat left center;
                 }
                 .pmg_columns-columns-column-link{
-                    color:#466eae;
+                    color:#fff;
                     border-color:#466eae;
+                    background:#466eae;
                     &:hover{
-                        color:#ffffff;
-                        background:#466eae;
+                        color:#466eae;
+                        background:transparent;
                     }
                 }
             }
@@ -466,11 +468,12 @@
                     background:url(../images/check-red.svg) no-repeat left center;
                 }
                 .pmg_columns-columns-column-link{
-                    color:#bc2f3e;
+                    color:#fff;
                     border-color:#bc2f3e;
+                    background:#bc2f3e;
                     &:hover{
-                        color:#ffffff;
-                        background:#bc2f3e;
+                        color:#bc2f3e;
+                        background:transparent;
                     }
                 }
             }
