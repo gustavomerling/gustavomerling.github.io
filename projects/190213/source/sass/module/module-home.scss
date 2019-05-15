@@ -27,7 +27,7 @@
         height:50px;
         border:2px solid #505050;
         color:#505050;
-        background:url(../images/icon-back.png) no-repeat 15px center;
+        background:url(../images-webp/icon-back.png) no-repeat 15px center;
         font-size:20px;
         letter-spacing: 1px;
         text-transform: uppercase;
@@ -118,7 +118,7 @@
             bottom: auto;
             top: 120px;
             left: 51%;
-            background:url(../images/pmg.png) no-repeat center center !important;
+            background:url(../images-webp/pmg.png) no-repeat center center !important;
             background-size:contain !important;
             @media(max-width:499px){
                 height:100px !important;
@@ -187,7 +187,7 @@
     overflow: hidden;
     &.p{
         select{
-            background:url(../images/select-arrow-p.svg) no-repeat right 15px center #fff !important;
+            background:url(../images-webp/select-arrow-p.svg) no-repeat right 15px center #fff !important;
         }
         .pmg_form-form-title{
             color:#fdfda5;
@@ -204,7 +204,7 @@
     }
     &.m{
         select{
-            background:url(../images/select-arrow-m.svg) no-repeat right 15px center #fff !important;
+            background:url(../images-webp/select-arrow-m.svg) no-repeat right 15px center #fff !important;
         }
         .pmg_form-form-title{
             color:#1e3a77;
@@ -221,7 +221,7 @@
     }
     &.g{
         select{
-            background:url(../images/select-arrow-g.svg) no-repeat right 15px center #fff !important;
+            background:url(../images-webp/select-arrow-g.svg) no-repeat right 15px center #fff !important;
         }
         .pmg_form-form-title{
             color:#a80312;
@@ -245,7 +245,7 @@
             content:'';
             width:100%;
             height:19px;
-            background:url(../images/m-divisor.jpg) center center;
+            background:url(../images-webp/m-divisor.jpg) center center;
             position: absolute;
             left:0px;
             bottom:0px;
@@ -257,7 +257,7 @@
             content:'';
             width:100%;
             height:19px;
-            background:url(../images/g-divisor.png) center center;
+            background:url(../images-webp/g-divisor.png) center center;
             position: absolute;
             left:0px;
             bottom:0px;
@@ -308,7 +308,7 @@
             font-family: 'mbvinatage-medium';
         }
         select{
-            background:url(../images/select-arrow.svg) no-repeat right 15px center #fff;
+            background:url(../images-webp/select-arrow.svg) no-repeat right 15px center #fff;
         }
         button{
             background:#494949;
@@ -388,7 +388,7 @@
             text-transform: uppercase;
             line-height: 1.5;
             text-align: right;
-            background:url(../images/icon-whatsapp.png) no-repeat right center;
+            background:url(../images-webp/icon-whatsapp.webp) no-repeat right center;
             padding-bottom:20px;
             padding-top:20px;
             display: block;
@@ -432,7 +432,7 @@
                     color:#6f9e83;
                 }
                 .pmg_columns-columns-column-list-item{
-                    background:url(../images/check-green.svg) no-repeat left center;
+                    background:url(../images-webp/check-green.svg) no-repeat left center;
                 }
                 .pmg_columns-columns-column-link{
                     color:#fff;
@@ -449,7 +449,7 @@
                     color:#466eae;
                 }
                 .pmg_columns-columns-column-list-item{
-                    background:url(../images/check-blue.svg) no-repeat left center;
+                    background:url(../images-webp/check-blue.svg) no-repeat left center;
                 }
                 .pmg_columns-columns-column-link{
                     color:#fff;
@@ -466,7 +466,7 @@
                     color:#bc2f3e;
                 }
                 .pmg_columns-columns-column-list-item{
-                    background:url(../images/check-red.svg) no-repeat left center;
+                    background:url(../images-webp/check-red.svg) no-repeat left center;
                 }
                 .pmg_columns-columns-column-link{
                     color:#fff;
@@ -499,7 +499,7 @@
             }
             &-divisor{
                 height:32px;
-                background:url(../images/shelf.png) no-repeat center center;
+                background:url(../images-webp/shelf.png) no-repeat center center;
                 background-size:contain;
                 margin-top:-10px;
             }
@@ -689,7 +689,7 @@
         top:80px;
         width:312px;
         height:102px;
-        background:url(../images/badges.png) no-repeat center center;
+        background:url(../images-webp/badges.png) no-repeat center center;
     }
     &-links{
         position: absolute;
@@ -832,7 +832,7 @@
                     color:#6f9e83;
                 }
                 .pmg_columns-columns-column-list-item{
-                    background:url(../images/check-green.svg) no-repeat left center;
+                    background:url(../images-webp/check-green.svg) no-repeat left center;
                 }
                 .pmg_columns-columns-column-link{
                     color:#6f9e83;
@@ -865,7 +865,7 @@
             }
             &-divisor{
                 height:32px;
-                background:url(../images/shelf.png) no-repeat center center;
+                background:url(../images-webp/shelf.png) no-repeat center center;
                 background-size:contain;
                 margin-top:0px;
             }
@@ -886,7 +886,7 @@
                     text-align: left;
                     border-bottom:1px solid #a1a1a1;
                     padding-left:30px;
-                    background:url(../images/check-green.svg) no-repeat left center;
+                    background:url(../images-webp/check-green.svg) no-repeat left center;
                     display: table;
                     height:56px;
                     width:100%;
@@ -923,7 +923,7 @@
         content:'';
         width:100%;
         height:19px;
-        background:url(../images/p-divisor.jpg) center center;
+        background:url(../images-webp/p-divisor.jpg) center center;
         position: absolute;
         left:0px;
         top:0px;
@@ -932,7 +932,7 @@
         content:'';
         width:100%;
         height:19px;
-        background:url(../images/p-divisor.jpg) center center;
+        background:url(../images-webp/p-divisor.jpg) center center;
         position: absolute;
         left:0px;
         bottom:0px;
@@ -1012,7 +1012,7 @@
         }
     }
     &.p{
-        background:url(../images/bg-p.jpg) center bottom;
+        background:url(../images-webp/bg-p.jpg) center bottom;
         background-size:auto 100%;
         img{    
             position: absolute;
@@ -1023,7 +1023,7 @@
         }
     }
     &.m{
-        background:url(../images/bg-m.jpg) center bottom;
+        background:url(../images-webp/bg-m.jpg) center bottom;
         background-size:auto 100%;
         img{    
             position: absolute;
@@ -1034,7 +1034,7 @@
         }
     }
     &.g{
-        background:url(../images/bg-g.jpg) center bottom;
+        background:url(../images-webp/bg-g.jpg) center bottom;
         background-size:auto 100%;
         img{    
             position: absolute;
@@ -1053,7 +1053,7 @@
     width:80px;
     height:80px;
     z-index:10;
-    background:url(../images/icon-whatsapp.png) no-repeat center center;
+    background:url(../images-webp/icon-whatsapp.png) no-repeat center center;
     background-size:contain;
     @include transition(1s cubic-bezier(.58,-0.36,.21,1.27));
     @media(max-width:767px){
