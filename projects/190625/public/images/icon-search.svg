@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="78.782" height="33.764" viewBox="0 0 78.782 33.764">
+  <g id="icon-search" transform="translate(0)">
+    <path id="search" d="M19.6,17.833l-4.66-4.846a7.9,7.9,0,1,0-6.05,2.823,7.82,7.82,0,0,0,4.529-1.43l4.7,4.883A1.031,1.031,0,1,0,19.6,17.833ZM8.889,2.062A5.843,5.843,0,1,1,3.046,7.9,5.849,5.849,0,0,1,8.889,2.062Z" transform="translate(29.028 7.503)" fill="#fff"/>
+    <g id="Rectangle_49" data-name="Rectangle 49" transform="translate(0)" fill="none" stroke="#fff" stroke-width="2">
+      <rect width="78.782" height="33.764" rx="16.882" stroke="none"/>
+      <rect x="1" y="1" width="76.782" height="31.764" rx="15.882" fill="none"/>
+    </g>
+  </g>
+</svg>

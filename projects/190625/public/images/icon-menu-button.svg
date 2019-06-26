@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="78.782" height="33.764" viewBox="0 0 78.782 33.764">
+  <g id="icon-menu-button" transform="translate(-1120.218 -75)">
+    <g id="Group_20" data-name="Group 20" transform="translate(1120.218 75)">
+      <g id="Rectangle_49" data-name="Rectangle 49" transform="translate(0)" fill="none" stroke="#fff" stroke-width="2">
+        <rect width="78.782" height="33.764" rx="16.882" stroke="none"/>
+        <rect x="1" y="1" width="76.782" height="31.764" rx="15.882" fill="none"/>
+      </g>
+    </g>
+    <rect id="Rectangle_260" data-name="Rectangle 260" width="21" height="2" rx="1" transform="translate(1148 84)" fill="#fff"/>
+    <rect id="Rectangle_261" data-name="Rectangle 261" width="21" height="2" rx="1" transform="translate(1148 98)" fill="#fff"/>
+    <rect id="Rectangle_262" data-name="Rectangle 262" width="21" height="2" rx="1" transform="translate(1148 91)" fill="#fff"/>
+  </g>
+</svg>
