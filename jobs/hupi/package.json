@@ -1,0 +1,19 @@
+{
+  "name": "gulp-a2c-front-2019",
+  "version": "1.0.0",
+  "description": "Gulp A2C Front 2019",
+  "main": "gulpfile.js",
+  "dependencies": {
+    "gulp-concat": "*",
+    "gulp-notify": "*",
+    "gulp-sass": "^4.1.0",
+    "gulp-uglify": "*"
+  },
+  "devDependencies": {
+    "gulp": "^4.0.0",
+    "gulp-watch": "*"
+  },
+  "scripts": {
+    "test": "gulp"
+  }
+}

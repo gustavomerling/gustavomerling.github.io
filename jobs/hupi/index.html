@@ -6,8 +6,163 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Página Inicial - Hupi Construtora</title>
     <meta name="description" content="Nosso propósito é entregar imóveis dignos, bonitos e baratos">
+    <link rel="stylesheet" href="content/assets/css/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
 </head>
 <body>
-    Hello World
+    <header class='header'>
+        <div class='container'>
+            <div class='row align-items-center'>
+                <div class='col-lg-4 col-12'>
+                    <a data-aos='fade-down' data-aos-delay='100' href='https://gustavomerling.github.io/jobs/hupi/' title='Página Inicial - Hupi' class='header__logo'>
+                        <img src='content/assets/images/logo-hupi.png'>
+                    </a>
+                </div>
+                <div class='col-8 d-lg-block d-none'>
+                    <div class='header__links'>
+                        <a data-aos='fade-down' data-aos-delay='200' href='#' title='Empreendimentos'>Empreendimentos</a>
+                        <a data-aos='fade-down' data-aos-delay='300' href='#' title='Sobre Nós'>Sobre Nós</a>
+                        <a data-aos='fade-down' data-aos-delay='400' href='#' title='Portal do Cliente'>Portal do Cliente</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <section class='banner'>
+        <div class='container'>
+            <div class='row align-items-center'>
+                <div class='col-12'>
+                    <div class='banner__content' data-aos='fade-right' data-aos-delay='1000'>
+                        <h1 class='banner__content__title' data-aos='fade-right' data-aos-delay='1200'>Mais que imóveis, <br><b>sonhos e experiências</b></h1>
+                        <h2 class='banner__content__subtitle' data-aos='fade-right' data-aos-delay='1400'>Venha conhecer nossos empreendimentos e tenha certeza <br>de que podemos te ajudar a atingir seus objetivos.</h2>
+                        <a href='#' class='banner__content__button' data-aos='fade-right' data-aos-delay='1600' title='Quero Saber Mais'>Quero Saber Mais</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class='banner__scroll' data-aos='fade-top' data-aos-delay='3000'></div>
+    </section>
+    <section class='about'>
+        <div class='container'>
+            <div class='row align-items-center justify-content-between'>
+                <div class='col-lg-6 col-12'>
+                    <h2 class='about__title' data-aos='fade-left'>Sobre nós</h2>
+                    <p class='about__text' data-aos='fade-left'>Lorem ipsum dolor sit amet consectetur adipisicing elit. Veritatis perferendis quia esse facilis impedit, quo hic minima. Sapiente, quis provident perferendis neque pariatur, vel deserunt voluptate esse possimus voluptas dolorum?</p>
+                    <a href='#' title='Ver Empreendimentos' class='about__button' data-aos='fade-left'>Ver Empreendimentos</a>
+                </div>
+                <div class='col-lg-5 col-12'>
+                    <img src='content/assets/images/about.jpg' data-aos='fade-right'>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class='list'>
+        <div class='container'>
+            <div class='row align-items-center'>
+                <div class='col-12'>
+                    <h2 class='list__title'>Nossos <b>Empreendimentos</b></h2>
+                    <div class='list__slider'>
+                        <div class='swiper-wrapper'>
+                            <div class='swiper-slide'>
+                                <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                                    <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
+                                    <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                                    <div class='list__slider__item__location'>Joinville / SC</div>
+                                    <div class='list__slider__item__link'>Quero Conhecer!</div>
+                                </a>
+                            </div>
+                            <div class='swiper-slide'>
+                                <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='200'>
+                                    <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
+                                    <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                                    <div class='list__slider__item__location'>Joinville / SC</div>
+                                    <div class='list__slider__item__link'>Quero Conhecer!</div>
+                                </a>
+                            </div>
+                            <div class='swiper-slide'>
+                                <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='400'>
+                                    <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
+                                    <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                                    <div class='list__slider__item__location'>Joinville / SC</div>
+                                    <div class='list__slider__item__link'>Quero Conhecer!</div>
+                                </a>
+                            </div>
+                            <div class='swiper-slide'>
+                                <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='600'>
+                                    <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
+                                    <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                                    <div class='list__slider__item__location'>Joinville / SC</div>
+                                    <div class='list__slider__item__link'>Quero Conhecer!</div>
+                                </a>
+                            </div>
+                            <div class='swiper-slide'>
+                                <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='800'>
+                                    <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
+                                    <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                                    <div class='list__slider__item__location'>Joinville / SC</div>
+                                    <div class='list__slider__item__link'>Quero Conhecer!</div>
+                                </a>
+                            </div>
+                            <div class='swiper-slide'>
+                                <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='1000'>
+                                    <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
+                                    <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                                    <div class='list__slider__item__location'>Joinville / SC</div>
+                                    <div class='list__slider__item__link'>Quero Conhecer!</div>
+                                </a>
+                            </div>
+                            <div class='swiper-slide'>
+                                <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='1200'>
+                                    <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
+                                    <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                                    <div class='list__slider__item__location'>Joinville / SC</div>
+                                    <div class='list__slider__item__link'>Quero Conhecer!</div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class='list__slider__pagination'></div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <footer class='footer'>
+        <div class='container'>
+            <div class='row align-items-center'>
+                <div class='col-lg-2 col-md-6 col-12'>
+                    <a data-aos='fade-down' data-aos-delay='100' href='https://gustavomerling.github.io/jobs/hupi/' title='Página Inicial - Hupi' class='footer__logo'>
+                        <img src='content/assets/images/logo-hupi.png'>
+                    </a>
+                </div>
+                <div class='col-md-6 col-12 d-lg-block d-md-none d-block'>
+                    <div class='footer__links'>
+                        <a data-aos='fade-down' data-aos-delay='200' href='#' title='Empreendimentos'>Empreendimentos</a>
+                        <a data-aos='fade-down' data-aos-delay='300' href='#' title='Sobre Nós'>Sobre Nós</a>
+                        <a data-aos='fade-down' data-aos-delay='400' href='#' title='Portal do Cliente'>Portal do Cliente</a>
+                    </div>
+                </div>
+                <div class='col-lg-4 col-md-6 col-12'>
+                    <div class='footer__social'>
+                        <div class='footer__social__link instagram' data-aos='fade-down' data-aos-delay='500'></div>
+                        <div class='footer__social__link whatsapp' data-aos='fade-down' data-aos-delay='600'></div>
+                        <div class='footer__social__link facebook' data-aos='fade-down' data-aos-delay='700'></div>
+                        <div class='footer__social__link youtube' data-aos='fade-down' data-aos-delay='800'></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init({
+            disabled: 'mobile',
+            offset: -100,
+            duration: 1000,
+        });
+    </script>
+    <script src="content/assets/scripts/main.min.js"></script>
 </body>
 </html>
