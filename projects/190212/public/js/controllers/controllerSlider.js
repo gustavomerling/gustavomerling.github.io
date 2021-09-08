@@ -1,1 +1,0 @@
-function controllerSlider(){if(0<$(".content-block-slider").length)new Swiper(".content-block-slider",{loop:!0,pagination:{el:".content-block-slider-pagination"},navigation:{prevEl:".content-block-slider-left",nextEl:".content-block-slider-right"}})}controllerSlider();
