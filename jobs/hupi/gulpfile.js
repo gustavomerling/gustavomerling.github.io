@@ -33,6 +33,7 @@ gulp.task('sass', function (done) {
 var jsFiles = [
     srcPath + 'scripts/vendor/_jquery.js',
     srcPath + 'scripts/vendor/fancybox.js',
+    srcPath + 'scripts/vendor/validate.js',
     srcPath + 'scripts/vendor/swiper.js',
     srcPath + 'scripts/controllers/controllerCommon.js',
     srcPath + 'scripts/app.js',
