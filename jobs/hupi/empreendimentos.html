@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="robots" content="noindex">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Empreendimentos - Hupi Construtora</title>
+    <meta name="description" content="Nosso propósito é entregar imóveis dignos, bonitos e baratos">
+    <link rel="stylesheet" href="content/assets/css/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="shortcut icon" type="image/x-icon" href="content/assets/images/facicon.ico" />
+</head>
+<body>
+    
+    <!-- HEADER -->
+    <header class='header'>
+        <div class='container'>
+            <div class='row align-items-center'>
+                <div class='col-lg-4 col-12'>
+                    <a href='index.html' data-aos='fade-down' data-aos-delay='100' title='Página Inicial - Hupi' class='header__logo'>
+                        <img src='content/assets/images/logo-hupi.png'>
+                    </a>
+                </div>
+                <div class='col-8 d-lg-block d-none'>
+                    <div class='header__links'>
+                        <a class='active' data-aos='fade-down' data-aos-delay='200' href='empreendimentos.html' title='Empreendimentos'>Empreendimentos</a>
+                        <a data-aos='fade-down' data-aos-delay='300' href='#' title='Sobre Nós'>Sobre Nós</a>
+                        <a data-aos='fade-down' data-aos-delay='400' href='#' title='Portal do Cliente'>Portal do Cliente</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- BANNER -->
+    <section class='list-banner'>
+        <div class='container'>
+            <div class='row align-items-center justify-content-center'>
+                <div class='col-12'>
+                    <h1 class='list-banner__title' data-text='Empreendimentos'>Empreendimentos</h1>
+                    <h2 class='list-banner__subtitle'><b>Estamos onde você estiver, </b><br>se encante com nossos imóveis.</h2>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- FILTER -->
+    <section class='list-filter'>
+        <div class='container'>
+            <div class='row align-items-center justify-content-center'>
+                <div class='col-12'>
+                    <form>
+                        <div class='list-filter__container'>
+                            <div class='row align-items-center'>
+                                <div class='col-lg-4 col-md-5 col-12'>
+                                    <fieldset>
+                                        <label>Tipo de Empreendimento:</label>
+                                        <select name='type'>
+                                            <option value=''>Selecione</option>
+                                            <option value='0'>Casa</option>
+                                            <option value='1'>Apartamento</option>
+                                        </select>
+                                    </fieldset>
+                                </div>
+                                <div class='col-lg-4 col-md-3 col-12'>
+                                    <fieldset>
+                                        <label>Estado:</label>
+                                        <select name='state'>
+                                            <option value=''>Selecione</option>
+                                            <option value='0'>Paraná</option>
+                                            <option value='1'>Santa Catarina</option>
+                                            <option value='2'>Rio Grande do Sul</option>
+                                        </select>
+                                    </fieldset>
+                                </div>
+                                <div class='col-md-4 col-12'>
+                                    <fieldset>
+                                        <label>Cidade:</label>
+                                        <select name='city'>
+                                            <option value=''>Selecione</option>
+                                            <option value='0' data-state='0'>Curitiba</option>
+                                            <option value='1' data-state='1'>Joinville</option>
+                                            <option value='2' data-state='2'>Porto Alegre</option>
+                                        </select>
+                                    </fieldset>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- LIST -->
+    <section class='list-properties'>
+        <div class='container'>
+            <div class='row align-items-start justify-content-center'>
+                <div class='col-12'>
+                    <div class='list-properties__results'>999 empreendimentos encontrados:</div>
+                </div>
+                <div class='col-lg-4 col-md-6 col-12'>
+                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                        <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
+                        <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                        <div class='list__slider__item__location'>Joinville / SC</div>
+                        <div class='list__slider__item__features'>3 Suítes <span>&bull;</span> 2 Garagens</div>
+                        <div class='list__slider__item__link'>Quero Conhecer!</div>
+                    </a>
+                </div>
+                <div class='col-lg-4 col-md-6 col-12'>
+                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                        <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/apartment.jpg)'></div>
+                        <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                        <div class='list__slider__item__location'>Curitiba / PR</div>
+                        <div class='list__slider__item__features'>2 Quartos <span>&bull;</span> 1 Garagem</div>
+                        <div class='list__slider__item__link'>Quero Conhecer!</div>
+                    </a>
+                </div>
+                <div class='col-lg-4 col-md-6 col-12'>
+                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                        <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
+                        <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                        <div class='list__slider__item__location'>Joinville / SC</div>
+                        <div class='list__slider__item__features'>3 Suítes <span>&bull;</span> 2 Garagens</div>
+                        <div class='list__slider__item__link'>Quero Conhecer!</div>
+                    </a>
+                </div>
+                <div class='col-lg-4 col-md-6 col-12'>
+                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                        <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/apartment.jpg)'></div>
+                        <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                        <div class='list__slider__item__location'>Curitiba / PR</div>
+                        <div class='list__slider__item__features'>2 Quartos <span>&bull;</span> 1 Garagem</div>
+                        <div class='list__slider__item__link'>Quero Conhecer!</div>
+                    </a>
+                </div>
+                <div class='col-lg-4 col-md-6 col-12'>
+                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                        <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
+                        <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                        <div class='list__slider__item__location'>Joinville / SC</div>
+                        <div class='list__slider__item__features'>3 Suítes <span>&bull;</span> 2 Garagens</div>
+                        <div class='list__slider__item__link'>Quero Conhecer!</div>
+                    </a>
+                </div>
+                <div class='col-lg-4 col-md-6 col-12'>
+                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                        <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/apartment.jpg)'></div>
+                        <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                        <div class='list__slider__item__location'>Curitiba / PR</div>
+                        <div class='list__slider__item__features'>2 Quartos <span>&bull;</span> 1 Garagem</div>
+                        <div class='list__slider__item__link'>Quero Conhecer!</div>
+                    </a>
+                </div>
+                <div class='col-lg-4 col-md-6 col-12'>
+                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                        <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
+                        <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                        <div class='list__slider__item__location'>Joinville / SC</div>
+                        <div class='list__slider__item__features'>3 Suítes <span>&bull;</span> 2 Garagens</div>
+                        <div class='list__slider__item__link'>Quero Conhecer!</div>
+                    </a>
+                </div>
+                <div class='col-lg-4 col-md-6 col-12'>
+                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                        <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/apartment.jpg)'></div>
+                        <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                        <div class='list__slider__item__location'>Curitiba / PR</div>
+                        <div class='list__slider__item__features'>2 Quartos <span>&bull;</span> 1 Garagem</div>
+                        <div class='list__slider__item__link'>Quero Conhecer!</div>
+                    </a>
+                </div>
+                <div class='col-lg-4 col-md-6 col-12'>
+                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                        <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
+                        <div class='list__slider__item__title'>Nome do Empreendimento</div>
+                        <div class='list__slider__item__location'>Joinville / SC</div>
+                        <div class='list__slider__item__features'>3 Suítes <span>&bull;</span> 2 Garagens</div>
+                        <div class='list__slider__item__link'>Quero Conhecer!</div>
+                    </a>
+                </div>
+                <div class='col-12'>
+                    <div class='list-properties__pagination'>
+                        <a href='' class='prev disabled'>Anterior</a>
+                        <a href=''>3</a>
+                        <a href=''>4</a>
+                        <a href='' class='current'>5</a>
+                        <a href=''>6</a>
+                        <a href=''>7</a>
+                        <a href=''>15</a>
+                        <a href='' class='next'>Próxima</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- FOOTER -->
+    <footer class='footer'>
+        <div class='container'>
+            <div class='row align-items-center'>
+                <div class='col-lg-2 col-md-6 col-12'>
+                    <a href='index.html' data-aos='fade-down' data-aos-delay='100' title='Página Inicial - Hupi' class='footer__logo'>
+                        <img src='content/assets/images/logo-hupi.png'>
+                    </a>
+                </div>
+                <div class='col-md-6 col-12 d-lg-block d-md-none d-block'>
+                    <div class='footer__links'>
+                        <a class='active' data-aos='fade-down' data-aos-delay='200' href='empreendimentos.html' title='Empreendimentos'>Empreendimentos</a>
+                        <a data-aos='fade-down' data-aos-delay='300' href='#' title='Sobre Nós'>Sobre Nós</a>
+                        <a data-aos='fade-down' data-aos-delay='400' href='#' title='Portal do Cliente'>Portal do Cliente</a>
+                    </div>
+                </div>
+                <div class='col-lg-4 col-md-6 col-12'>
+                    <div class='footer__social'>
+                        <div class='footer__social__link instagram' data-aos='fade-down' data-aos-delay='500'></div>
+                        <div class='footer__social__link whatsapp' data-aos='fade-down' data-aos-delay='600'></div>
+                        <div class='footer__social__link facebook' data-aos='fade-down' data-aos-delay='700'></div>
+                        <div class='footer__social__link youtube' data-aos='fade-down' data-aos-delay='800'></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <script src="content/assets/scripts/main.min.js"></script>
+</body>
+</html>

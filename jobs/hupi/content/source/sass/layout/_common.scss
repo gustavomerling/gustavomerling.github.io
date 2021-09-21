@@ -2,6 +2,8 @@
 // COMMON
 //
 
+
+//BODY
 body,html{
     height:100%;
     font-family: 'Montserrat', sans-serif;
@@ -9,11 +11,16 @@ body,html{
     color:#555;
 }
 
+
+//RESET TEXT
 p,ul,li,h1,h2,h3,h4,h5,h6{
     padding:0px;
     margin:0px;
+    font-size: inherit;
+    font-weight: inherit;
 }
 
+//HEADER
 .header{
     position: fixed;
     left:0px;
@@ -51,13 +58,14 @@ p,ul,li,h1,h2,h3,h4,h5,h6{
             display:inline-block;
             transition:0.2s;
             border-bottom:2px solid transparent;
-            &:hover{
+            &:hover,&.active{
                 border-bottom:2px solid #60d475;
             }
         }
     }
 }
 
+//FOOTER
 .footer{
     position: relative;
     padding:40px 0px;
@@ -90,8 +98,9 @@ p,ul,li,h1,h2,h3,h4,h5,h6{
             border-bottom:2px solid transparent;
             @media(max-width:767px){
                 width:100%;
+                margin:0px;
             }
-            &:hover{
+            &:hover,&.active{
                 border-bottom:2px solid #60d475;
             }
         }
