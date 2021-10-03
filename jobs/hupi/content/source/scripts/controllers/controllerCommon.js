@@ -81,6 +81,22 @@ function controllerCommon() {
         }
     });
 
+    var singleBannerSlider = new Swiper('.single-banner-slider__container__holder', {
+        speed: 1000,
+        loop:true,
+        slidesPerView: 1,
+        slidesPerGroup: 1,
+        spaceBetween: 0,
+        pagination: {
+            el: '.single-banner-slider__pagination',
+            clickable: true,
+        },
+        navigation: {
+            nextEl: '.single-banner-slider__next',
+            prevEl: '.single-banner-slider__prev',
+        },
+    });
+
 }
 
 //END
