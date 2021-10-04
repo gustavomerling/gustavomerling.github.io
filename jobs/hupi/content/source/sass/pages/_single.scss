@@ -52,8 +52,11 @@
         filter: drop-shadow(0px 4px 10px rgba(0,0,0,0.5));
         backdrop-filter: blur(2px) saturate(2);
         cursor: pointer;
-        z-index:2;
+        z-index:5;
         transition:0.2s;
+        @media(max-width:767px){
+            left:-40px;
+        }
         &:hover{
             filter: drop-shadow(0px 4px 14px rgba(0,0,0,0.6));
         }
@@ -69,6 +72,14 @@
             top:50%;
             margin-top:-10px;
             margin-left: -6px;
+            @media(max-width:767px){
+                margin-left:8px;
+                width:10px;
+                height:10px;
+                margin-top: -5px;
+                border-left:2px solid #000;
+                border-top:2px solid #000;
+            }
         }
     }
     &__next{
@@ -83,9 +94,12 @@
         filter: drop-shadow(0px 4px 10px rgba(0,0,0,0.5));
         backdrop-filter: blur(2px) saturate(2);
         cursor: pointer;
-        z-index:2;
+        z-index:5;
         transition:0.2s;
         transform: rotate(180deg);
+        @media(max-width:767px){
+            right:-40px;
+        }
         &:hover{
             filter: drop-shadow(0px 4px 14px rgba(0,0,0,0.6));
         }
@@ -101,10 +115,15 @@
             top:50%;
             margin-top:-10px;
             margin-left: -6px;
+            @media(max-width:767px){
+                margin-left:8px;
+                width:10px;
+                height:10px;
+                margin-top: -5px;
+                border-left:2px solid #000;
+                border-top:2px solid #000;
+            }
         }
-    }
-    &__pagination{
-
     }
     &__content{
         padding: 200px 0px 40px;
@@ -131,6 +150,11 @@
         font-size: 48px;
         color: #fff;
         font-weight: 300;
+        line-height: 100%;
+        @media(max-width:767px){
+            font-size: 32px;
+            line-height: 100%;
+        }
     }
     &__price{
         position: relative;
@@ -138,6 +162,15 @@
         color: #fff;
         line-height: 24px;
         margin: 10px 0px;
+        @media(max-width:767px){
+            font-size: 16px;
+            line-height: 20px;
+        }
+        strong{
+            @media(max-width:767px){
+                display: block;
+            }
+        }
     }
     &__location{
         position: relative;
@@ -150,11 +183,17 @@
 //SINGLE ABOUT
 .single-about{
     padding:80px 0px;
+    @media(max-width:991px){
+        padding:40px 0px;
+    }
     &__title{
         font-weight: 300;
         font-size: 32px;
         color: #62db79;
         margin-bottom: 20px;
+        @media(max-width:767px){
+            font-size: 24px;
+        }
         b{
             font-weight: 700;
         }
@@ -163,6 +202,9 @@
         font-weight: 400;
         font-size: 16px;
         line-height: 140%;
+        @media(max-width:767px){
+            font-size: 14px;
+        }
     }
     img{
         width:100%;
@@ -178,11 +220,24 @@
     overflow: hidden;
     padding:80px 0px;
     background:#f4f4f4;
+    @media(max-width:991px){
+        padding:40px 0px;
+    }
+    @media(max-width:767px){
+        padding:40px 0px 0px;
+    }
     &__container{
         padding:40px;
         background:#fff;
         filter:drop-shadow(0px 10px 40px rgba(0,0,0,0.2));
         position: relative;
+        @media(max-width:991px){
+            margin-top: 40px;
+        }
+        @media(max-width:767px){
+            margin-left:-15px;
+            padding:40px 15px;
+        }
         &:before{
             content:'';
             width:100vw;
@@ -191,6 +246,11 @@
             left:100%;
             top:0px;
             background:#fff;
+        }
+        iframe{
+            @media(max-width:767px){
+                height:50vh;
+            }
         }
     }
     &__title{
@@ -212,6 +272,9 @@
             box-shadow:0px 0px 10px rgba(0,0,0,0.1);
             position: relative;
             overflow: hidden;
+            @media(max-width:767px){
+                height:24px;
+            }
             &:before{
                 content:attr(data-status);
                 position: absolute;
@@ -246,6 +309,12 @@
 .single-pricing{
     padding:80px 0px;
     overflow: hidden;
+    @media(max-width:991px){
+        padding:40px 0px;
+    }
+    @media(max-width:767px){
+        border-top:1px solid #ddd;
+    }
     &__title{
         font-size:24px;
         font-weight: 700;
@@ -257,6 +326,11 @@
     img{
         width:100%;
         display: block;
+        &:not(:first-child){
+            @media(max-width:991px){
+                margin-bottom: 40px;
+            }
+        }
     }
     &__partner{
         padding:20px;
@@ -265,32 +339,39 @@
         display: inline-block;
         margin-right:20px;
         margin-bottom: 20px;
+        @media(max-width:991px){
+            vertical-align: middle;
+        }
         img{
             max-height:60px;
             max-width:120px;
+            @media(max-width:991px){
+                max-width:150px;
+            }
         }
     }
     a{
         position: relative;
         display: inline-block;
-        padding:10px 0px;
-        padding-right:40px;
-        padding-left:20px;
-        background:#60d475;
-        color:#fff;
-        font-weight: 700;
-        border-radius:20px;
+        padding: 10px 0px;
+        padding-right: 46px;
+        padding-left: 24px;
+        background: #60d475;
+        color: #fff;
+        font-weight: 400;
+        border-radius: 30px;
+        font-size: 24px;
         box-shadow:0px 4px 10px rgba(0,0,0,0.2);
         &:before{
-            content:'';
+            content: '';
             position: absolute;
-            width:20px;
-            height:20px;
-            right:10px;
-            top:50%;
+            width: 25px;
+            height: 24px;
+            right: 10px;
+            top: 45%;
             margin-top: -10px;
-            background:url(../images/logo-whatsapp.png) no-repeat center center;
-            background-size:contain;
+            background: url(../images/logo-whatsapp.png) no-repeat center center;
+            background-size: contain;
             filter: invert(1);
         }
     }
