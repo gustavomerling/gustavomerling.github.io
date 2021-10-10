@@ -86,22 +86,31 @@
             font-size: 14px;
         }
         &:before{
-            content:'🙶';
+            content:'';
             position: absolute;
-            left:0px;
-            top:0px;
-            font-size: 128px;
-            transform: translate(-35px, 4px);
-            color: #60d475;
+            left: -25px;
+            top: -50px;
+            width: 80px;
+            height: 80px;
+            background: url(../images/quote.svg) no-repeat center center;
+            background-size: contain;
+            @media(max-width:767px){
+                left:-15px;
+            }
         }
         &:after{
-            content:'🙷';
+            content:'';
             position: absolute;
-            right:0px;
-            bottom:0px;
-            font-size: 128px;
-            transform: translate(-15px, 54px);
-            color: #60d475;
+            right: -25px;
+            bottom: -50px;
+            width: 80px;
+            height: 80px;
+            background: url(../images/quote.svg) no-repeat center center;
+            background-size: contain;
+            transform: rotate(180deg);
+            @media(max-width:767px){
+                right:-15px;
+            }
         }
     }
 }
