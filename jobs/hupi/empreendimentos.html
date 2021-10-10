@@ -10,25 +10,33 @@
     <link rel="stylesheet" href="content/assets/css/main.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap" rel="stylesheet">
     <link rel="shortcut icon" type="image/x-icon" href="content/assets/images/facicon.ico" />
 </head>
 <body>
     
     <!-- HEADER -->
+    <div class='header__mobile-menu'>
+        <a href='empreendimentos.html' title='Empreendimentos'>Empreendimentos</a>
+        <a href='sobre-nos.html' title='Sobre Nós'>Sobre Nós</a>
+        <a href='login.html' title='Portal do Cliente'>Portal do Cliente</a>
+    </div>
     <header class='header'>
+        <div class='header__button d-lg-none d-block'><div></div></div>
+        <a href='http://api.whatsapp.com/send?1=pt_BR&phone=5548999951052' class='header__mobile-whats d-lg-none d-block'></a>
         <div class='container'>
             <div class='row align-items-center'>
-                <div class='col-lg-4 col-12'>
+                <div class='col-lg-3 col-12'>
                     <a href='index.html' data-aos='fade-down' data-aos-delay='100' title='Página Inicial - Hupi' class='header__logo'>
                         <img src='content/assets/images/logo-hupi.png'>
                     </a>
                 </div>
-                <div class='col-8 d-lg-block d-none'>
+                <div class='col-9 d-lg-block d-none'>
                     <div class='header__links'>
                         <a class='active' data-aos='fade-down' data-aos-delay='200' href='empreendimentos.html' title='Empreendimentos'>Empreendimentos</a>
-                        <a data-aos='fade-down' data-aos-delay='300' href='#' title='Sobre Nós'>Sobre Nós</a>
-                        <a data-aos='fade-down' data-aos-delay='400' href='#' title='Portal do Cliente'>Portal do Cliente</a>
+                        <a data-aos='fade-down' data-aos-delay='300' href='sobre-nos.html' title='Sobre Nós'>Sobre Nós</a>
+                        <a data-aos='fade-down' data-aos-delay='400' href='login.html' title='Portal do Cliente'>Portal do Cliente</a>
+                        <a data-aos='fade-down' data-aos-delay='600' href='http://api.whatsapp.com/send?1=pt_BR&phone=5548999951052' target='_blank' title='Estamos Online!'>Estamos Online!</a>
                     </div>
                 </div>
             </div>
@@ -103,7 +111,7 @@
                     <div class='list-properties__results'>999 empreendimentos encontrados:</div>
                 </div>
                 <div class='col-lg-4 col-md-6 col-12'>
-                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                    <a href='empreendimentos-single.html' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
                         <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
                         <div class='list__slider__item__title'>Nome do Empreendimento</div>
                         <div class='list__slider__item__location'>Joinville / SC</div>
@@ -112,7 +120,7 @@
                     </a>
                 </div>
                 <div class='col-lg-4 col-md-6 col-12'>
-                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                    <a href='empreendimentos-single.html' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
                         <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/apartment.jpg)'></div>
                         <div class='list__slider__item__title'>Nome do Empreendimento</div>
                         <div class='list__slider__item__location'>Curitiba / PR</div>
@@ -121,7 +129,7 @@
                     </a>
                 </div>
                 <div class='col-lg-4 col-md-6 col-12'>
-                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                    <a href='empreendimentos-single.html' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
                         <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
                         <div class='list__slider__item__title'>Nome do Empreendimento</div>
                         <div class='list__slider__item__location'>Joinville / SC</div>
@@ -130,7 +138,7 @@
                     </a>
                 </div>
                 <div class='col-lg-4 col-md-6 col-12'>
-                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                    <a href='empreendimentos-single.html' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
                         <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/apartment.jpg)'></div>
                         <div class='list__slider__item__title'>Nome do Empreendimento</div>
                         <div class='list__slider__item__location'>Curitiba / PR</div>
@@ -139,7 +147,7 @@
                     </a>
                 </div>
                 <div class='col-lg-4 col-md-6 col-12'>
-                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                    <a href='empreendimentos-single.html' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
                         <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
                         <div class='list__slider__item__title'>Nome do Empreendimento</div>
                         <div class='list__slider__item__location'>Joinville / SC</div>
@@ -148,7 +156,7 @@
                     </a>
                 </div>
                 <div class='col-lg-4 col-md-6 col-12'>
-                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                    <a href='empreendimentos-single.html' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
                         <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/apartment.jpg)'></div>
                         <div class='list__slider__item__title'>Nome do Empreendimento</div>
                         <div class='list__slider__item__location'>Curitiba / PR</div>
@@ -157,7 +165,7 @@
                     </a>
                 </div>
                 <div class='col-lg-4 col-md-6 col-12'>
-                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                    <a href='empreendimentos-single.html' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
                         <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
                         <div class='list__slider__item__title'>Nome do Empreendimento</div>
                         <div class='list__slider__item__location'>Joinville / SC</div>
@@ -166,7 +174,7 @@
                     </a>
                 </div>
                 <div class='col-lg-4 col-md-6 col-12'>
-                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                    <a href='empreendimentos-single.html' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
                         <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/apartment.jpg)'></div>
                         <div class='list__slider__item__title'>Nome do Empreendimento</div>
                         <div class='list__slider__item__location'>Curitiba / PR</div>
@@ -175,7 +183,7 @@
                     </a>
                 </div>
                 <div class='col-lg-4 col-md-6 col-12'>
-                    <a href='#' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
+                    <a href='empreendimentos-single.html' class='list__slider__item' data-aos='fade-down' data-aos-delay='0'>
                         <div class='list__slider__item__thumb' style='background-image:url(content/assets/images/house.jpg)'></div>
                         <div class='list__slider__item__title'>Nome do Empreendimento</div>
                         <div class='list__slider__item__location'>Joinville / SC</div>
@@ -211,16 +219,16 @@
                 <div class='col-md-6 col-12 d-lg-block d-md-none d-block'>
                     <div class='footer__links'>
                         <a class='active' data-aos='fade-down' data-aos-delay='200' href='empreendimentos.html' title='Empreendimentos'>Empreendimentos</a>
-                        <a data-aos='fade-down' data-aos-delay='300' href='#' title='Sobre Nós'>Sobre Nós</a>
-                        <a data-aos='fade-down' data-aos-delay='400' href='#' title='Portal do Cliente'>Portal do Cliente</a>
+                        <a data-aos='fade-down' data-aos-delay='300' href='sobre-nos.html' title='Sobre Nós'>Sobre Nós</a>
+                        <a data-aos='fade-down' data-aos-delay='400' href='login.html' title='Portal do Cliente'>Portal do Cliente</a>
                     </div>
                 </div>
                 <div class='col-lg-4 col-md-6 col-12'>
                     <div class='footer__social'>
-                        <div class='footer__social__link instagram' data-aos='fade-down' data-aos-delay='500'></div>
-                        <div class='footer__social__link whatsapp' data-aos='fade-down' data-aos-delay='600'></div>
-                        <div class='footer__social__link facebook' data-aos='fade-down' data-aos-delay='700'></div>
-                        <div class='footer__social__link youtube' data-aos='fade-down' data-aos-delay='800'></div>
+                        <a href='https://www.instagram.com/hupiconstrutora/' target='_blank' class='footer__social__link instagram' data-aos='fade-down' data-aos-delay='500'></a>
+                        <a href='http://api.whatsapp.com/send?1=pt_BR&phone=5548999951052' target='_blank' class='footer__social__link whatsapp' data-aos='fade-down' data-aos-delay='600'></a>
+                        <a href='https://www.facebook.com/hupiconstrutora/' target='_blank' class='footer__social__link facebook' data-aos='fade-down' data-aos-delay='700'></a>
+                        <a href='https://www.youtube.com/channel/UCgTaLZEZ4LfSh1ziBu5QhVw' target='_blank' class='footer__social__link youtube' data-aos='fade-down' data-aos-delay='800'></a>
                     </div>
                 </div>
             </div>

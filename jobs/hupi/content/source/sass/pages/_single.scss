@@ -17,6 +17,9 @@
             }
         }
     }
+    .swiper-slide a{
+        display: none;
+    }
     &__container{
         position: absolute;
         left:0px;
@@ -144,6 +147,17 @@
             background: linear-gradient(to bottom,  rgba(0,0,0,0) 0%,rgba(0,0,0,0.8) 100%);
             filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#00000000', endColorstr='#a6000000',GradientType=0 );
         }
+    }
+    &__zoom{
+        width:40px;
+        height:40px;
+        background:url(../images/icon-zoom.svg) no-repeat 50% 50% rgba(255,255,255,0.8);
+        background-size:24px;
+        border-radius:40px;
+        backdrop-filter: blur(5px);
+        margin:0px auto;
+        margin-bottom: 20px;
+        cursor: pointer;
     }
     &__title{
         position: relative;
@@ -350,7 +364,7 @@
             }
         }
     }
-    a{
+    .whatsapp{
         position: relative;
         display: inline-block;
         padding: 10px 0px;

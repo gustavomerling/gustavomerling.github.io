@@ -33,6 +33,17 @@ jQuery.validator.addMethod("cpf", function (value, element) {
 //CALLS
 function controllerCommon() {
 
+    //ZOOM
+    $('.single-banner-slider__zoom').click(function(){
+        $('.swiper-slide-active').find('a').click();
+    });
+
+    //MENU MOBILE
+    $('.header__button').click(function(){
+        $(this).toggleClass('active');
+        $('.header__mobile-menu').toggleClass('active');
+    });
+
     //LOGIN
     if ($('.login').length > 0) {
         setTimeout(function () { $('.login__container__cover').addClass('active'); }, 1000);
@@ -50,18 +61,20 @@ function controllerCommon() {
     //SCROLL
     $('.banner__scroll,.banner__content__button').click(function () {
         $('body,html').animate({
-            'scrollTop': $(window).height()
+            'scrollTop': $(window).height() - 83
         }, 1000);
+        return false;
     });
     $('.about__button').click(function () {
         $('body,html').animate({
-            'scrollTop': $('.list').offset().top
+            'scrollTop': $('.list').offset().top - 83
         }, 1000);
+        return false;
     });
 
     //SLIDER
     var listSlider = new Swiper('.list__slider', {
-        speed: 500,
+        speed: 1000,
         slidesPerView: 1,
         slidesPerGroup: 1,
         spaceBetween: 30,
