@@ -21,6 +21,10 @@ body > *, .main > *{
     transform:translate(0px,0px) !important;
 }
 
+html{
+    overflow: hidden;
+}
+
 body {
     height:100%;
     min-height: 100%;
@@ -28,6 +32,7 @@ body {
     background:#000000;
     display: block;
     transition:1s ease-in-out;
+    overflow: hidden;
 }
 
 body.on{
@@ -321,4 +326,107 @@ ul.list li span{
 }
 .copyright b{
     font-weight: 800;
+}
+
+/* RESPONSIVE */
+@media(max-height:799px){
+    .text_1,.text_2{
+        font-size:100px;
+    }
+    .asterisco_spin{
+        width:100px;
+        height:100px;
+    }
+    .spining{
+        width:180px;
+        text-align: center;
+        position: relative;
+        margin-top:20px;
+    }
+    .scrolling-text{
+        top:55%;
+        transform: rotate(45deg) translateY(-60%) !important;
+    }
+}
+@media(max-width:1199px){
+    .cursor,.cursor_plus{
+        display: none;
+    }
+    .text_1,.text_2{
+        font-size:100px;
+    }
+    .asterisco_spin{
+        width:100px;
+        height:100px;
+    }
+    .spining{
+        width:180px;
+        text-align: center;
+        position: relative;
+        margin-top:20px;
+    }
+    .scrolling-text{
+        top:55%;
+        transform: rotate(0deg) translateY(-50%) !important;
+    }
+}
+@media(max-width:991px){
+    .circle_1{
+        width:50vh;
+        height:50vh;
+    }
+    .circle_2{
+        width:80vh;
+        height:80vh;
+    }
+}
+@media(max-width:767px){
+    .circle_2{
+        width:60vh;
+        height:60vh;
+    }
+    .logo img {
+        height: 43px;
+    }
+    .title {
+        font-size: 14px;
+        line-height: 20px;
+    }
+    .black_line {
+        position: absolute;
+        right: 0px;
+        bottom: 20vh;
+        height: 12vh;
+        width: 12vh;
+    }
+    .scrolling-text{
+        top:50%;
+    }
+    .main{
+        top:5vw;
+        bottom:5vw;
+    }
+    .hide_mobile{
+        display: none;
+    }
+    .block_mobile{
+        display: block;
+    }
+    .title {
+        font-size: 14px;
+        line-height: 20px;
+        top: 60px;
+    }
+    .title span {
+        position: relative;
+        top: -10px;
+        font-size: 10px;
+    }
+    .links{
+        line-height: 20px;
+    }
+    .links a{
+        line-height: 22px;
+        font-size: 14px;
+    }
 }
