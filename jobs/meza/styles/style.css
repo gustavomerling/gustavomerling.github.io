@@ -1,0 +1,324 @@
+/*
+ *
+ * STYLE
+ *
+ */
+
+* {
+    box-sizing: border-box;
+    color:#000;
+    font-family: 'Libre Caslon Text', serif;
+    font-family: 'Public Sans', sans-serif;
+    cursor: none;
+}
+
+body > *, .main > *{
+    opacity:0;
+}
+
+.show{
+    opacity:1 !important;
+    transform:translate(0px,0px) !important;
+}
+
+body {
+    height:100%;
+    min-height: 100%;
+    overflow: hidden;
+    background:#000000;
+    display: block;
+    transition:1s ease-in-out;
+}
+
+body.on{
+    background:#efebe2;
+}
+
+/* CURSOR */
+.cursor{
+    position: absolute;
+    left:50%;
+    top:0px;
+    width:40px;
+    height:40px;
+    border-radius:100%;
+    border:1px solid #000;
+    opacity:1;
+    transform:translate(-50%,-50%);
+    z-index:10;
+    pointer-events: none;
+    transition:box-shadow 0.5s ease-in-out, transform 0.5s ease-in-out;
+    background:transparent;
+    margin-top:-10vh;
+    margin-left:-5vw;
+    box-shadow:0px 0px 1px 1px #000;
+}
+.cursor.hover{
+    box-shadow:0px 0px 1px 0px #000;
+    transform: translate(-50%,-50%) scale(0.9);
+}
+.cursor_plus{
+    position: absolute;
+    left:50%;
+    top:0px;
+    width:40px;
+    height:40px;
+    border-radius:100%;
+    opacity:1;
+    transform:translate(-50%,-50%);
+    z-index:10;
+    pointer-events: none;
+    margin-top:-10vh;
+    margin-left:-5vw;
+    transition:transform 0.3s ease-in-out;
+}
+.cursor_plus.hover{
+    transform:translate(-50%,-50%) rotate(180deg) scale(0.8);
+}
+.cursor_plus.hover:before{
+    opacity:0.5;
+}
+.cursor_plus.hover:after{
+    opacity:0.5;
+}
+.cursor_plus:before{
+    content:'';
+    position: absolute;
+    width:20px;
+    height:2px;
+    background:#000;
+    top:50%;
+    left:50%;
+    transform: translate(-50%,-50%);
+    transition:0.2s;
+}
+.cursor_plus:after{
+    content:'';
+    position: absolute;
+    width:2px;
+    height:20px;
+    background:#000;
+    top:50%;
+    left:50%;
+    transform: translate(-50%,-50%);
+    transition:0.2s;
+}
+
+/* circle_1 */
+@keyframes floating{0%{transform:translate(-50%,-5%);}100%{transform:translate(-50%,5%);}}
+.circle_1{
+    position: absolute;
+    top:20vh;
+    left:50%;
+    width:115vh;
+    height:115vh;
+    /* background:#eeff41; */
+    border-radius:100%;
+    transform: translateX(-50%) !important;
+    margin-left:0vw;
+    z-index:2;
+    /* filter:blur(10px); */
+    transition:3s ease-in-out;
+    animation:floating 5s infinite ease-in-out alternate-reverse;
+}
+.circle_1 img{
+    display: block;
+    width:100%;
+    height:100%;
+}
+.circle_1.show{
+    margin-left:10vw;
+}
+
+/* circle_2 */
+@keyframes floating_two{0%{transform:translate(-50%,-10%);}100%{transform:translate(-50%,5%);}}
+.circle_2{
+    position: absolute;
+    top:20vh;
+    left:60%;
+    width:150vh;
+    height:150vh;
+    /* background:#eeff41; */
+    border-radius:100%;
+    transform: translateX(-50%) !important;
+    margin-left:-0vw;
+    /* transition:3s ease-in-out; */
+    animation:floating_two 5s infinite ease-in-out alternate;
+}
+.circle_2 img{
+    display: block;
+    width:100%;
+    height:100%;
+}
+.circle_2.show{
+    margin-left:-10vw;
+}
+
+/* black_line */
+.black_line{
+    position: absolute;
+    right:0px;
+    bottom:0px;
+    height:32vh;
+    width:32vh;
+    pointer-events: none;
+    z-index:4;
+    transition:5s ease-in-out;
+    transform:translate(30vh,30vh);
+}
+
+.black_line:before{
+    content:'';
+    height:2px;
+    width:143%;
+    background:#000;
+    position: absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%) rotate(45deg);
+    transition:1s ease-in-out;
+}
+
+/* main */
+.main {
+    position: absolute;
+    left: 5vw;
+    right: 5vw;
+    top: 10vh;
+    bottom: 10vh;
+    z-index:3;
+    opacity:1;
+}
+
+/* logo */
+.logo {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    font-size: 0px;
+    transition:1s ease-in-out;
+    transform:translateX(-50%);
+}
+
+/* links */
+.links {
+    position: absolute;
+    right: 0px;
+    top: 0px;
+    text-align: right;
+    line-height: 30px;
+    transition:1s ease-in-out;
+    transform: translateX(100px);
+}
+.links a{
+    font-size:18px;
+    line-height: 30px;
+    cursor: pointer;
+    font-family: 'Libre Caslon Text', serif;
+    font-weight: 400;
+}
+
+/* title */
+.title {
+    position: absolute;
+    left: 0px;
+    top: 10vh;
+    font-weight: 300;
+    font-size: 24px;
+    line-height: 30px;
+    transition:1s ease-in-out;
+    transform:translateX(-50%);
+}
+.title span{
+    position: relative;
+    top:-10px;
+    font-size:14px;
+}
+
+/* scrolling-text */
+.scrolling-text {
+    position: absolute;
+    left: -5vw;
+    top: 50%;
+    transform: translateY(-50%) !important;
+    width: 100vw;
+    overflow: hidden;
+    transition:2s ease-in-out;
+}
+ul.list {
+    position: relative;
+    display: inline-block;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    white-space: nowrap;
+}
+ul.list.cloned {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+}
+ul.list li {
+    display: inline-block;
+    vertical-align: middle;
+    height:200px;
+}
+ul.list li span{
+    display: block;
+}
+.spining{
+    width:220px;
+    text-align: center;
+    position: relative;
+    margin-top:70px;
+}
+.text_1{
+    font-size:174px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform: rotate(360deg);}}
+.asterisco_spin{
+    animation:spin 2s infinite linear;
+    display: block;
+    margin:0px auto;
+}
+.text_2{
+    font-size:174px;
+    font-weight: 400;
+    white-space: nowrap;
+    font-family: 'Libre Caslon Text', serif;
+}
+.text_2 i{
+    font-family: 'Libre Caslon Text', serif;
+    font-weight: 400;
+}
+
+/* address */
+.address {
+    position: absolute;
+    left: 0px;
+    bottom: 10vh;
+    font-family: 'Libre Caslon Text', serif;
+    font-size: 16px;
+    line-height: 26px;
+    transition:1s ease-in-out;
+    transform:translateX(-50%);
+}
+.address span{
+    font-family: 'Public Sans', sans-serif;
+    font-size: 18px;
+    line-height: 26px;
+}
+
+/* copyright */
+.copyright {
+    position: absolute;
+    left: 0px;
+    bottom: 0px;
+    transition:1s ease-in-out;
+    transform:translateX(-50%);
+}
+.copyright b{
+    font-weight: 800;
+}
