@@ -87,40 +87,41 @@ $(document).ready(function () {
     setTimeout(function () { $('.links').addClass('show'); }, 4000);
 
     //SCROLLING TEXT
-    var $tickerWrapper = $(".scrolling-text");
-    var $list = $tickerWrapper.find("ul.list");
-    var $clonedList = $list.clone();
-    var listWidth = 8;
+    setTimeout(function(){
+        var $tickerWrapper = $(".scrolling-text");
+        var $list = $tickerWrapper.find("ul.list");
+        var $clonedList = $list.clone();
+        var listWidth = 8;
 
-    $list.find("li").each(function (i) {
-        listWidth += $(this, i).width();
-    });
+        listWidth = $tickerWrapper.find("ul.list").width();
+        console.log(listWidth);
 
-    var endPos = $tickerWrapper.width() - listWidth;
+        var endPos = $tickerWrapper.width() - listWidth;
 
-    $list.add($clonedList).css({
-        "width": listWidth + "px"
-    });
+        $list.add($clonedList).css({
+            "width": listWidth + "px"
+        });
 
-    $clonedList.addClass("cloned").appendTo($tickerWrapper);
+        $clonedList.addClass("cloned").appendTo($tickerWrapper);
 
-    //TimelineMax
-    var infinite = new TimelineMax({ repeat: -1, paused: true });
-    var time = 20;
+        //TimelineMax
+        var infinite = new TimelineMax({ repeat: -1, paused: true });
+        var time = 10;
 
-    infinite
-        .fromTo($list, time, { rotation: 0.01, x: 0 }, { force3D: true, x: -listWidth, ease: Linear.easeNone }, 0)
-        .fromTo($clonedList, time, { rotation: 0.01, x: listWidth }, { force3D: true, x: 0, ease: Linear.easeNone }, 0)
-        .set($list, { force3D: true, rotation: 0.01, x: listWidth })
-        .to($clonedList, time, { force3D: true, rotation: 0.01, x: -listWidth, ease: Linear.easeNone }, time)
-        .to($list, time, { force3D: true, rotation: 0.01, x: 0, ease: Linear.easeNone }, time)
-        .progress(1).progress(0)
-        .play();
+        infinite
+            .fromTo($list, time, { rotation: 0.01, x: 0 }, { force3D: true, x: -listWidth, ease: Linear.easeNone }, 0)
+            .fromTo($clonedList, time, { rotation: 0.01, x: listWidth }, { force3D: true, x: 0, ease: Linear.easeNone }, 0)
+            .set($list, { force3D: true, rotation: 0.01, x: listWidth })
+            .to($clonedList, time, { force3D: true, rotation: 0.01, x: -listWidth, ease: Linear.easeNone }, time)
+            .to($list, time, { force3D: true, rotation: 0.01, x: 0, ease: Linear.easeNone }, time)
+            .progress(1).progress(0)
+            .play();
 
-    //Pause/Play		
-    // $tickerWrapper.on("mouseenter", function () {
-    //     infinite.pause();
-    // }).on("mouseleave", function () {
-    //     infinite.play();
-    // });
+        //Pause/Play		
+        $tickerWrapper.on("mouseenter", function () {
+            infinite.pause();
+        }).on("mouseleave", function () {
+            infinite.play();
+        });
+    },1000);
 });

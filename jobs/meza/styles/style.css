@@ -443,3 +443,10 @@ ul.list li span{
         font-size: 14px;
     }
 }
+
+.asterisco_placeholder{
+    position: absolute;
+    left:0px;
+    top:0px;
+    opacity:1;
+}
