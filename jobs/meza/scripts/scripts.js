@@ -106,7 +106,7 @@ $(document).ready(function () {
 
         //TimelineMax
         var infinite = new TimelineMax({ repeat: -1, paused: true });
-        var time = 10;
+        var time = 20;
 
         infinite
             .fromTo($list, time, { rotation: 0.01, x: 0 }, { force3D: true, x: -listWidth, ease: Linear.easeNone }, 0)
@@ -118,10 +118,10 @@ $(document).ready(function () {
             .play();
 
         //Pause/Play		
-        $tickerWrapper.on("mouseenter", function () {
-            infinite.pause();
-        }).on("mouseleave", function () {
-            infinite.play();
-        });
+        // $tickerWrapper.on("mouseenter", function () {
+        //     infinite.pause();
+        // }).on("mouseleave", function () {
+        //     infinite.play();
+        // });
     },1000);
 });
