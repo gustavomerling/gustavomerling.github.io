@@ -6,7 +6,7 @@
 
 * {
     box-sizing: border-box;
-    color:#000;
+    color:#212121;
     font-family: 'Libre Caslon Text', serif;
     font-family: 'Public Sans', sans-serif;
     cursor: none;
@@ -23,6 +23,7 @@ body > *, .main > *{
 
 html{
     overflow: hidden;
+    height:100%;
 }
 
 body {
@@ -33,6 +34,11 @@ body {
     display: block;
     transition:1s ease-in-out;
     overflow: hidden;
+    position: relative;
+}
+
+body.no_transition,body.no_transition *{
+    transition: none !important;
 }
 
 body.on{
@@ -176,7 +182,7 @@ body.on{
     content:'';
     height:2px;
     width:143%;
-    background:#000;
+    background:#212121;
     position: absolute;
     left:50%;
     top:50%;
@@ -348,7 +354,11 @@ ul.list li span{
     }
     .scrolling-text{
         top:55%;
-        transform: rotate(45deg) translateY(-60%) !important;
+        transform: translateY(-55%) !important;
+    }
+    .main{
+        top:5vh;
+        bottom:5vh;
     }
 }
 @media(max-width:1199px){

@@ -5,6 +5,9 @@
 //
 
 $(document).ready(function () {
+
+    //ALLOW TRANSITIONS
+    $('body').removeClass('no_transition');
     
     //CURSOR
     $('a').mouseenter(function(){
