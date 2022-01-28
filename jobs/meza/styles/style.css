@@ -219,7 +219,6 @@ body.on{
     position: absolute;
     right: 0px;
     top: 0px;
-    text-align: right;
     line-height: 30px;
     transition:1s ease-in-out;
     transform: translateX(100px);
