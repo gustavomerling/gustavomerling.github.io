@@ -9,6 +9,7 @@ var sass     = require('gulp-sass');
 var concat   = require('gulp-concat');
 var uglify   = require('gulp-uglify');
 var notify   = require('gulp-notify');
+var livereload = require('gulp-livereload');
 
 //REQUIRES
 //CONFIGS
@@ -22,7 +23,8 @@ var distPath = 'content/assets/';
 gulp.task('sass', function (done) {
     return gulp.src( srcPath + 'sass/*.scss')
         .pipe(sass({outputStyle: 'compressed'}).on('error', sass.logError))
-        .pipe(gulp.dest( distPath + 'css'));
+        .pipe(gulp.dest( distPath + 'css'))
+        .pipe(livereload());
 
     done();
 });
@@ -44,7 +46,8 @@ gulp.task('scripts', function(done) {
     return gulp.src(jsFiles)
         .pipe(concat('main.min.js'))
         .pipe(uglify())
-        .pipe(gulp.dest( distPath + 'scripts'));
+        .pipe(gulp.dest( distPath + 'scripts'))
+        .pipe(livereload());
 
     done();
 });
@@ -53,6 +56,8 @@ gulp.task('scripts', function(done) {
 //WATCH
 
 gulp.task('listen', function (done) {
+
+    livereload.listen();
 
     gulp.watch( srcPath + 'sass/*.sass', gulp.series('sass'));
     gulp.watch( srcPath + 'sass/**/*.scss', gulp.series('sass'));

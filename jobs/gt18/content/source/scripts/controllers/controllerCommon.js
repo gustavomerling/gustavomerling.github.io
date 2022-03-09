@@ -19,6 +19,9 @@ function controllerCommon() {
         return false;
     });
 
+    //FORM
+    $('.section-contact__form form').validate();
+
 }
 
 //END

@@ -5,6 +5,7 @@
   "main": "gulpfile.js",
   "dependencies": {
     "gulp-concat": "*",
+    "gulp-livereload": "^4.0.2",
     "gulp-notify": "*",
     "gulp-sass": "^4.1.0",
     "gulp-uglify": "*"
