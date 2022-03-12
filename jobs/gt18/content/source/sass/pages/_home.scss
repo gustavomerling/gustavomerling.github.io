@@ -6,12 +6,21 @@
 .section-hero{
     background:url(../images/background-hero.jpg) no-repeat center center;
     background-size:cover;
+    @media(max-width:767px){
+        padding-top:173px;
+    }
     &__title{
         font-weight: 500;
         font-size: 48px;
         line-height: 57px;
         color: #FFFFFF;
         margin-bottom: 48px;
+        @media(max-width:767px){
+            font-size: 24px;
+            line-height: 30px;
+            color: #FFFFFF;
+            margin-bottom: 20px;
+        }
     }
     &__button{
         height:48px;
@@ -41,6 +50,9 @@
             display: block;
             max-width: 100%;
             margin:0px auto;
+            @media(max-width:767px){
+                margin-bottom: 40px;
+            }
         }
     }
     &__title{
@@ -50,6 +62,15 @@
         text-transform: uppercase;
         color: #21005C;
         margin-bottom: 48px;
+        @media(max-width:1199px){
+            font-size: 32px;
+            line-height: 32px;
+            margin-bottom: 20px;
+            padding-left:40px;
+        }
+        @media(max-width:767px){
+            padding-left:0px;
+        }
     }
     p{
         font-weight: 300;
@@ -57,6 +78,15 @@
         line-height: 28px;
         color: #21005C;
         margin-bottom: 36px;
+        @media(max-width:1199px){
+            font-size: 18px;
+            line-height: 140%;
+            padding-left:40px;
+            margin-bottom: 20px;
+        }
+        @media(max-width:767px){
+            padding-left:0px;
+        }
         &:last-child{
             margin-bottom: 0px;
         }
@@ -75,15 +105,29 @@
         color: #FFFFFF;
         text-transform: uppercase;
         margin-bottom: 80px;
+        @media(max-width:1199px){
+            margin-bottom: 0px;
+            font-size: 32px;
+            line-height: 32px;
+        }
     }
     &__item{
+        @media(max-width:1199px){
+            margin-top: 40px;
+        }
         &__icon{
             margin-bottom: 48px;
+            @media(max-width:1199px){
+                margin-bottom: 20px;
+            }
             img{
                 height:100px;
                 width:auto;
                 display: block;
                 margin:0px auto;
+                @media(max-width:1199px){
+                    height:80px;
+                }
             }
         }
         &__text{
@@ -93,6 +137,10 @@
             text-align: center;
             text-transform: uppercase;
             color: #FFFFFF;
+            @media(max-width:1199px){
+                font-size: 18px;
+                line-height: 140%;
+            }
         }
     }
 }
@@ -105,6 +153,11 @@
         line-height: 57px;
         color: #21005C;
         margin-bottom: 48px;
+        @media(max-width:1199px){
+            font-size: 32px;
+            line-height: 32px;
+            margin-bottom: 20px;
+        }
     }
     &__form{
         fieldset{
@@ -121,6 +174,19 @@
                 text-transform: uppercase;
                 color: #21005C;
                 margin-bottom: 8px;
+                &.error{
+                    text-transform: none;
+                    color:#f00;
+                    font-size:12px;
+                    margin-bottom: 0px;
+                    float:right;
+                    width:auto;
+                    line-height: 12px;
+                    height:12px;
+                    margin-top:-14px;
+                    margin-right:10px;
+                    font-weight: 500;
+                }
             }
             input,textarea{
                 display: block;
@@ -137,6 +203,12 @@
                 &:focus{
                     box-shadow:0px 0px 10px #A85FFF;
                 }
+                &.error{
+                    border: 1px solid #f00;
+                    &:focus{
+                        box-shadow:0px 0px 10px #ff8888;
+                    }
+                }
             }
             textarea{
                 padding:14px;
@@ -150,12 +222,18 @@
                 color: #999999;
                 display: inline-block;
                 vertical-align: middle;
+                @media(max-width:1199px){
+                    margin-left:-100px;
+                }
+                @media(max-width:991px){
+                    margin-left:0px;
+                    margin-bottom: 20px;
+                }
             }
             button{
                 width:212px;
                 border:0px;
                 height:48px;
-                padding:0px 32px;
                 font-weight: 300;
                 font-size: 18px;
                 line-height: 48px;
@@ -169,6 +247,9 @@
                 cursor: pointer;
                 transition:0.2s;
                 margin-left: 24px;
+                @media(max-width:1199px){
+                    width:140px;
+                }
                 &:hover{
                     transform: scale(1.1);
                     box-shadow:0px 4px 20px rgba(0,0,0,0.2);
