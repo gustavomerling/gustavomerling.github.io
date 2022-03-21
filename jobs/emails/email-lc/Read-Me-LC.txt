@@ -1,0 +1,15 @@
+Lojas Competição 
+
+-----
+
+Substituir o arquivo "bmg-novo-mundo" por "bmg-lojas-competicao"
+
+Tudo o que está em "azul" mudar o hex para #0e4094;
+
+Excluir infos do aplicativo;
+
+Na footer, as informações de contato da No Mundo, substituir por: 
+Central de Atendimento da Competição Móveis:
+Telefone e Whatsapp 21 26459701
+Atendimento Seg. à Sex. das 08:00h às 17:00h
+Sábado das 08:00h às 12:00h
