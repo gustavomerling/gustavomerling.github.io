@@ -1,0 +1,154 @@
+//
+// COMMON
+//
+
+//BODY
+body {
+    font-family: 'black-bison';
+    font-family: 'Dosis', sans-serif;
+    background:#3992D0;
+}
+
+//RESET
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+ul,
+li {
+    list-style: none;
+    list-style-type: none;
+    margin: 0px;
+    padding: 0px;
+    font-weight: 400;
+}
+
+//ACENTOS NO BISÃO PRETO
+.cedilha{
+    position: relative;
+    font-style: normal;
+    &:before{
+        content:',';
+        position: absolute;
+        left:30%;
+        top:20%;
+    }
+}
+.til{
+    position: relative;
+    font-style: normal;
+    &:before{
+        content:'~';
+        font-family: 'Dosis', sans-serif;
+        font-weight: 900;
+        position: absolute;
+        left: 26%;
+        top: -30%;
+        transform: scale(1.5);
+    }
+}
+
+//LOGO CHANGER
+.fp-viewing-1,.fp-viewing-4,.fp-viewing-5{
+    &:not(.form-active){
+        .header__logo{
+            filter: invert(1);
+        }
+    }
+}
+
+//COMMON-SKIP-SECTION
+.common-skip-section{
+    position: absolute;
+    width:110px;
+    height:110px;
+    background:#E7FF17 url(../images/icon-arrow-down-black.svg) no-repeat 50% 30%;
+    bottom:-43px;
+    left:50%;
+    transform: translateX(-50%);
+    border-radius:100%;
+    cursor: pointer;
+    z-index:2;
+}
+
+//HEADER
+.header{
+    position: fixed;
+    left:0px;
+    top:0px;
+    z-index:10;
+    height:96px;
+    width:100%;
+    &__logo{
+        position: absolute;
+        font-size: 0px;
+        left:48px;
+        top:50%;
+        cursor: pointer;
+        transform: translateY(-50%);
+        transition:0.5s;
+    }
+    &__menu{
+        height:96px;
+        text-align: center;
+        background:#000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding-right:100px;
+        a{
+            font-size: 18px;
+            font-weight: 400;
+            text-transform: uppercase;
+            line-height: 100%;
+            color:#ffffff;
+            letter-spacing: 3px;
+            padding:10px 0px;
+            margin:0px 25px;
+            cursor: pointer;
+            position: relative;
+            &:before{
+                content:'';
+                position: absolute;
+                width:16px;
+                height:2px;
+                background:#E7FF17;
+                left:0px;
+                bottom:0px;
+                transform: translateX(-100%);
+                transition:0.5s;
+                opacity:0;
+                pointer-events: none;
+            }
+            &.active:before{
+                transform: translateX(0%);
+                opacity: 1;
+            }
+        }
+    }
+    &__button{
+        position: absolute;
+        right:48px;
+        top:50%;
+        cursor: pointer;
+        transform: translateY(-50%);
+    }
+}
+
+//YELLOW-BUTTON
+.yellow-button{
+    display: inline-block;
+    padding:11px 24px;
+    padding-right:21px;
+    font-size: 18px;
+    font-weight: 900;
+    text-transform: uppercase;
+    line-height: 100%;
+    background:#E7FF17;
+    color:#000000;
+    letter-spacing: 3px;
+    box-shadow:0px 3px 6px rgba(0,0,0,0.16);
+}

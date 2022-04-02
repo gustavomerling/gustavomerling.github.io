@@ -1,0 +1,16 @@
+//
+// TYPOGRAPHY
+//
+
+@font-face {
+    font-family: 'black-bison';
+    src:    url('../fonts/black-bison.woff') format('woff'),
+            url('../fonts/black-bison.woff2') format('woff2'),
+            url('../fonts/black-bison.eot'),
+            url('../fonts/black-bison.eot?#iefix') format('embedded-opentype'),
+            url('../fonts/black-bison.ttf') format('truetype');
+
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
