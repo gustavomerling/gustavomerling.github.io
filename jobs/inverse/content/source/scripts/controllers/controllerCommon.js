@@ -5,9 +5,39 @@
 //CALLS
 function controllerCommon() {
 
+    //CLONE LINEUP SLIDER
+    function cloneLineupSliderToMobile(){
+        if($(window).width() <= 991){
+            $('.lineup-slider-mobile').append($('.section-lineup__slider'));
+            $('.lineup-slider-mobile').append($('.section-lineup__pagination'));
+        }
+    }
+    cloneLineupSliderToMobile();
+    
+    //EQUAL HEIGHTS
+    setTimeout(function(){
+        var tallestHeight = 0;
+        $('.section-schedule__slider .section-schedule__slider__item').each(function(){
+            if($(this).innerHeight() > tallestHeight){
+                tallestHeight = $(this).innerHeight();
+                console.log(tallestHeight);
+            }
+        });
+        $('.section-schedule__slider .section-schedule__slider__item').height(tallestHeight - 24);
+    },2000);
+
+    //FORM
+    $('.form-modal form').validate();
+
     //FULLPAGE
+    var scrollable = false;
+    if($(window).height() <= 959){
+        scrollable = true;
+    }
     $('#fullpage').fullpage({
-        responsiveWidth: 767,
+        responsiveWidth: 1199,
+        scrollOverflow: scrollable,
+        scrollOverflowReset: scrollable,
         onLeave: function (index, nextIndex, direction) {
             $('.toggle_nav').removeClass('active');
             $('.toggle_nav_' + nextIndex).addClass('active');
@@ -17,8 +47,8 @@ function controllerCommon() {
     //CLICKS
     $('.toggle_nav').click(function () {
         $.fn.fullpage.moveTo($(this).data('nav'));
-        $('.form-modal').fadeOut();
-        $('body').removeClass('form-active');
+        $('.header__mobile-button').removeClass('active');
+        $('.mobile-menu').removeClass('active');
         return false;
     });
 
@@ -28,40 +58,45 @@ function controllerCommon() {
     });
 
     $('.form-modal__close').click(function () {
-        $('.form-modal').fadeOut();
-        $('body').removeClass('form-active');
         return false;
     });
 
-    $('.yellow-button').click(function () {
-        $('.form-modal').fadeIn();
-        $('body').addClass('form-active');
+    $('.yellow-button,.mobile-cta').click(function () {
+        if($(window).width() <= 1199){
+            $('body,html').animate({
+                'scrollTop' : $('.form-modal').offset().top - 20
+            },1000);
+        }
+        $.fn.fullpage.moveTo(6);
+        $('.header__mobile-button').removeClass('active');
+        $('.mobile-menu').removeClass('active');
         return false;
     });
 
-    $('.section-tickets__tabs a').click(function(){
+    $('.section-tickets__tabs a').click(function () {
         $('.section-tickets__tabs a').removeClass('active');
         $(this).addClass('active');
-        if($(this).index() == 0){
+        if ($(this).index() == 0) {
             $('.slider-full').slideDown();
             $('.slider-full-controls').slideDown();
             $('.slider-digital').slideUp();
             $('.slider-digital-controls').slideUp();
-        }else{
+        } else {
             $('.slider-digital').slideDown();
             $('.slider-digital-controls').slideDown();
             $('.slider-full').slideUp();
             $('.slider-full-controls').slideUp();
         }
+        return false;
     });
     $('.section-tickets__tabs a:eq(0)').click();
 
     $('.section-faq__item__question').click(function () {
-        if($(this).hasClass('active')){
+        if ($(this).hasClass('active')) {
             $('.section-faq__item__content').slideUp();
             $(this).removeClass('active');
             return false;
-        }else{
+        } else {
             $('.section-faq__item__content').slideUp();
             $('.section-faq__item__question').removeClass('active');
             $(this).addClass('active');
@@ -70,17 +105,28 @@ function controllerCommon() {
         }
     });
 
+    $('.header__mobile-button').click(function () {
+        $('.header__mobile-button').toggleClass('active');
+        $('.mobile-menu').toggleClass('active');
+    });
+
     //SLIDERS
 
     var sectionScheduleSlider = new Swiper('.section-schedule__slider', {
         loop: false,
-        slidesPerView: 3,
-        slidesPerGroup: 3,
+        slidesPerView: 1,
+        slidesPerGroup: 1,
         spaceBetween: 60,
         speed: 1000,
         pagination: {
             el: '.section-schedule__pagination',
             clickable: true,
+        },
+        breakpoints: {
+            992: {
+                slidesPerView: 3,
+                slidesPerGroup: 3,
+            }
         }
     });
 
@@ -89,11 +135,22 @@ function controllerCommon() {
 
     sectionLineupAvatarSlider = new Swiper('.section-lineup__avatar-slider', {
         loop: true,
-        slidesPerView: 3,
+        slidesPerView: 1,
         slidesPerGroup: 1,
-        spaceBetween: 50,
+        spaceBetween: 20,
         speed: 1000,
-        slideToClickedSlide: true
+        slideToClickedSlide: true,
+        breakpoints: {
+            1600: {
+                spaceBetween: 50,
+                slidesPerView: 3,
+                slidesPerGroup: 1,
+            },
+            992: {
+                slidesPerView: 3,
+                slidesPerGroup: 1,
+            }
+        }
     });
 
     sectionLineupSlider = new Swiper('.section-lineup__slider', {
@@ -111,37 +168,62 @@ function controllerCommon() {
             prevEl: '.section-lineup__avatar-slider__controls__prev',
         },
         on: {
-            slideChange : function(swiper){
+            slideChange: function (swiper) {
                 sectionLineupAvatarSlider.slideTo(swiper.activeIndex);
             }
         }
     });
 
-    sectionLineupAvatarSlider.on('slideChange',function(swiper){
+    $('.section-lineup__avatar-selector__item').click(function () {
+        sectionLineupSlider.slideTo($(this).index() + 1);
+        return false;
+    });
+
+    sectionLineupAvatarSlider.on('slideChange', function (swiper) {
         sectionLineupSlider.slideTo(swiper.activeIndex);
     })
 
     var sliderFull = new Swiper('.slider-full', {
         loop: false,
-        slidesPerView: 5,
-        slidesPerGroup: 5,
+        slidesPerView: 1,
+        slidesPerGroup: 1,
         spaceBetween: 60,
         speed: 1000,
         navigation: {
             nextEl: '.slider-full-controls-next',
             prevEl: '.slider-full-controls-prev',
+        },
+        breakpoints: {
+            992: {
+                slidesPerView: 5,
+                slidesPerGroup: 5,
+            },
+            768: {
+                slidesPerView: 2,
+                slidesPerGroup: 2,
+            }
         }
     });
 
     var sliderDigital = new Swiper('.slider-digital', {
         loop: false,
-        slidesPerView: 3,
-        slidesPerGroup: 3,
+        slidesPerView: 1,
+        slidesPerGroup: 1,
         spaceBetween: 60,
         speed: 1000,
         navigation: {
             nextEl: '.slider-digital-controls-next',
             prevEl: '.slider-digital-controls-prev',
+        },
+        breakpoints: {
+            992: {
+                slidesPerView: 3,
+                slidesPerGroup: 3,
+            },
+            768: {
+                slidesPerView: 2,
+                slidesPerGroup: 2,
+            }
         }
     });
 

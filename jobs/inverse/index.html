@@ -23,20 +23,33 @@
             <img src="./content/assets/images/logo.svg">
         </a>
         <div class="container">
-            <div class="row justify-content-end">
-                <div class="col-11">
+            <div class="row justify-content-xl-end justify-content-center">
+                <div class="col-xl-11 offset-xl-0 col-9 offset-1 hide-tablet">
                     <div class="header__menu">
                         <a href="#" class="toggle_nav toggle_nav_2" data-nav="2" title="O Evento">O Evento</a>
                         <a href="#" class="toggle_nav toggle_nav_3" data-nav="3" title="Agenda">Agenda</a>
                         <a href="#" class="toggle_nav toggle_nav_4" data-nav="4" title="Line Up">Line Up</a>
-                        <a href="#" class="toggle_nav toggle_nav_5" data-nav="5" title="Ingressos">Ingressos</a>
-                        <a href="#" class="toggle_nav toggle_nav_6" data-nav="6" title="FAQ">FAQ</a>
+                        <a href="#" class="toggle_nav toggle_nav_5 toggle_nav_6" data-nav="5" title="Ingressos">Ingressos</a>
+                        <a href="#" class="toggle_nav toggle_nav_7" data-nav="7" title="FAQ">FAQ</a>
                     </div>
                 </div>
             </div>
         </div>
         <a href="#" class="header__button yellow-button">Compre seu ingresso</a>
+        <div class="header__mobile-button"><div></div></div>
     </header>
+
+    <!-- MOBILE MENU -->
+    <div class="mobile-menu">
+        <a href="#" class="toggle_nav toggle_nav_2" data-nav="2" title="O Evento">O Evento</a>
+        <a href="#" class="toggle_nav toggle_nav_3" data-nav="3" title="Agenda">Agenda</a>
+        <a href="#" class="toggle_nav toggle_nav_4" data-nav="4" title="Line Up">Line Up</a>
+        <a href="#" class="toggle_nav toggle_nav_5 toggle_nav_6" data-nav="5" title="Ingressos">Ingressos</a>
+        <a href="#" class="toggle_nav toggle_nav_7" data-nav="7" title="FAQ">FAQ</a>
+    </div>
+
+    <!-- MOBILE CTA -->
+    <div class="mobile-cta">GARANTA A SUA VAGA</div>
 
     <!-- FULLPAGE -->
     <div id="fullpage">
@@ -80,7 +93,7 @@
         <div class="section fp-auto-height-responsive section-about">
             <div class="container">
                 <div class="row justify-content-center align-items-center">
-                    <div class="col-3">
+                    <div class="col-3 hide-tablet">
                         <div class="section-about__avatars">
                             <img src="./content/assets/images/event-avatars-desktop.png">
                         </div>
@@ -233,30 +246,40 @@
         <div class="section fp-auto-height-responsive section-lineup">
             <div class="container">
                 <div class="row justify-content-center align-items-center">
-                    <div class="col-5">
+                    <div class="col-lg-5 col-12">
                         <h2 class="section-lineup__title">lINE UP</h2>
                         <div class="section-lineup__subtitle">Um evento pensado para quem busca por inovação, independente do seu nível de conhecimento virtual.</div>
-                        <div class="section-lineup__slider">
-                            <div class="swiper-wrapper">
-                                <div class="swiper-slide">
-                                    <b>Alex Nascimento</b>
-                                    Best Selling Author, fundador da 7CCinvest.com e membro da Blockchain Faculty UCLA.
-                                </div>
-                                <div class="swiper-slide">
-                                    <b>Alex Nascimento</b>
-                                    Best Selling Author, fundador da 7CCinvest.com e membro da Blockchain Faculty UCLA.
-                                </div>
-                                <div class="swiper-slide">
-                                    <b>Alex Nascimento</b>
-                                    Best Selling Author, fundador da 7CCinvest.com e membro da Blockchain Faculty UCLA.
-                                </div>
-                                <div class="swiper-slide">
-                                    <b>Alex Nascimento</b>
-                                    Best Selling Author, fundador da 7CCinvest.com e membro da Blockchain Faculty UCLA.
+                        <div class="lineup-slider-desktop">
+                            <div class="section-lineup__slider">
+                                <div class="swiper-wrapper">
+                                    <div class="swiper-slide">
+                                        <b>Alex Nascimento</b>
+                                        Best Selling Author, fundador da 7CCinvest.com e membro da Blockchain Faculty UCLA.
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <b>Alex Nascimento</b>
+                                        Best Selling Author, fundador da 7CCinvest.com e membro da Blockchain Faculty UCLA.
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <b>Alex Nascimento</b>
+                                        Best Selling Author, fundador da 7CCinvest.com e membro da Blockchain Faculty UCLA.
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <b>Alex Nascimento</b>
+                                        Best Selling Author, fundador da 7CCinvest.com e membro da Blockchain Faculty UCLA.
+                                    </div>
                                 </div>
                             </div>
+                            <div class="section-lineup__pagination"></div>
                         </div>
-                        <div class="section-lineup__pagination"></div>
+                    </div>
+                    <div class="col-5 d-lg-none d-block">
+                        <div class="section-lineup__avatar-selector">
+                            <div class="section-lineup__avatar-selector__item" style="background:url(./content/assets/images/avatar-thumb.png) no-repeat center bottom;background-size:contain;"></div>
+                            <div class="section-lineup__avatar-selector__item" style="background:url(./content/assets/images/avatar-thumb.png) no-repeat center bottom;background-size:contain;"></div>
+                            <div class="section-lineup__avatar-selector__item" style="background:url(./content/assets/images/avatar-thumb.png) no-repeat center bottom;background-size:contain;"></div>
+                            <div class="section-lineup__avatar-selector__item" style="background:url(./content/assets/images/avatar-thumb.png) no-repeat center bottom;background-size:contain;"></div>
+                        </div>
                     </div>
                     <div class="col-7">
                         <div class="section-lineup__avatar-slider">
@@ -299,6 +322,9 @@
                                 <img src="./content/assets/images/icon-arrow-right-yellow.svg">
                             </div>
                         </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="lineup-slider-mobile"></div>
                     </div>
                 </div>
             </div>
@@ -386,19 +412,19 @@
 
                         <div class="section-tickets__tips">
                             <div class="row align-items-start">
-                                <div class="col-4">
+                                <div class="col-lg-4 col-12">
                                     <div class="section-tickets__tips__item bold">
                                         <span>(1)</span>
                                         Todos os participantes receber<i class="til">a</i>o seu INV3RSE PASS em NFT. 
                                     </div>
                                 </div>
-                                <div class="col-4">
+                                <div class="col-lg-4 col-12">
                                     <div class="section-tickets__tips__item">
                                         <span>(2)</span>
                                         Ele será o primeiro e único ingresso para o evento e todas as outras atividades e conteúdos que serão disponibilizadas, com exclusividade, ao longo do ano.
                                     </div>
                                 </div>
-                                <div class="col-4">
+                                <div class="col-lg-4 col-12">
                                     <div class="section-tickets__tips__item">
                                         <span>(3)</span>
                                         Com ele, os participantes terão preferência de compra e descontos para as próximas edições, parceiros e acesso vitalício ao seleto grupo de founders da INV3RSE.
@@ -416,14 +442,70 @@
             <div class="common-skip-section toggle_nav_next"></div>
         </div>
 
+        <!-- SECTION FORM -->
+        <div class="section fp-auto-height-responsive form-modal">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-lg-5 offset-lg-1 col-12">
+                        <div class="form-modal__block">
+                            <h2 class="form-modal__title">GaranTa J<span class="agudo">a</span> O Seu ingresSo</h2>
+                            <div class="form-modal__text">Descubra um novo universo e transforme tendências em negócios. 10 grandes nomes do mercado, 5 mesas redondas e mais de 8 horas de conteúdos completamente exclusivos.</div>
+                            <form>
+                                <fieldset>
+                                    <input type="text" name="name" placeholder="NOME COMPLETO" required="required">
+                                </fieldset>
+                                <fieldset>
+                                    <input type="email" name="email" placeholder="E-MAIL" required="required">
+                                </fieldset>
+                                <fieldset>
+                                    <input type="tel" name="phone" placeholder="WHATSAPP/ CELULAR" required="required">
+                                </fieldset>
+                                <fieldset>
+                                    <label class="fake_checkbox">
+                                        <input type="checkbox" required="required" name="accept" value="1">
+                                        <span>Li e concordo com os <a href="#">termos de uso</a></span>
+                                    </label>
+                                </fieldset>
+                                <fieldset>
+                                    <i>Ao continuar você poderá receber conteúdo das marcas no evento. <br>Você pode alterar suas permissões a qualquer momento.</i>
+                                </fieldset>
+                                <fieldset>
+                                    <button type="submit">Compre seu ingresso</button>
+                                </fieldset>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 offset-lg-1 col-12">
+                        <div class="form-modal__label">Realização</div>
+                        <div class="form-modal__logos">
+                            <img src="./content/assets/images/logo-c-meza.svg">
+                            <img src="./content/assets/images/logo-c-mynt.svg" class="align">
+                        </div>
+                        <div class="form-modal__label">Patrocínio</div>
+                        <div class="form-modal__logos">
+                            <img src="./content/assets/images/logo-c-nftrend.svg">
+                            <img src="./content/assets/images/logo-chillibeans.svg">
+                        </div>
+                        <div class="form-modal__label">Apoio</div>
+                        <div class="form-modal__logos">
+                            <img src="./content/assets/images/logo-c-fkelectric.svg">
+                            <img src="./content/assets/images/logo-c-rpm.svg">
+                        </div>
+                        <div class="form-modal__copyright"><b>©INV3RSE</b> é uma marca registrada da <b>1618 COMUNICAÇÃO E PUBLICIDADE LTDA.</b> CNPJ: 04.532.485/0001-15. Qualquer uso sem autorização do nome ou suas variações é uma violação da lei internacional de registro de marcas.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="common-skip-section toggle_nav_next"></div>
+        </div>
+
         <!-- SECTION SECTION-FAQ -->
         <div class="section fp-auto-height-responsive section-faq">
             <div class="container">
-                <div class="row align-items-center">
+                <div class="row align-items-center justify-content-xl-start justify-content-center">
                     <div class="col-12">
                         <h2 class="section-faq__title">faq</h2>
                     </div>
-                    <div class="col-8 offset-1">
+                    <div class="col-xl-8 col-7 offset-1">
                         <div class="section-faq__item">
                             <div class="section-faq__item__question active">Como participar da INV3RSE?</div>
                             <div class="section-faq__item__content" style="display:block;">"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui oficia deserunt mollit anim id est laborum."</div>
@@ -457,6 +539,7 @@
                             <div class="section-faq__item__content">"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui oficia deserunt mollit anim id est laborum."</div>
                         </div>
                     </div>
+                    <div class="d-xl-none d-block col-2"></div>
                     <div class="col-12">
                         <div class="section-faq__button">
                             <a href="#" class="yellow-button">Garanta seu lugar na INV3RSE</a>
@@ -466,61 +549,7 @@
             </div>
         </div>
 
-    </div>
-
-    <!-- FORM -->
-    <div class="form-modal">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-5 offset-1">
-                    <h2 class="form-modal__title">GaranTa Já O Seu ingresSo</h2>
-                    <div class="form-modal__text">Descubra um novo universo e transforme tendências em negócios. 10 grandes nomes do mercado, 5 mesas redondas e mais de 8 horas de conteúdos completamente exclusivos.</div>
-                    <form>
-                        <fieldset>
-                            <input type="text" name="name" placeholder="NOME COMPLETO" required="required">
-                        </fieldset>
-                        <fieldset>
-                            <input type="email" name="email" placeholder="E-MAIL" required="required">
-                        </fieldset>
-                        <fieldset>
-                            <input type="tel" name="phone" placeholder="Whatsapp/ Celular" required="required">
-                        </fieldset>
-                        <fieldset>
-                            <label class="fake_checkbox">
-                                <input type="checkbox" required="required">
-                                <span>Li e concordo com os <a href="#">termos de uso</a></span>
-                            </label>
-                        </fieldset>
-                        <fieldset>
-                            <i>Ao continuar você poderá receber conteúdo das marcas no evento. <br>Você pode alterar suas permissões a qualquer momento.</i>
-                        </fieldset>
-                        <fieldset>
-                            <button type="submit">Compre seu ingresso</button>
-                        </fieldset>
-                    </form>
-                </div>
-                <div class="col-4 offset-1">
-                    <div class="form-modal__label">Realização</div>
-                    <div class="form-modal__logos">
-                        <img src="./content/assets/images/logo-c-meza.svg">
-                        <img src="./content/assets/images/logo-c-mynt.svg">
-                    </div>
-                    <div class="form-modal__label">Patrocínio</div>
-                    <div class="form-modal__logos">
-                        <img src="./content/assets/images/logo-c-nftrend.svg">
-                        <img src="./content/assets/images/logo-chillibeans.svg">
-                    </div>
-                    <div class="form-modal__label">Apoio</div>
-                    <div class="form-modal__logos">
-                        <img src="./content/assets/images/logo-c-fkelectric.svg">
-                        <img src="./content/assets/images/logo-c-rpm.svg">
-                    </div>
-                    <div class="form-modal__copyright"><b>©INV3RSE</b> é uma marca registrada da <b>1618 COMUNICAÇÃO E PUBLICIDADE LTDA.</b> CNPJ: 04.532.485/0001-15. Qualquer uso sem autorização do nome ou suas variações é uma violação da lei internacional de registro de marcas.</div>
-                </div>
-            </div>
-        </div>
-        <div class="form-modal__close"></div>
-    </div>
+    </div>    
 
     <!-- SCRIPTS -->
     <script src='content/assets/scripts/main.min.js'></script>
