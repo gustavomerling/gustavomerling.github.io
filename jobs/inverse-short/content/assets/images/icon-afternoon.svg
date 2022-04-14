@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="43.999" height="44" viewBox="0 0 43.999 44">
+  <defs>
+    <clipPath id="clip-path">
+      <rect id="Retângulo_44" data-name="Retângulo 44" width="43.999" height="44" fill="none" stroke="#fff" stroke-width="1"/>
+    </clipPath>
+  </defs>
+  <g id="icon-afternoon" transform="translate(-775 -458)">
+    <g id="Grupo_397" data-name="Grupo 397" transform="translate(775 458)">
+      <g id="Grupo_396" data-name="Grupo 396" clip-path="url(#clip-path)">
+        <path id="Elipse_1" data-name="Elipse 1" d="M12.374-1.5A13.874,13.874,0,0,1,26.248,12.374,13.874,13.874,0,0,1,12.374,26.248,13.874,13.874,0,0,1-1.5,12.374,13.874,13.874,0,0,1,12.374-1.5Zm0,24.748A10.874,10.874,0,1,0,1.5,12.374,10.886,10.886,0,0,0,12.374,23.248Z" transform="translate(9.626 9.626)" fill="#fff"/>
+        <path id="Linha_9" data-name="Linha 9" d="M0,5.663a1.5,1.5,0,0,1-1.5-1.5V0A1.5,1.5,0,0,1,0-1.5,1.5,1.5,0,0,1,1.5,0V4.163A1.5,1.5,0,0,1,0,5.663Z" transform="translate(22 0.78)" fill="#fff"/>
+        <path id="Linha_10" data-name="Linha 10" d="M2.943,4.444A1.5,1.5,0,0,1,1.882,4L-1.061,1.06a1.5,1.5,0,0,1,0-2.121,1.5,1.5,0,0,1,2.121,0L4,1.884a1.5,1.5,0,0,1-1.061,2.56Z" transform="translate(6.996 6.995)" fill="#fff"/>
+        <path id="Linha_11" data-name="Linha 11" d="M4.163,1.5H0A1.5,1.5,0,0,1-1.5,0,1.5,1.5,0,0,1,0-1.5H4.163A1.5,1.5,0,0,1,5.663,0,1.5,1.5,0,0,1,4.163,1.5Z" transform="translate(0.78 22)" fill="#fff"/>
+        <path id="Linha_12" data-name="Linha 12" d="M0,4.443A1.5,1.5,0,0,1-1.061,4a1.5,1.5,0,0,1,0-2.121L1.884-1.061A1.5,1.5,0,0,1,4-1.06,1.5,1.5,0,0,1,4,1.061L1.06,4A1.5,1.5,0,0,1,0,4.443Z" transform="translate(6.995 34.061)" fill="#fff"/>
+        <path id="Linha_13" data-name="Linha 13" d="M0,5.663a1.5,1.5,0,0,1-1.5-1.5V0A1.5,1.5,0,0,1,0-1.5,1.5,1.5,0,0,1,1.5,0V4.163A1.5,1.5,0,0,1,0,5.663Z" transform="translate(21.999 39.057)" fill="#fff"/>
+        <path id="Linha_14" data-name="Linha 14" d="M2.943,4.444A1.5,1.5,0,0,1,1.882,4L-1.061,1.06a1.5,1.5,0,0,1,0-2.121,1.5,1.5,0,0,1,2.121,0L4,1.884a1.5,1.5,0,0,1-1.061,2.56Z" transform="translate(34.061 34.061)" fill="#fff"/>
+        <path id="Linha_15" data-name="Linha 15" d="M4.163,1.5H0A1.5,1.5,0,0,1-1.5,0,1.5,1.5,0,0,1,0-1.5H4.163A1.5,1.5,0,0,1,5.663,0,1.5,1.5,0,0,1,4.163,1.5Z" transform="translate(39.057 22)" fill="#fff"/>
+        <path id="Linha_16" data-name="Linha 16" d="M0,4.443A1.5,1.5,0,0,1-1.061,4a1.5,1.5,0,0,1,0-2.121L1.884-1.061A1.5,1.5,0,0,1,4-1.06,1.5,1.5,0,0,1,4,1.061L1.06,4A1.5,1.5,0,0,1,0,4.443Z" transform="translate(34.061 6.996)" fill="#fff"/>
+      </g>
+    </g>
+  </g>
+</svg>

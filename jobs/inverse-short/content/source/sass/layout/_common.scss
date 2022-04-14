@@ -1,0 +1,378 @@
+//
+// COMMON
+//
+
+//BODY
+body {
+    font-family: 'black-bison';
+    font-family: 'Dosis', sans-serif;
+    background:#3992D0;
+}
+
+//CONTAINER RESPONSIVE
+.container{
+    @media(max-width:1599px){
+        max-width:100% !important;
+        width:100% !important;
+    }
+}
+.fp-scroller,.iScrollIndicator{
+    transition:0.5s !important;
+}
+
+//SCROLL
+.iScrollIndicator{
+    background:#000 !important;
+}
+.iScrollVerticalScrollbar{
+    filter:drop-shadow(0px 0px 1px #fff);
+}
+
+//RESET
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+ul,
+li {
+    list-style: none;
+    list-style-type: none;
+    margin: 0px;
+    padding: 0px;
+    font-weight: 400;
+}
+
+//HIDE TABLET
+.hide-tablet{
+    @media(max-width:1199px){
+        display: none !important;
+    }
+}
+
+//ACENTOS NO BISÃO PRETO
+.cedilha{
+    position: relative;
+    font-style: normal;
+    white-space: nowrap;
+    &:before{
+        content:',';
+        position: absolute;
+        left:30%;
+        top:20%;
+    }
+}
+.til{
+    position: relative;
+    font-style: normal;
+    white-space: nowrap;
+    &:before{
+        content:'~';
+        font-family: 'Dosis', sans-serif;
+        font-weight: 900;
+        position: absolute;
+        left: 26%;
+        top: -30%;
+        transform: scale(1.5);
+    }
+}
+.agudo{
+    position: relative;
+    font-style: normal;
+    white-space: nowrap;
+    &:before{
+        content:'-';
+        font-weight: 900;
+        position: absolute;
+        left: 26%;
+        top: -20%;
+        transform: scale(0.5,0.5) rotate(-45deg);
+    }
+}
+
+//LOGO CHANGER
+.fp-viewing-1,.fp-viewing-4,.fp-viewing-6{
+    &:not(.form-active){
+        .header__logo{
+            filter: invert(1);
+        }
+    }
+}
+.fp-viewing-5{
+    .mobile-cta{
+        transform: translateY(100%);
+        pointer-events: none;
+    }
+}
+
+//COMMON-SKIP-SECTION
+.common-skip-section{
+    position: absolute;
+    width:110px;
+    height:110px;
+    background:#E7FF17 url(../images/icon-arrow-down-black.svg) no-repeat 50% 30%;
+    bottom:-43px;
+    left:50%;
+    transform: translateX(-50%);
+    border-radius:100%;
+    cursor: pointer;
+    z-index:2;
+    @media(max-height:959px){
+        width:80px;
+        height:80px;
+        background-size:14px;
+        background-position: 50% 20%;
+    }
+    @media(max-width:1199px){
+        display: none;
+    }
+}
+
+//HEADER
+.header{
+    position: fixed;
+    left:0px;
+    top:0px;
+    z-index:10;
+    height:96px;
+    width:100%;
+    backdrop-filter: blur(20px);
+    @media(max-height:959px){
+        height:60px;
+    }
+    @media(max-width:1199px){
+        background:rgba(0,0,0,0.8);
+    }
+    &__logo{
+        position: absolute;
+        font-size: 0px;
+        left:48px;
+        top:50%;
+        cursor: pointer;
+        transform: translateY(-50%);
+        transition:0.5s;
+        @media(max-width:1599px){
+            left:15px;
+        }
+        @media(max-width:1199px){
+            filter: invert(0) !important;
+        }
+        img{
+            height:48px;
+            @media(max-height:959px){
+                height:40px;
+            }
+            @media(max-width:1199px){
+                height:30px;
+            }
+        }
+    }
+    &__menu{
+        height:96px;
+        text-align: center;
+        background:#000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding-right:100px;
+        @media(max-height:959px){
+            height:60px;
+        }
+        a{
+            font-size: 18px;
+            font-weight: 400;
+            text-transform: uppercase;
+            line-height: 100%;
+            color:#ffffff;
+            letter-spacing: 3px;
+            padding:10px 0px;
+            margin:0px 25px;
+            cursor: pointer;
+            position: relative;
+            &:before{
+                content:'';
+                position: absolute;
+                width:16px;
+                height:2px;
+                background:#E7FF17;
+                left:0px;
+                bottom:0px;
+                transform: translateX(-100%);
+                transition:0.5s;
+                opacity:0;
+                pointer-events: none;
+            }
+            &.active:before{
+                transform: translateX(0%);
+                opacity: 1;
+            }
+        }
+    }
+    &__button{
+        position: absolute;
+        right:48px;
+        top:50%;
+        cursor: pointer;
+        transform: translateY(-50%);
+        @media(max-width:1599px){
+            right:15px;
+        }
+        @media(max-width:1199px){
+            right:80px;
+        }
+    }
+    &__mobile-button{
+        position: absolute;
+        width:40px;
+        height:40px;
+        right:15px;
+        top:50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        display: none;
+        div{
+            width:22px;
+            height:2px;
+            background:#fff;
+            position: absolute;
+            left:50%;
+            top:50%;
+            transform: translate(-50%,-50%);
+            transition:0.5s ease-in-out;
+            &:before,&:after{
+                content:'';
+                width:100%;
+                height:100%;
+                position: absolute;
+                background: #ffffff;
+                transition:0.5s ease-in-out;
+            }
+            &:before{
+                transform: translateY(-6px);
+            }
+            &:after{
+                transform: translateY(6px);
+            }
+        }
+        &.active{
+            div{
+                transform: translate(-50%,-50%) rotate(180deg);
+                background:transparent;
+                &:before{
+                    transform: translateY(0px) rotate(45deg);
+                }
+                &:after{
+                    transform: translateY(0px) rotate(-45deg);
+                }
+            }
+        }
+        @media(max-width:1199px){
+            display: block;
+        }
+    }
+}
+
+//YELLOW-BUTTON
+.yellow-button{
+    display: inline-block;
+    padding:11px 24px;
+    padding-right:21px;
+    font-size: 18px;
+    font-weight: 900;
+    text-transform: uppercase;
+    line-height: 100%;
+    background:#E7FF17;
+    color:#000000;
+    letter-spacing: 3px;
+    box-shadow:0px 3px 6px rgba(0,0,0,0.16);
+    transition:0.2s;
+    &:hover{
+        padding:11px 30px;
+        padding-right:27px;
+        @media(max-width:1199px){
+            font-size: 7px;
+            letter-spacing: 2px;
+            padding:7px 9px;
+            padding-right:8px;
+        }
+    }
+    @media(max-width:1199px){
+        font-size: 7px;
+        letter-spacing: 2px;
+        padding:7px 9px;
+        padding-right:8px;
+    }
+}
+
+//MOBILE CTA
+.mobile-cta{
+    position: fixed;
+    left:0px;
+    bottom:0px;
+    width:100%;
+    height:75px;
+    background:#E7FF17;
+    color:#000000;
+    text-align: center;
+    line-height: 75px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    z-index:10;
+    display: none;
+    cursor: pointer;
+    transition:0.5s ease-in-out;
+    @media(max-width:1199px){
+        display: block;
+    }
+}
+
+//MOBILE MENU
+.mobile-menu{
+    position: fixed;
+    left:0px;
+    top:0px;
+    width:100%;
+    height:100%;
+    background:#000;
+    z-index:5;
+    color:#fff;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    opacity:0;
+    pointer-events: none;
+    transition:0.5s ease-in-out;
+    &.active{
+        opacity: 1;
+        pointer-events: all;
+        a{
+            margin-bottom: 20px;
+        }
+    }
+    a{
+        display: inline-block;
+        width:140px;
+        font-size: 18px;
+        line-height: 22px;
+        padding:18px 0px;
+        text-align: center;
+        border-bottom:2px solid #E7FF17;
+        color:#fff;
+        text-transform: uppercase;
+        font-weight: 400;
+        letter-spacing: 3px;
+        margin-bottom:0px;
+        transition:0.5s;
+        box-shadow:inset 0px 0px 0px 0px #E7FF17;
+        transition:0.5s ease-in-out;
+        &.active{
+            box-shadow:inset 0px -100px 0px 0px #E7FF17;
+            color:#000;
+            font-weight: 900;
+        }
+    }
+}
