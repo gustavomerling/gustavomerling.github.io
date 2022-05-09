@@ -720,7 +720,7 @@
                     left: 0px;
                     border-right: 3px solid #000;
                     text-align: right;
-                    width: 60px;
+                    width: 64px;
                     padding-right: 10px;
                     font-weight: 900;
                     font-style: normal;
@@ -791,7 +791,7 @@
         font-weight: 300;
         font-size: 36px;
         line-height: 1.27;
-        margin-bottom: 125px;
+        margin-bottom: 60px;
         @media(max-height:959px){
             font-size: 24px;
             margin-bottom: 40px;
@@ -1066,6 +1066,42 @@
                     }
                 }
             }
+        }
+    }
+
+    &__person{
+        text-align: center;
+        @media(max-width:1199px){
+            margin-bottom:60px;
+        }
+        @media(max-width:767px){
+            margin-top: 40px;
+            margin-bottom:0px;
+        }
+        &__photo{
+            margin-bottom: 24px;
+            img{
+                max-width:100%;
+                display: block;
+                margin:0px auto;
+                @media(max-height:699px){
+                    height:160px;
+                }
+            }
+        }
+        &__name{
+            font-size: 18px;
+            color:#E7FD17;
+            text-transform: uppercase;
+            line-height: 22px;
+            font-weight: 900;
+            margin-bottom: 18px;
+        }
+        &__position{
+            font-size: 18px;
+            font-weight: 300;
+            line-height: 22px;
+            color:#fff;
         }
     }
 

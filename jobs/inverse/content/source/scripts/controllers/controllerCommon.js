@@ -31,7 +31,7 @@ function controllerCommon() {
 
     //FULLPAGE
     var scrollable = false;
-    if($(window).height() <= 959){
+    if($(window).height() <= 959 && $(window).width() > 1199){
         scrollable = true;
     }
     $('#fullpage').fullpage({
