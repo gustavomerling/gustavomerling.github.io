@@ -4,132 +4,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Merling.css</title>
+    <title>Gustavo Merling - Front-end Developer | Joinville</title>
+    <meta name="description"
+        content="Desenvolvedor front-end há 11 anos no mercado com especialização em design, marketing digital e sites institucionais.">
     <link rel="stylesheet" href="content/public/css/main.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Reddit+Sans:ital,wght@0,200..900;1,200..900&display=swap"
         rel="stylesheet">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
 </head>
 
 <body>
-    <!-- HEADER -->
+
     <header class="header">
         <div class="container">
-            <div class="logo">
-                <img src="content/public/images/logo-merling-css.svg" alt="Logo">
+            <div class="row align-items-center">
+                <div class="col-12">
+                    <a href="/" class="header__logo" data-aos="fade-down" data-aos-duration="1000" data-aos-delay="100"
+                        title="Gustavo Merling - Front-end Developer">Gustavo<b>Merling</b></a>
+                    <div class="header__social">
+                        <a href="https://wa.me/+5547996824071" data-aos="fade-left" data-aos-duration="1000" data-aos-delay="200" target="_blank"
+                            title="Falar com Gustavo Merling pelo WhatsApp">
+                            <img
+                                src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAADKklEQVR4nO2aTWxNQRTHfxQtKUoUC6HxsSA2EgtrQYOKRoTSjZ34qNKljaQrXwuNRImkCwsaYuH5ShcICxGxsdHPSCkRaSMRi6piZJIjeXmZuW/m3tt5N03/yUle8u793/N/c+bMOec+mMLkxQKgHrgAPAR6gG/AmJj+3C3f6Wt2A1VkBOVAI9AF/AaUp+l7HgMHhSs4ZgMtwOcYztvsE3ASqAglYjswkKKAQusHaidSgF76tgkUUGg3ZOVTxRLgTUARSuw1sDgtETWy3KpE1ic+JEK1pFFVYhsAlsYVUVGicFIRYRYrRbdnwHlVYJfjpFiVUdvmKkIvX28GHFYW63c9NFscCX8BJ4A5wHRgK/AnkJhml9VwLTsOG+7PBRIyVGzjNzoSPbfcXxswxA5ECelyJNlvuX9awP31KKqfcC3FV0f8GM2BhIwD80wO1HuQRMVnlSSCEGJ2mRy46EGgSxcbVgF/Awk5b3LggQfBTouImcDTQCIUcN/kRJ8Hwe2MlDU9JidGPAj0Hlhu4HgWWMiwSciYJ0mngWMtMBpQyE+TkDgO7DHwHC21kC8xiPSsaoWBq62UofUuJtlbYK7hhC+WzgcTzMOUmB74JUq/haanh2WW2u2H4XqdWFbmnTvtMUM7ZxLSmnCZO6ScL8Qy4GZeia9Li82G63RPfhb47vHMc0lLlKhZlD4UTVgjJ/Fey/f517k+r85EMF+yQFIxT4CFxMcij7PMWDSm2RgNWsLHBTscn6H3dOLGysV04Xhd9ogP7jnyN0SR6Pj+kKIYJeF6BdhYRIBuDa46cn4EZhX7RY6lLCTf9Fl1GtggQ4tKGYceAd578DS5LG3NBApJq+ItdxFyKAPOqoh9twVH3MqAw8pil1xFlHn2JSHtlcsG/49NGXBYWV4r6JdNzjiTAadVgfVaWoVIvMxgOFX7ivAZ0IWwa3Ff7OzLgPNKzgnnFGtCh2NreVdeJ5yS4jAtAbrsaErjHxBDBvKvwB3gOLBeWth8zJCpeC5mhzcuVWyDT2othhcygOiU2medwfEoVEpz1ioVbLfwjcqoaURqrZx0dnWGXn8KTBb8A31C/2cT3/wMAAAAAElFTkSuQmCC">
+                        </a>
+                        <a href="https://www.linkedin.com/in/gustavo-merling/" data-aos="fade-left" data-aos-duration="1000" data-aos-delay="300" target="_blank"
+                            title="Ir para LinkedIn de Gustavo Merling">
+                            <img
+                                src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAABZElEQVR4nO2ZvUoDQRSFP1Hs/AFtBQt9A99BwV20FIV0lr6CjQTyID6DnSbqg9gp/iDopkpzZWEaw+zOzFrsHbkHThNuZs+Xu3dmk4DJZOqqI2ACTAHp2VNgDJSpECMF4aXBw5ROiHIXMSATBUEl4LsYkEpBUAn4OwZEMnFQfQcUA5lT2yfyApwAG85nwFuOHdlXtF0H1fbmVU/9Wo4gpae+yBHkHRgAm871jLzmCCKKHFTfAcVA5tSlnSk1j+4s2gKWgRVgD7gEPnIAqQ/Og8C114Eb7SA7MRcHloAHzSAp2gZmOYAsRtRcawa5AJ5d3RNw3lJ7qhXkOPH7965WkPuGNevfCOjwMNobyGfDmvXrPi1oBfnrumIgWEe8slsLmxFs1xL/eNiMiJ0jtG+TmhzUvwGpFISUgL9iQMYKgkrAtzEgpYKgEvAhkRoqCCsNviJRhfv3VMPMVO52iu6EyWTil34AFdRDhxtrT8cAAAAASUVORK5CYII=">
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
-    <!-- BANNER -->
-    <section class="banner background-1">
+
+    <section class="hero">
         <div class="container">
-            <h1>Transforme sua presença online.</h1>
-            <p>Role para baixo e descubra como posso ajudá-lo a melhorar o seu site.</p>
-        </div>
-    </section>
-    <!-- ABOUT -->
-    <div class="comment">
-        <div class="container">
-            Normalmente eu começo o site estruturando todo o HTML, mas nesse caso seria inviável. Então como já temos o
-            HTML, vamos começar a organizar questões como grid, espaçamento e fonte.
-        </div>
-    </div>
-    <section class="about right background-2">
-        <div class="container">
-            <div class="content-box" data-aos="fade-left">
-                <h2>Quem sou eu</h2>
-                <p>Olá! Sou Gustavo Merling, um apaixonado desenvolvedor front-end com uma sólida formação em Design
-                    Gráfico e Informática. </p>
-                <p>Minha missão é transformar ideias criativas em experiências digitais incríveis. Com experiência em
-                    projetos para grandes clientes como Petrobras e Banco do Brasil, tenho um olhar atento aos detalhes,
-                    garantindo que cada site seja uma representação fiel do design original, com animações envolventes e
-                    uma navegação perfeita. Estou sempre buscando criar sites acessíveis, com alta taxa de conversão e
-                    engajamento, impulsionando assim o sucesso dos meus clientes. Vamos trabalhar juntos para levar sua
-                    presença online para o próximo nível!</p>
-            </div>
-        </div>
-    </section>
-    <!-- SERVICES -->
-    <div class="comment">
-        <div class="container">
-            Ótimo, agora com as coisas mais alinhadas, podemos trabalhar em outros aspectos dos títulos e textos, bem
-            como já podemos melhorar o cabeçalho. Lembrando que sempre podemos <a href="#">voltar ao topo</a> para ver
-            como as coisas estão ficando lá em cima também.
-        </div>
-    </div>
-    <section class="services background-3">
-        <div class="container">
-            <div class="content-box" data-aos="fade-right">
-                <h2>O que posso fazer por você</h2>
-                <p>Ofereço uma ampla gama de serviços para impulsionar sua presença online. Desde sites institucionais
-                    até landing pages e e-mail marketings, estou aqui para transformar suas ideias em realidade digital.
-                    Com habilidades sólidas em desenvolvimento web, sou especializado em Wordpress e jQuery, mas também
-                    trabalho com Gulp, React e Vue para oferecer soluções flexíveis e escaláveis.</p>
-                <p>Além disso, utilizo metodologias avançadas de front-end, como SMACSS e BEM, para garantir uma
-                    organização eficiente do código. Comprometido com a excelência, estou sempre buscando aprimorar
-                    minhas habilidades. Recentemente, tenho explorado o uso do ChatGPT para expandir meus horizontes no
-                    desenvolvimento fullstack, tornando o processo ainda mais eficiente e colaborativo.</p>
-            </div>
-        </div>
-    </section>
-    <!-- SECTION -->
-    <div class="comment">
-        <div class="container">
-            Certo, estamos falando de desenvolvimento, código e designs contêmporâneos aqui, por que o site é branco?
-            Também vou aproveitar para adicionar umas caixas para o conteúdo, sombras e detalhes legais aqui. 1min...
-        </div>
-    </div>
-    <section class="center background-4">
-        <div class="container">
-            <h2>Slider bem legal <br>com tecnologias que eu uso</h2>
-            <div class="tech-slider">
-                <div class="swiper-wrapper">
-                    <div class="swiper-slide"><img src="content/public/images/chatgpt.png"></div>
-                    <div class="swiper-slide"><img src="content/public/images/css.png"></div>
-                    <div class="swiper-slide"><img src="content/public/images/gulp.png"></div>
-                    <div class="swiper-slide"><img src="content/public/images/hml.png"></div>
-                    <div class="swiper-slide"><img src="content/public/images/jquery.png"></div>
-                    <div class="swiper-slide"><img src="content/public/images/js.png"></div>
-                    <div class="swiper-slide"><img src="content/public/images/react.png"></div>
-                    <div class="swiper-slide"><img src="content/public/images/sass.png"></div>
-                    <div class="swiper-slide"><img src="content/public/images/vite.png"></div>
-                    <div class="swiper-slide"><img src="content/public/images/wordpress.png"></div>
+            <div class="row align-items-center">
+                <div class="col-lg-6 col-12 order-lg-1 order-1">
+                    <h1 data-aos="fade-right" data-aos-duration="1000" data-aos-delay="1000">Desenvolvedor <b>Front-end</b> <br>Especializado em <b>Design</b> <br>e Marketing Digital</h1>
+                    <p data-aos="fade-right" data-aos-duration="1000" data-aos-delay="1100">Sou Gustavo Merling, um desenvolvedor front-end apaixonado por criar <b>experiências digitais
+                            únicas e intuitivas</b>. Com mais de uma década de experiência no mercado, especializei-me
+                        em <b>design, marketing digital</b> e na <b>criação de sites institucionais</b>. Meu objetivo é
+                        transformar ideias em <b>soluções funcionais e esteticamente agradáveis</b>, sempre com foco na
+                        <b>usabilidade</b> e no <b>desempenho</b>.
+                    </p>
+                </div>
+                <div class="col-lg-6 col-12 order-lg-1 order-2">
+                    <div class="hero__card" data-aos="fade-left" data-aos-duration="1000" data-aos-delay="1500">
+                        <img src="./content/public/images/sass.png" data-aos="zoom-in" data-aos-duration="1000" data-aos-delay="2000" />
+                    </div>
                 </div>
             </div>
-            <div class="tech-slider__pagination"></div>
         </div>
     </section>
-    <!-- SECTION -->
-    <div class="comment">
+
+    <section class="tech">
         <div class="container">
-            Acho que agora seria uma boa hora para colocar imagens. Novamente, talvez seja legal <a href="#">voltar o
-                começo</a> para ver como está ficando. Vou aproveitar para colocar animações de entrada também, vai
-            ficar legal.
-        </div>
-    </div>
-    <section class="background-blur">
-        <div class="container">
-            <div class="content-box" data-aos="fade-right">
-                <h2>Título H2</h2>
-                <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Repellat laborum vel laboriosam eos fugit
-                    officia, quia provident, quos dicta officiis earum voluptatem modi eum ex accusamus obcaecati
-                    accusantium autem! Sequi!</p>
+            <div class="row align-items-center">
+                <div class="col-lg-6 col-12 order-lg-1 order-2">
+                    <div class="tech__cards">
+                        <div data-aos="zoom-in" data-aos-duration="1000" data-aos-delay="100">
+                            <div><img
+                                    src="data:image/png;base64,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">
+                            </div>
+                            <div style="background:#e65100;color:#fff;">
+                                <b>HTML:</b> Linguagem de marcação para estruturar conteúdo na web.
+                            </div>
+                        </div>
+                        <div data-aos="zoom-in" data-aos-duration="1000" data-aos-delay="200">
+                            <div><img
+                                    src="data:image/png;base64,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">
+                            </div>
+                            <div style="background:#0277bd;color:#fff;">
+                                <b>CSS:</b> Linguagem para estilizar o layout e a aparência dos elementos HTML.
+                            </div>
+                        </div>
+                        <div data-aos="zoom-in" data-aos-duration="1000" data-aos-delay="300">
+                            <div><img
+                                    src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAACXBIWXMAAAsTAAALEwEAmpwYAAAEwklEQVR4nO1baahVVRjd33umzxGzUtMcUpu0ArUS5DVjSg5NNBBmRWBKUJpZ2ISFDdpAPyJEkQglRBoMsjCb0H5o5lCvtgbNBNmfsDSaXfHd8w69ezv7nnOu9/Fxj2vB9+ex7z7nrPVNe3jOEQRBEARBEARBEARBEEQA8A40F+Sg0x2H5LuqDkgBvG2EUgBPAY7oGuFYAxwFsPZCMALsiQBTkD0ZMDDWAE8BzL0QjAB7IsAUZE8GDIw1wFMAcy8EI8CeCDAF2ZMBA2MN8BTA3AvBCLAnAkxB9mTAwFgDPAUw90IwAuyJAFOQPRkwMNYATwHMvRCMAHsiwBRkTwYMjDXAUwBzLwQjwJ4IMAV1Vo6VRLtmimT6/VdvOSy5w+GiCYIhAwXdWwTdugoGHis47yzBfbcK/OusAai3APu3Odx0haBLc/LvO5qI4LpLBT9+wCKMegjw9SaHkUPSia+0YYMEezfkjdCC/4eMyynAL9sdThuRn/zYhg/OFwkUwJcTsmh27eTHNu2CbPWFAvhyMn7b5dCrR5jYwQMEV10iuHKSYOjxyWO0Ztx9i+DvNgqAvClow/Lw+FmXSUmgeOxfbQ5LF7hSAY7HjB8j2PUKawBqrQFP35M8XtvOgzuSiX1grqBHi+DJhZEo+WsUizBiMu6fE+5uQgT+8XHUNdXeJFAAxGQsuys5ApqaauvxKYDPl4LWPhUeP7lVSi0qBfCdtw74YXN5UU3q8V98wmXucBgBPv9CbOr56X2+rpKfWRRtV1AAX78IUNv5skPXo7ItuHr3FMy/UfDdu4wA1EsAtecerJ6KKq2lm2DBzVJTRLAL8snELF+cPRJiO2GAYNMqCoDDjYDYdrzkMG50PhF0K+L5RxgBqIcAav986rB6qcOYUdlFaG7OHglMQT4bUYc+i/aKprRGBzBZ0tHvuykADjcCkqztNYeZ09OFWLWEAqAzBIht82pXOicOPUO3rY/oFPTrztoF0JSj+T/tGbpuCEWCrpwLK8A3bztcfrFg69rwmM/fCAugKST0O11Y6d7Po/OyvUvoCLNn9wIK8OcnDo/Nd6U9eP3IUUMF37+XPHbNsrAA82ZJoteveMihT6//zgHUw9Pe6eThyc/Q07VCCfD+Cw6jRyaH+vpnIwI7er/+PSTA43eWz/3tOw6TJv5/nN7/+XJj+J2+2BhOQaecWCAB9EObmqp3Hcf0FUwcKzh1RNSLVxu7ZU35/GefHh7bv5+UoqnyxEsdotoNiuunFUgAtRtmZF8MVbOj+0jpJKvj3G+uSN//6dtb0DpOcO74qM9Pe45GZaEE2L+ttgtTlbb4tuT5b59ZH4HVzjlDMnVRDSUA2lPRoP61E3PSMMHPHybPrSlGr53UI8J0sZblexpOALS3iXk3yeKCuiflIq2KoHv8ebajK5+xfV32b2lIAdChHdW8nEaKkjnjQsG+Ldnn1wI74cx8ZwJzrhX8tDXfdzSsAGi3Ax85rHzY4erJ0VGhLn6UDL3FpsXy3tnZ00GS7X41uvujCzO9nqJrBN1yPq6flHZItTHQs4O8xBdGADS4UQBPAcy9EIwAeyLAFGRPBgyMNcBTAHMvBCPAnggUNQURBEEQBEEQBEEQBEEQrlHxL7KMkj2EG5owAAAAAElFTkSuQmCC">
+                            </div>
+                            <div style="background:#ffd600;color:#000;">
+                                <b>JavaScript:</b> Linguagem de programação para tornar páginas web interativas.
+                            </div>
+                        </div>
+                        <div data-aos="zoom-in" data-aos-duration="1000" data-aos-delay="100">
+                            <div><img
+                                    src="data:image/png;base64,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">
+                            </div>
+                            <div style="background:#01579b;color:#fff;">
+                                <b>WordPress:</b> Plataforma de gerenciamento de conteúdo para criar sites e blogs.
+                            </div>
+                        </div>
+                        <div data-aos="zoom-in" data-aos-duration="1000" data-aos-delay="200">
+                            <div><img
+                                    src="data:image/png;base64,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">
+                            </div>
+                            <div style="background:#53c1de;color:#000;">
+                                <b>React:</b> Biblioteca JavaScript para construir interfaces de usuário interativas.
+                            </div>
+                        </div>
+                        <div data-aos="zoom-in" data-aos-duration="1000" data-aos-delay="300">
+                            <div><img
+                                    src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAACXBIWXMAAAsTAAALEwEAmpwYAAAEb0lEQVR4nO2dz4sURxTHO4hGDSbxF2Z13psgwqIel5BLUBCWCC67r1bbEC9eZNW74tWj+C/kuIHk4gZ1EcRfESQhiRdzSUDvEpRkp+sNREVaqmdZZdzZrZmp7uruel8oWIaFrv58pqurX3XtRpFEIpFIJBKJRCKRSCSSEieNog80wXFWcE8rZCbUiz/HvvtW+6QzY2uZ4HtWmC7fYNb8ju9+1jLpzNhaTTDXG36naYL59PCeD333N0j4LBL8w2eR4B8+iwT/8Fkk+IfPImGwaAWXXcF/Z4p6Raaolkniz7Yz4SPXEmSK2kcSkVBckomRbWbY6R4iMgkK/5ThKMf8N9X8VCt82GuIkCshb/iEf6w2TouE/OD/bnuzFAkO82+8+5Ne8Fkk+Pvm8/sS5pa9MRP+kBCcTahxMJluHGgTzjDBHXlOsPnmK/ytz7n7nO0DVJtgihW05GFtmTw/vOdjTfDrgA9Qc7YStIJxTfhaJHTDV/DLkPP5c5FlzMqYDEeLeTY5uokJHgz7MNVWjS9sBWiFh6R2ZKqaEyMbzYK5iyfZZ5Ojm2wFLBzBzcHXjtLxHR8x4X1XZYRkYmRbf+IDrqJm8BX+7A4CpgnBV7bH10dhv8tjV0pC9u0juOsWAJqZ0He2fWCFF1wfvxIS0rixgRXcdn/yaAS8bBOO2fQjyCpqBp/wVh7w+W173p7c9aVNf4KSkJ5srtcKb+YMP+1cCfiaCX9cbuoZpIQ03rdOK7heBHx+p3X3Y1HOpe7Pa11F7cDHa0XD5x4CgpKQwSe86gM+ryAgCAm+4fMqAmotoQzw2UJABkbBxR4SqrmekL2xpvAn3/DZUkAvCZVcTzA7U1beHFFOAdynBAfrCbPO4Wcdy7YF+QfPAwhYbKeKWk9IFB5zLsB1ca1oAVrBeGHrCQR33QvINsNVV8DCEdxc3HoCJO4FKEiqLCA92VzfX1FxKAGtPATcq7KA1uTno7bnmlBz71D9I7jjXIDZh1tlAUx4vqj1hGQKjzoX4OZtA38CNMHThbixZbVzbNHOrUzwT+mmoUsbpRVcqeQVoDqzE/OKzEovjg031Bb0NFwGCdEgAjrtsabGt2bpdOmcJkY26unmCVb4pNTwyyQhGlxA1rSC/5ngL9M0wYvKLdCkcbTGFLWqKoDrsDrmU0JUCgElWJr0JSHqSpDw/d0T4O/uPpjPgoRfpARt3g1ScNpcde8dP47WtAnOaIWvgoNflARNcHy1Puhp+CZI+HnfEzTBvG0ftIIbQcLP9UqYbnxte3xT+w8Wfl4S2nFjVz8bAYOGn4eEtNB6fg3gu5bQKrKeXxf4TiVQcfX8WsF3JUEXV8+vH3xnVwLVoJ5fg+HoceXr+XW4J+iq1/N9x/d6AocMvzwSIFz4/iWAwPcnQeB7lADyzfcnAQS+Pwkg8P1JAIHvTwIIfH8SQOD7kwAC358EEPj+JIDAz7mKOrsCfPlHbkUkUXis86cFzMZBSMzPuW0LkkgkEolEIpFIJBKJRBK5yxuqvq+tF+J3awAAAABJRU5ErkJggg==">
+                            </div>
+                            <div style="background:#f4511e;color:#fff;">
+                                <b>Git:</b> Sistema de controle de versão para gerenciar o histórico de código.
+                            </div>
+                        </div>
+                        <div data-aos="zoom-in" data-aos-duration="1000" data-aos-delay="100">
+                            <div><img
+                                    src="data:image/png;base64,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">
+                            </div>
+                            <div style="background:#f06292;color:#000;">
+                                <b>Sass:</b> Pré-processador CSS que adiciona funcionalidades como variáveis e mixins.
+                            </div>
+                        </div>
+                        <div data-aos="zoom-in" data-aos-duration="1000" data-aos-delay="200">
+                            <div><img
+                                    src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAACXBIWXMAAAsTAAALEwEAmpwYAAAL5ElEQVR4nO1baZBdRRVuQARBUQQsFUHQEkQEKSMC4fV2Xy83JEUpOm4lggajCJUflpRSyFauuIBSFgHFEgoQCMVSmlne/t4EEgbe3DtDJgQCZWTRSEQISUggJDPWmcybvNe379tMnDtUf1X9Iy/nnj59+pzT55zuQcjBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcFhdmCVUkcFQl0RCl0JhHo9lHoilHp7IPRQKNVPAt8/YqZlfFNi1Pc/EEp9Kyh7SunWEUi9ORDqezMt75sKoVDfDKXe2EzxkSH0LWM9PW+dadlnNdb6/gGgyI4U3zjuQAnCsPDToVC/HdUao6RjKJ0+LJRqZZNQMx5KtToQ+v5Q6kdDoXbE0C1GCUCo1GcCoXbWZB8R+hyUVIwp9e5AqiDestUDgVKfqP8mSPunBkKts9BvD7U+ceZWg9AYpW8PpVpvGMZ1KIlYc/bZ7wiFrsYofmsg9AVx345qfXwg1CbLt79CM4jJrM2QaVjKL6GkYWlPz36BVMusoUSoTSPCT7XiEQp1seXb+9CMWn9jAhEIveVh3z8EJQ2BUL+2K19vCZSa2w6PiSuv3HdXTdCwATeiGYLdIPQfUdIQSv+zMZa/Ew6wznjJUyBc7T7w/JaeszcwgdA+odBrzDVVhX86SmCR9WLMBvygG54jUp4WCH1tKPT8PS9x2zJ4ljU9ipKESSuRKhcTejLw/2iWIpTqz5E1pdXXUJIQSHmevZJVG4boWe9FsxQhpe+qhcH6NZUoPRAlqtgSakOM9X8ZzWIEUi+2FIU/RklCKPUN9upVDaBZjlDoEWNdb0AnFyUFUDTZOpvQYq5y/8NoFiNI+6dGQ6q+ByUJgVT3xlS7v0GzHIFQN1oqX4KSglEx76RdzbTIBmys0gWHd8Nzxek9b0vCZcwKkEPql43zbFWisrlA6NtjGm1XdcMP2ruhVP+eWuxf0QwilPr8iPUL/W2UFIRaHwMHkq3XA13QTvlVFyw4yOw0zmT3M5BquZH5bE5U3yeU+mcxFe81e6rXAhUomgGMQjfWCK2B1L9HSUF1zpz9I9a6q0DZURXi6G54hlKtiLi8UnOaNetCqS8KpLo7lPpq6Fa2miMQ6sJA6L+0aiGHUv+yE1k6AWSGIDfcqIVSXx8K9fURKQ/eQw03fX83Qg3zsz5oOczfgIMw7ptA6usM+uvblRkag4Hnf8xGV6L0LRHjEnqkg/uCR22eC407aNXYkxb1dEeGO2V1kQ0YTisfdYFQ6kssmzkUS6/1ibVrwTr621v0qVY3zuF/1UY7nFafi6xNqUWt1gBeVa/Q2u9g3ZDOxmSLnRvvVHq22bKL6+EiBu2h8BNIfWksvbBd8Ps9cfSBUtJyvpwWI0uvmVTA7V5LnQj9Qp3sL8PvI1IeGwg11kzxdWNbWyku9PT3ZOFV1fp9pjXDqCr1URv9KqWOilTeQj/VbPPhJs1Q6jo4QyKyCHG0+SignUugQPrfMeRZA3fd9ZvScgi1oy0DDoT6k41Bt080Qqm/ZeH3ePz8+tpOWsOhN/9IS7psrVOgyWZZ1yebyQ9WG0j1pLEB1UhzEv4t1GXDaX1GIP2FlhC0qi2FBUL/zbJ7r0BmhLp4LxQRfpfVXWGjf9j3D4mGP7W6hfVfafDfDptiP3z1Pwzej7RaAyi0tYWrpdDWrj/DLHQ/bKmwKWvq/gAx+Ql1mSX2jz+WTn+oLVeXeqLZuxxQaiDUc+0c1oGUn4/K4i9suQapljRTvq11HekxCbUhrsiD30ek/u6IUgtQmbFrl6XIhDkKlPehDlHm6W/0WngNYLox7pv+FH2tkZZtbXZwlbh3k8m/ROm5Ntosof+pp+vDZLy6oHk/a3kqdWhviozbdAIjT/hK85sC5ZeYdEXK7rXxL2Dp9WO6fZIO03FUpF7FNlGReN9HHSCXSh/XlyJv2HiVKLce5hUqLojOy26Im2NpT89b+zF9vZ4+g9kmK28sSS+mJu+WuX+J8fvilJ/B7JmlCDWExgpWc/sw2WkY3Bbb7VqFeQv7UrtpYaNRjrBnbJMtT7VfJVbnzDkog9lLNj6wKaA423d5wsYM2p3NKsgiS98W2TDOb7LRFggvRdbEedMnhyXMf57BzKr8AUxfzaXThzXQU3p4BrNXDdrxMiHzIrIT9lPTIHKEPoOAsW1CUCpqA2AROcKejrOaAuUrbN8B/z5MGywnT1gYN8+DXB/fi2lDaAALWp6af6hJO4HQvtNuvju0WT2lhgLhS/oMBTXIdqY3z5wjR9izFm+PpLhFyu426UD2UirtI1vYmHSNNgCxOoPZY3FCw6hQz/pcsUTp5ZZYHtsazhL6d5M+R9mzNtpBys+N8GYs9sFVkfB7wDpzxG79OUx7o9+wQmSTMAsixknZkCUq7Cxz8YVJot5UoxXWBuxwC+Xvm2+hfOANWYtdoexJU6i4OYuE3W+1SsKsvaICYQ3hBxKDh6R8j0lXXbRo/zzl1ToviczRj8kWSK0b5fF+YdJlCX2hPtQO+v4RWcyei/Kj24uM0WlmcSf+QzFVKyBz8skHmwqcXKgZ42IsFDynH5Md9bQZwjZYlc/Yj2K9S8pjbd8MYLKtYaMoe8GkyXvekVnM1jdTPqynzPlX6r9b7nnS1Fk/JtseFOL9dbw/bQvtcDivJOSEBkHMWDktNLNbVx4Dc7bJpM8Q+rzpTUXKrH+EUeHcs1jziElXovyWOOVD6LTxLlN6s0lbZOk/NPL1zjfXnbWEnwyh0w04ACQIpmIhA4JMqI73BfWZzjQvTF8sURp9S2VT5pRLvQIuWqODPykqUX6zeRDuYs7WQ9pq/j5IqbWTWqD0d5H5MHtuWomEnJSlbLVlEdOZ1gCmrzVsqpTH5jBbmyHRg7TI2GVAA2GoQKIxuTdFJ8OU+XuOpM+onyNP+YBJU6L8wlq8L1C6zIwCU2tbV4q728gTtirOyqCAKlJ+X4GyoThPyWL2PDDPGQqDEGOdcNKLWGBz9yxm683iqc5DKvUhY8qyFxcZOy9PvUrN6nKE29axFTK1uHCbJ+ypqPLZaL3MK7U+xjS+DKavTG4+5x5YuJ03LTc9T0s0fU3cBrQaWcJGwUug6DDdLkfYurg5s4T9s5N5cpivm+jp2Q+Krpa0MZmMbUymgphfDtV31LLpKfUyF5l3h81o4orPXQbiNb1QmtoAergtZrUaRcLv3C1cerHFNW+JmzOH471uWUShdKzWFBwgtI0NoBvb4QteUcRMFyi/NMqDD5sy52nzjM/0fqh6UbsoUO+utpmnyLYKY180hHskuvt1qVZkvnRk0cui1jVeoLyhyZazhIrpAfSMLSkydlEr3nnKVtRichazSMgbZPLMyAYQGon/VgPA7PFKp88cIS0sUL66lbsWKF/24Ny5kZukfkwa+jPQr2k1Z47wNfFWzJ4ocN7wh36AIvMWWjYK6NcUzuQn1tZinhW1AcVcmYiza/wgxbRlczZ5B9PzYntdcIDnMVtbYaz7v3eAgwIaYf2Ybq1f3ACmL0EpPWRLoaa6e+24sGW+fUqUX5WnbATqhTyhY3nCbsi1uMguc74IwlKe8DUFwu8sE3GCJaweCC2BSTrM1hYof2CQiYhH2vpgeexdHDf3YCp1RIHw2/KErwK+ecJKJc6vzp3a2CP6n5GbI96ZFeIjcVWsWcabiyizzjqpM4EK58QSXl9L1DPFdpAlbF2jO9Kd7TbyZhI5y6FaoPwuNNtgXqjkKW9oSCURudS848yCCc64FfOj15qJh1ncVFi6IUNKInKWTmYWsyfQbES9JWVjGmpJwsO+f4it7oFaBs1GQIdvahHjZaI4SjhKlN8eOXwx2dFOwpFIFJlIFyjPxjXekoSlCO1n3ilPHr6ExT6ZdNiDKDLPerdQol5Hf+3v0CUymP3LVP4AZpu75efQAUpn0I/HWP+tnfBx6BJFxpfY+lu2u2KHvQC48oykntSLvHZw+D9twAChW+Fxwd6az8FAmYtzau1kuAErUfopk8ZhL6PP9w+AFwyztuhycHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcECzDf8F+H6239co2RQAAAAASUVORK5CYII=">
+                            </div>
+                            <div style="background:#b43c3e;color:#fff;">
+                                <b>Gulp:</b> Ferramenta de automação de tarefas para desenvolvimento web.
+                            </div>
+                        </div>
+                        <div data-aos="zoom-in" data-aos-duration="1000" data-aos-delay="300">
+                            <div><img
+                                    src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAACXBIWXMAAAsTAAALEwEAmpwYAAAA2UlEQVR4nO3bQQoCMRAEwP7///KeeFZYiLDaJFsFc5Rdpp1JPJgAAAAAAAAAAAAAABxhJFOl1gMBpPsFFEAEMNtNMAHpN8IKyjPr8gy422nP+ZYAygRQJoAyAZQJ4NQAVj9/2nPuei8BfBDABROwSWOGFSSA4QyIQ9gKeucWtMgt6IJDeJPGDLeg3zRmlQAEMI+8hq4yAQKYJiB+iN2+Gh63gv5Vq9rv+asSQASwpN0oE5B+s6yg9BvmDMhZtf0/cYIAtmACygRQJoAyAQAAAAAAAAAAAEAe4AVlNCzeksdRywAAAABJRU5ErkJggg==">
+                            </div>
+                            <div style="background:#d50000;color:#fff;">
+                                <b>npm:</b> Gerenciador de pacotes JavaScript para instalação e gestão de bibliotecas e
+                                ferramentas.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 col-12 order-lg-1 order-1">
+                    <h2 data-aos="fade-right" data-aos-duration="1000" data-aos-delay="1000"><b>Tecnologias</b> de <br>Desenvolvimento <b>Web</b></h2>
+                    <p data-aos="fade-right" data-aos-duration="1000" data-aos-delay="1200">Minha <b>expertise</b> abrange uma ampla variedade de tecnologias que me permitem criar soluções
+                        web robustas e eficientes. Tenho uma sólida base em <b>HTML</b> e <b>SASS</b>, que utilizo para
+                        estruturar e estilizar sites de maneira eficaz. Para o desenvolvimento de interfaces interativas
+                        e dinâmicas, utilizo <b>React</b>, uma biblioteca JavaScript poderosa que possibilita a criação
+                        de aplicações rápidas e responsivas.</p>
+                    <p data-aos="fade-right" data-aos-duration="1000" data-aos-delay="1400">Além disso, tenho experiência em trabalhar com <b>WordPress</b> para o desenvolvimento de sites e
+                        blogs personalizados. Também uso <b>jQuery</b> para simplificar a manipulação do DOM e a
+                        interação com o usuário. Ferramentas como <b>Vite.js</b> e <b>Gulp</b> são parte do meu fluxo de
+                        trabalho para otimização e automação de tarefas, garantindo uma entrega de projetos mais ágil.
+                        Para controle de versão, utilizo <b>Git</b> e <b>GitFlow</b>, assegurando que todo o código seja
+                        bem organizado e colaborativo.</p>
+                </div>
             </div>
         </div>
     </section>
-    <section class="background-black">
+
+    <section class="design">
         <div class="container">
-            Section
+            <div class="row align-items-center">
+                <div class="col-lg-6 col-12 order-lg-1 order-1">
+                    <h2 data-aos="fade-right" data-aos-duration="1000" data-aos-delay="100">Excelência em <br><b>Colaboração com Design</b></h2>
+                    <p data-aos="fade-right" data-aos-duration="1000" data-aos-delay="300">Trabalho em estreita <b>colaboração com equipes de UX/UI</b> para garantir que cada projeto seja
+                        visualmente atraente e funcional. Embora meu foco principal não seja o design, meu domínio de
+                        ferramentas como <b>Figma</b>, <b>Adobe XD</b> e <b>Photoshop</b> me permite entender e
+                        implementar com precisão as visões dos designers. Minha atenção meticulosa aos <b>detalhes</b> e
+                        meu <b>compromisso com a qualidade</b> asseguram que todos os trabalhos entregues sejam
+                        <b>responsivos</b> e ofereçam uma excelente <b>experiência ao usuário</b>, independentemente do
+                        dispositivo utilizado.
+                    </p>
+                </div>
+                <div class="col-lg-6 col-12 order-lg-1 order-2">
+                    <div class="design__card" data-aos="fade-left" data-aos-duration="1000" data-aos-delay="1000">
+                        <img src="./content/public/images/figma.png" data-aos="zoom-in" data-aos-duration="1000" data-aos-delay="1500" />
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
-    <!-- FOOTER -->
+
     <footer class="footer">
         <div class="container">
-            Rodapé
+            <div class="row">
+                <div class="col-12">
+                    <h2 data-aos="fade-right" data-aos-duration="1000" data-aos-delay="100">Gostou da minha proposta?</h2>
+                    <p data-aos="fade-right" data-aos-duration="1000" data-aos-delay="200">Estou pronto para ajudar no seu próximo projeto! <br>Entre em contato para um orçamento ou para
+                        trocarmos ideias.</p>
+                    <a href="https://wa.me/+5547996824071" target="_blank" data-aos="fade-down" data-aos-duration="1000" data-aos-delay="300">
+                        <img
+                            src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAADKklEQVR4nO2aTWxNQRTHfxQtKUoUC6HxsSA2EgtrQYOKRoTSjZ34qNKljaQrXwuNRImkCwsaYuH5ShcICxGxsdHPSCkRaSMRi6piZJIjeXmZuW/m3tt5N03/yUle8u793/N/c+bMOec+mMLkxQKgHrgAPAR6gG/AmJj+3C3f6Wt2A1VkBOVAI9AF/AaUp+l7HgMHhSs4ZgMtwOcYztvsE3ASqAglYjswkKKAQusHaidSgF76tgkUUGg3ZOVTxRLgTUARSuw1sDgtETWy3KpE1ic+JEK1pFFVYhsAlsYVUVGicFIRYRYrRbdnwHlVYJfjpFiVUdvmKkIvX28GHFYW63c9NFscCX8BJ4A5wHRgK/AnkJhml9VwLTsOG+7PBRIyVGzjNzoSPbfcXxswxA5ECelyJNlvuX9awP31KKqfcC3FV0f8GM2BhIwD80wO1HuQRMVnlSSCEGJ2mRy46EGgSxcbVgF/Awk5b3LggQfBTouImcDTQCIUcN/kRJ8Hwe2MlDU9JidGPAj0Hlhu4HgWWMiwSciYJ0mngWMtMBpQyE+TkDgO7DHwHC21kC8xiPSsaoWBq62UofUuJtlbYK7hhC+WzgcTzMOUmB74JUq/haanh2WW2u2H4XqdWFbmnTvtMUM7ZxLSmnCZO6ScL8Qy4GZeia9Li82G63RPfhb47vHMc0lLlKhZlD4UTVgjJ/Fey/f517k+r85EMF+yQFIxT4CFxMcij7PMWDSm2RgNWsLHBTscn6H3dOLGysV04Xhd9ogP7jnyN0SR6Pj+kKIYJeF6BdhYRIBuDa46cn4EZhX7RY6lLCTf9Fl1GtggQ4tKGYceAd578DS5LG3NBApJq+ItdxFyKAPOqoh9twVH3MqAw8pil1xFlHn2JSHtlcsG/49NGXBYWV4r6JdNzjiTAadVgfVaWoVIvMxgOFX7ivAZ0IWwa3Ff7OzLgPNKzgnnFGtCh2NreVdeJ5yS4jAtAbrsaErjHxBDBvKvwB3gOLBeWth8zJCpeC5mhzcuVWyDT2othhcygOiU2medwfEoVEpz1ioVbLfwjcqoaURqrZx0dnWGXn8KTBb8A31C/2cT3/wMAAAAAElFTkSuQmCC">
+                        Fale comigo no WhatsApp
+                    </a>
+                </div>
+            </div>
         </div>
     </footer>
+
     <script src="content/public/js/bundle.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init({
+            disable: 'mobile',
+        });
+    </script>
 </body>
 
 </html>

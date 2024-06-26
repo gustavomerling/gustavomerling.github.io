@@ -24,7 +24,8 @@ gulp.task('scripts', function () {
 // Iniciar servidor local e assistir mudanças nos arquivos
 gulp.task('serve', function () {
     browserSync.init({
-        server: './'
+        server: './',
+        port: 4000
     });
 
     gulp.watch('content/source/scss/**/*.scss', gulp.series('sass'));
