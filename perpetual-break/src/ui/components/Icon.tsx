@@ -32,7 +32,8 @@ const iconMap: Record<string, IconDefinition> = {
     volumeOff: faVolumeMute,
     star: faStar,
     shield: faShieldAlt,
-    magnet: faMagnet
+    magnet: faMagnet,
+    life: faHeart
 };
 
 export type IconName = keyof typeof iconMap;

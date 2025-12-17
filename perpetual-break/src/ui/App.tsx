@@ -8,6 +8,8 @@ import { GameOverModal } from './components/GameOverModal';
 import { SettingsModal } from './components/SettingsModal';
 import { LeaderboardModal } from './components/LeaderboardModal';
 import { InstructionsModal } from './components/InstructionsModal';
+import { IntroSequence } from './components/IntroSequence';
+import { CreditsModal } from './components/CreditsModal';
 import { lifeSystem } from '../core/systems/LifeSystem';
 import { gameStorage } from '../storage/GameStorage';
 import { game } from '../core/engine/Game';
@@ -24,6 +26,8 @@ const App: React.FC = () => {
     const [isGameOverOpen, setIsGameOverOpen] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const [isGameStarted, setIsGameStarted] = useState(false);
+    const [showIntro, setShowIntro] = useState(true);
+    const [isCreditsOpen, setIsCreditsOpen] = useState(false);
 
     const [gameData, setGameData] = useState(gameStorage.load());
     const [score, setScore] = useState(0);
@@ -50,15 +54,17 @@ const App: React.FC = () => {
 
     useEffect(() => {
         if (isGameStarted) {
-            if (isMenuOpen || isShopOpen || isPaused || isGameOverOpen || isSettingsOpen || isLeaderboardOpen || isInstructionsOpen) {
+            if (isMenuOpen || isShopOpen || isPaused || isGameOverOpen || isSettingsOpen || isLeaderboardOpen || isInstructionsOpen || isCreditsOpen) {
                 game.pause();
                 soundSystem.stopMusic();
             } else {
                 game.resume();
                 if (gameData.settings.musicEnabled) soundSystem.startMusic();
             }
+        } else if (isMenuOpen && !showIntro) {
+            if (gameData.settings.musicEnabled) soundSystem.startMusic();
         }
-    }, [isMenuOpen, isShopOpen, isPaused, isGameStarted, isGameOverOpen, isSettingsOpen, isLeaderboardOpen, isInstructionsOpen, gameData.settings.musicEnabled]);
+    }, [isMenuOpen, isShopOpen, isPaused, isGameStarted, isGameOverOpen, isSettingsOpen, isLeaderboardOpen, isInstructionsOpen, isCreditsOpen, showIntro, gameData.settings.musicEnabled]);
 
     useEffect(() => {
         const handleGameOver = (payload: any) => {
@@ -100,6 +106,7 @@ const App: React.FC = () => {
                 else if (isSettingsOpen) setIsSettingsOpen(false);
                 else if (isLeaderboardOpen) setIsLeaderboardOpen(false);
                 else if (isInstructionsOpen) setIsInstructionsOpen(false);
+                else if (isCreditsOpen) setIsCreditsOpen(false);
             }
         };
         window.addEventListener('keydown', handleKeyDown);
@@ -110,7 +117,7 @@ const App: React.FC = () => {
             eventBus.off(GameEventType.SCORE_UPDATE, handleScoreUpdate);
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [isGameStarted, isMenuOpen, isShopOpen, isGameOverOpen, isSettingsOpen, isLeaderboardOpen, isInstructionsOpen, isPaused]);
+    }, [isGameStarted, isMenuOpen, isShopOpen, isGameOverOpen, isSettingsOpen, isLeaderboardOpen, isInstructionsOpen, isCreditsOpen, isPaused, showIntro]);
 
     const handlePlay = () => {
         soundSystem.playButton();
@@ -181,15 +188,18 @@ const App: React.FC = () => {
 
     return (
         <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }}>
-            <GameCanvas />
+            {showIntro && <IntroSequence onComplete={() => setShowIntro(false)} />}
+
+            {!showIntro && <GameCanvas />}
 
             <MainMenu
-                isOpen={isMenuOpen}
+                isOpen={isMenuOpen && !showIntro}
                 onPlay={handlePlay}
                 onShop={() => { soundSystem.playButton(); setIsShopOpen(true); }}
                 onSettings={() => { soundSystem.playButton(); setIsSettingsOpen(true); }}
                 onLeaderboard={() => { soundSystem.playButton(); setIsLeaderboardOpen(true); }}
                 onInstructions={() => { soundSystem.playButton(); setIsInstructionsOpen(true); }}
+                onCredits={() => { soundSystem.playButton(); setIsCreditsOpen(true); }}
                 onReset={handleReset}
             />
 
@@ -216,6 +226,11 @@ const App: React.FC = () => {
             <InstructionsModal
                 isOpen={isInstructionsOpen}
                 onClose={() => { soundSystem.playButton(); setIsInstructionsOpen(false); }}
+            />
+
+            <CreditsModal
+                isOpen={isCreditsOpen}
+                onClose={() => { soundSystem.playButton(); setIsCreditsOpen(false); }}
             />
 
             <GameOverModal
