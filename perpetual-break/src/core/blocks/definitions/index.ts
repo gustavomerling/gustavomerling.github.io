@@ -1,0 +1,20 @@
+import { blockRegistry } from '../BlockRegistry';
+import { BasicBlock } from './BasicBlock';
+import { SimpleBlock } from './SimpleBlock';
+import { ExplosiveBlock } from './ExplosiveBlock';
+import { StrongBlock } from './StrongBlock';
+import { LifeBlock } from './LifeBlock';
+import { LuckyBlock } from './LuckyBlock';
+import { BlinkBlock } from './BlinkBlock';
+import { ArmorBlock } from './ArmorBlock';
+import { SpeedBlock } from './SpeedBlock';
+
+blockRegistry.register('basic', BasicBlock);
+blockRegistry.register('simple', SimpleBlock);
+blockRegistry.register('explosive', ExplosiveBlock);
+blockRegistry.register('strong', StrongBlock);
+blockRegistry.register('life', LifeBlock);
+blockRegistry.register('lucky', LuckyBlock);
+blockRegistry.register('blink', BlinkBlock);
+blockRegistry.register('armor', ArmorBlock);
+blockRegistry.register('speed', SpeedBlock);

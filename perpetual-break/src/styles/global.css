@@ -1,0 +1,39 @@
+:root {
+  --bg-color: #fdf6e3;
+  --text-color: #5c5c5c;
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+canvas {
+  background-color: #ffffff;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  display: block;
+  /* Canvas size is controlled via JS for aspect ratio, but max-width/height can be set here if needed */
+}
