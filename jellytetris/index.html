@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jelly Tetris | Glass Edition</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Retro CRT Scanlines -->
+    <div class="scanlines"></div>
+
+    <!-- Outrun Background Grid -->
+    <div class="outrun-bg">
+        <div id="bg-grid" class="grid"></div>
+        <div class="sun">
+            <div class="sun-glow"></div>
+        </div>
+        <div class="stars"></div>
+    </div>
+
+    <div id="game-container">
+        <!-- Floating Score/Text Container -->
+        <div id="floating-texts"></div>
+
+        <!-- Level Up Overlay -->
+        <div id="level-up-overlay">LEVEL UP!</div>
+
+        <!-- Main UI and Game -->
+        <div id="main-interface">
+            <div id="ui-side">
+                <div class="brand">
+                    <h1>JELLY</h1>
+                    <h1 class="neon-text">TETRIS</h1>
+                </div>
+
+                <div class="stat-box">
+                    <div class="label">SCORE <span id="combo-multiplier">x1</span></div>
+                    <div id="score" class="value">0</div>
+                    <div id="level-progress">
+                        <div id="level-bar"></div>
+                    </div>
+                </div>
+
+                <div class="stat-box">
+                    <div class="label">LEVEL</div>
+                    <div id="level" class="value">1</div>
+                </div>
+
+                <div class="stat-box">
+                    <div class="label">HIGH SCORE</div>
+                    <div id="high-score" class="value">0</div>
+                </div>
+
+                <div class="stat-box">
+                    <div class="label">VOLUME</div>
+                    <div class="volume-control">
+                        <input type="range" id="volume-slider" min="0" max="100" value="50">
+                    </div>
+                </div>
+
+                <div class="stat-box-row">
+                    <div class="stat-box next-box">
+                        <div class="label">NEXT</div>
+                        <canvas id="next-canvas" width="80" height="60"></canvas>
+                    </div>
+                    <div class="stat-box hold-box">
+                        <div class="label">HOLD (C)</div>
+                        <canvas id="hold-canvas" width="80" height="60"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="game-area-wrapper">
+                <div id="game-area">
+                    <canvas id="game-canvas"></canvas>
+                    <div id="combo-popup">COMBO x2</div>
+                    <div id="pause-overlay">PAUSED</div>
+                </div>
+                <!-- Reflection directly below the game area -->
+                <div id="reflection-area">
+                    <canvas id="reflection-canvas"></canvas>
+                </div>
+            </div>
+
+            <div id="controls-hint">
+                <div class="hint-item"><span class="key">↑</span> Rotate</div>
+                <div class="hint-item"><span class="key">↓</span> Soft Drop</div>
+                <div class="hint-item"><span class="key">SPACE</span> Hard Drop</div>
+                <div class="hint-item"><span class="key">←</span> Left</div>
+                <div class="hint-item"><span class="key">→</span> Right</div>
+                <div class="hint-item"><span class="key">C</span> Hold</div>
+                <div class="hint-item"><span class="key">P</span> Pause</div>
+            </div>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="overlay visible">
+            <div class="corner-accents">
+                <div class="corner tl"></div>
+                <div class="corner tr"></div>
+                <div class="corner bl"></div>
+                <div class="corner br"></div>
+            </div>
+            <div class="overlay-content">
+                <div class="title-wrapper">
+                    <h2 class="glitch" data-text="JELLY TETRIS">JELLY TETRIS</h2>
+                    <div class="title-reflection">JELLY TETRIS</div>
+                </div>
+                <p class="subtitle">RETRO GLASS EDITION</p>
+                <div class="loader-container">
+                    <div class="loader-bar"></div>
+                    <span class="loader-text">INITIALIZING NEON CORE...</span>
+                </div>
+                <button id="start-button">START GAME</button>
+                <div class="floating-blocks">
+                    <div class="f-block b1"></div>
+                    <div class="f-block b2"></div>
+                    <div class="f-block b3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over" class="overlay">
+            <div class="overlay-content">
+                <h2 class="neon-text">GAME OVER</h2>
+                <div class="final-stats">
+                    <p id="final-score">Score: 0</p>
+                    <p id="final-lines">Lines: 0</p>
+                    <p id="final-combo">Max Combo: 0</p>
+                </div>
+                <button onclick="location.reload()">REPLAY</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+
+</html>
