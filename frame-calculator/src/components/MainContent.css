@@ -1,0 +1,41 @@
+.main-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 0;
+  overflow: hidden;
+}
+
+.preview-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #F5F0F9 0%, #F9FAFB 100%);
+  border-right: 1px solid #E5D8F0;
+  padding: 40px;
+  overflow-y: auto;
+}
+
+.editor-section {
+  background: white;
+  padding: 30px;
+  overflow-y: auto;
+}
+
+@media (max-width: 1400px) {
+  .main-content {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-section {
+    border-right: none;
+    border-bottom: 1px solid #E5D8F0;
+    max-height: 50vh;
+  }
+}

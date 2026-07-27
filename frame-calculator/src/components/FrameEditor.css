@@ -1,0 +1,130 @@
+.frame-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.editor-title {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0 0 10px;
+  letter-spacing: -0.48px;
+}
+
+.editor-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.editor-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #4B5563;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.editor-group label svg {
+  flex-shrink: 0;
+  color: #6B2E8C;
+}
+
+.option-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.option-grid-size {
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+}
+
+.option-grid-wood {
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+}
+
+.option-grid-glass {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+.option-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #E5D8F0;
+  border-radius: 10px;
+  background: #F9FAFB;
+  color: #4B5563;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.option-button:hover {
+  border-color: #9B87F5;
+  background: #F5F0F9;
+}
+
+.option-button.active {
+  border-color: #6B2E8C;
+  background: #F5F0F9;
+  color: #6B2E8C;
+  box-shadow: 0 0 0 2px rgba(107, 46, 140, 0.1);
+}
+
+.wood-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.editor-input,
+.editor-slider {
+  padding: 10px 12px;
+  border: 1px solid #E5D8F0;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  background: #F9FAFB;
+  color: #0F172A;
+  transition: all 0.2s ease;
+}
+
+.editor-input:focus,
+.editor-slider:focus {
+  outline: none;
+  border-color: #6B2E8C;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(107, 46, 140, 0.1);
+}
+
+.slider-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.editor-slider {
+  flex: 1;
+  padding: 8px;
+}
+
+.slider-value {
+  font-weight: 600;
+  color: #6B2E8C;
+  min-width: 50px;
+  text-align: right;
+}

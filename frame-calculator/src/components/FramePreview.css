@@ -1,0 +1,262 @@
+.frame-preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.preview-canvas {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 480px;
+  margin-bottom: 20px;
+  padding: 40px;
+  border-radius: 16px;
+  box-sizing: border-box;
+  transition: background 0.3s ease;
+}
+
+.corner-loupe {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 10;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  overflow: hidden;
+  transition: background 0.3s ease;
+  border: 4px solid rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.corner-loupe-stage {
+  position: absolute;
+  /* Offset so the mitered corner tip (the stage's own 0,0) lands well
+     inside the circular viewport instead of right at its edge, where a
+     circle crops the most. */
+  top: 40px;
+  left: 40px;
+  transform-origin: top left;
+}
+
+.frame-preview {
+  position: relative;
+  perspective: 1000px;
+}
+
+.frame-border {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  transition: width 0.35s ease, height 0.35s ease;
+
+  /* Base layer under the mitered edges: clip-path antialiasing can leave
+     hairline seams at the 45deg corners, so this shows wood instead of
+     whatever is behind the frame. */
+  background-image: var(--frame-image);
+  background-size: cover;
+  background-position: center;
+
+  box-shadow:
+    inset 0 3px 6px rgba(255, 255, 255, 0.45),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.5),
+    0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Directional light concentrated at the corners (moldura + vidro +
+   conteúdo): a hard white glow at the top-left, a hard dark shadow at
+   the bottom-right, both fading out quickly instead of spreading across
+   the whole face. Blended with the layers below instead of flatly
+   tinting them. */
+.frame-light-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 40%),
+    radial-gradient(circle at 100% 100%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 40%);
+  mix-blend-mode: overlay;
+}
+
+.frame-edge {
+  position: absolute;
+  overflow: hidden;
+}
+
+/* Varnish/lacquer sheen: a soft diagonal glint over the wood texture on
+   each molding piece, clipped to the same 45deg trapezoid as its edge. */
+.frame-edge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.35) 48%,
+    transparent 62%
+  );
+  mix-blend-mode: soft-light;
+}
+
+/* Left/right edges keep the wood texture in its natural (vertical grain)
+   orientation since they already run along the grain direction. Each edge
+   is clipped to a trapezoid so it meets its neighbors at a 45deg miter,
+   like a real frame corner. */
+.frame-edge-left,
+.frame-edge-right {
+  top: 0;
+  bottom: 0;
+  width: var(--frame-thickness);
+  background-image: var(--frame-image);
+  background-size: cover;
+  background-position: center;
+}
+
+.frame-edge-left {
+  left: 0;
+  clip-path: polygon(0 0, 0 100%, 100% calc(100% - var(--frame-thickness)), 100% var(--frame-thickness));
+}
+
+.frame-edge-right {
+  right: 0;
+  clip-path: polygon(100% 0, 100% 100%, 0 calc(100% - var(--frame-thickness)), 0 var(--frame-thickness));
+}
+
+/* Top/bottom edges are horizontal strips, but the wood photos have a
+   vertical grain, so the texture is rotated 90deg here to keep the grain
+   running along the strip instead of cutting across it. Also clipped to a
+   45deg miter trapezoid to match the left/right edges at the corners. */
+.frame-edge-top,
+.frame-edge-bottom {
+  left: 0;
+  right: 0;
+  height: var(--frame-thickness);
+}
+
+.frame-edge-top {
+  top: 0;
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--frame-thickness)) 100%, var(--frame-thickness) 100%);
+}
+
+.frame-edge-bottom {
+  bottom: 0;
+  clip-path: polygon(var(--frame-thickness) 0, calc(100% - var(--frame-thickness)) 0, 100% 100%, 0 100%);
+}
+
+.frame-edge-fill-h {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--frame-thickness);
+  height: var(--frame-width);
+  background-image: var(--frame-image);
+  background-size: cover;
+  background-position: center;
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.frame-inner {
+  position: absolute;
+  top: var(--frame-thickness);
+  left: var(--frame-thickness);
+  right: var(--frame-thickness);
+  bottom: var(--frame-thickness);
+}
+
+.frame-glass {
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(125deg, transparent 32%, rgba(255, 255, 255, 0.55) 46%, rgba(255, 255, 255, 0.2) 52%, transparent 62%),
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), transparent);
+  opacity: var(--glass-opacity);
+  backdrop-filter: blur(var(--glass-blur));
+  pointer-events: none;
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.frame-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: background 0.3s ease;
+}
+
+.placeholder-content {
+  color: #999;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Cast shadow projected away from the top-left light source used in
+   .frame-light-overlay: a tight contact shadow plus a softer, farther-
+   reaching one, both offset toward the bottom-right. */
+.frame-shadow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.1),
+    14px 18px 18px rgba(0, 0, 0, 0.2),
+    30px 40px 48px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+.preview-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  padding: 16px 0;
+}
+
+.preview-info p {
+  margin: 0;
+  color: #4B5563;
+}
+
+.btn-download-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px solid #E5D8F0;
+  border-radius: 10px;
+  background: white;
+  color: #6B2E8C;
+  font-weight: 600;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-download-preview:hover {
+  border-color: #6B2E8C;
+  background: #F5F0F9;
+}
+
+.btn-download-preview:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}

@@ -1,0 +1,249 @@
+.sidebar {
+  width: 280px;
+  background: #F9FAFB;
+  border-right: 1px solid #E5D8F0;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #E5D8F0;
+}
+
+.sidebar-logo {
+  height: 50px;
+  width: auto;
+}
+
+.btn-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #E5D8F0;
+  border-radius: 8px;
+  background: white;
+  color: #9B87F5;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.btn-logout:hover {
+  border-color: #6B2E8C;
+  background: #F5F0F9;
+  color: #6B2E8C;
+}
+
+.btn-add-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #6B2E8C, #9B87F5);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.btn-add-frame:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(107, 46, 140, 0.3);
+}
+
+.frames-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
+
+.frame-item {
+  background: white;
+  border: 1px solid #E5D8F0;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.frame-item:hover {
+  border-color: #9B87F5;
+  background: #F5F0F9;
+}
+
+.frame-item.active {
+  background: #F5F0F9;
+  border-color: #6B2E8C;
+  box-shadow: 0 0 0 2px rgba(107, 46, 140, 0.1);
+}
+
+.frame-item-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #0F172A;
+}
+
+.frame-item-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.frame-item-meta {
+  font-size: 12px;
+  color: #4B5563;
+  flex-shrink: 0;
+}
+
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.qty-stepper button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #E5D8F0;
+  border-radius: 6px;
+  background: white;
+  color: #6B2E8C;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.qty-stepper button:hover {
+  border-color: #6B2E8C;
+  background: #F5F0F9;
+}
+
+.qty-stepper span {
+  min-width: 16px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.frame-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.btn-duplicate,
+.btn-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #9B87F5;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-duplicate:hover,
+.btn-delete:hover {
+  background: rgba(107, 46, 140, 0.1);
+  color: #6B2E8C;
+}
+
+.estimated-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #F5F0F9;
+  border: 1px solid #E5D8F0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #4B5563;
+}
+
+.estimated-total strong {
+  font-size: 16px;
+  color: #6B2E8C;
+}
+
+.btn-finalize {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #1D7870, #17635C);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
+  width: 100%;
+  margin-top: auto;
+}
+
+.btn-finalize:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(29, 120, 112, 0.3);
+}
+
+.btn-clear-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: none;
+  color: #9B4444;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-top: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Inter', sans-serif;
+  width: 100%;
+}
+
+.btn-clear-all:hover {
+  background: rgba(154, 68, 68, 0.08);
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 240px;
+  }
+}

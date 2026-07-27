@@ -1,0 +1,228 @@
+.login-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Background with gradient */
+.login-background {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #F9FAFB 0%, #F5F0F9 50%, #E5D8F0 100%);
+}
+
+/* Animated spheres */
+.sphere {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.15;
+  filter: blur(40px);
+}
+
+.sphere-1 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, #6B2E8C, #9B87F5);
+  top: -100px;
+  left: -100px;
+  animation: float1 20s infinite ease-in-out;
+}
+
+.sphere-2 {
+  width: 250px;
+  height: 250px;
+  background: linear-gradient(135deg, #1D7870, #17635C);
+  top: 50%;
+  right: -80px;
+  animation: float2 25s infinite ease-in-out;
+}
+
+.sphere-3 {
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, #E5D8F0, #F5F0F9);
+  bottom: -50px;
+  left: 10%;
+  animation: float3 22s infinite ease-in-out;
+}
+
+.sphere-4 {
+  width: 350px;
+  height: 350px;
+  background: linear-gradient(135deg, #9B87F5, #6B2E8C);
+  bottom: -150px;
+  right: 5%;
+  animation: float1 28s infinite ease-in-out;
+}
+
+@keyframes float1 {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(30px, -30px);
+  }
+}
+
+@keyframes float2 {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-40px, 40px);
+  }
+}
+
+@keyframes float3 {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(25px, 25px);
+  }
+}
+
+/* Gradient overlay */
+.gradient-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% 70%, rgba(45, 95, 79, 0.08) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.08) 0%, transparent 50%);
+}
+
+/* Login Card */
+.login-card {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 400px;
+  background: white;
+  border-radius: 16px;
+  padding: 48px 32px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08),
+              0 0 1px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(10px);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.logo-img {
+  height: 80px;
+  width: auto;
+  margin: 0 auto 16px;
+  display: block;
+}
+
+.login-header h1 {
+  color: #1a1815;
+  white-space: nowrap;
+}
+
+.login-header p {
+  color: #4B5563;
+  font-size: 14px;
+  margin-top: 4px;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Form */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4B5563;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: 'Inter', sans-serif;
+}
+
+.form-input {
+  padding: 12px 16px;
+  font-size: 16px;
+  border: 2px solid #E5D8F0;
+  border-radius: 10px;
+  background: #F9FAFB;
+  color: #0F172A;
+  transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #6B2E8C;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(107, 46, 140, 0.1);
+}
+
+.form-input::placeholder {
+  color: #9B87F5;
+}
+
+.form-button {
+  padding: 14px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #0F172A, #6B2E8C);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: 'Inter', sans-serif;
+}
+
+.form-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(107, 46, 140, 0.3);
+}
+
+.form-button:active {
+  transform: translateY(0);
+}
+
+/* Footer */
+.login-footer {
+  text-align: center;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #E5D8F0;
+}
+
+.login-footer p {
+  font-size: 12px;
+  color: #9B87F5;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .login-card {
+    margin: 16px;
+    padding: 32px 24px;
+  }
+
+  .sphere-1, .sphere-2, .sphere-3, .sphere-4 {
+    opacity: 0.08;
+  }
+}
