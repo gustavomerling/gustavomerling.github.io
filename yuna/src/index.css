@@ -1,0 +1,227 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/* Tokens de marca — Yuna Marketing & Comunicação */
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Petrona:ital,wght@0,400..700;1,400..700&display=swap');
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-serif: 'Petrona', Georgia, serif;
+  --font-numeric: 'Petrona', 'Instrument Serif', Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-soft: var(--surface-soft);
+  --color-surface-strong: var(--surface-strong);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-input-border: var(--input-border);
+  --color-ring: var(--ring);
+
+  --color-verde-escuro: var(--verde-escuro);
+  --color-verde-medio: var(--verde-medio);
+  --color-verde-oliva: var(--verde-oliva);
+  --color-azul-marinho: var(--azul-marinho);
+  --color-azul-claro: var(--azul-claro);
+  --color-bege: var(--bege);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --shadow-soft: var(--shadow-soft);
+}
+
+:root {
+  /* paleta de marca */
+  --verde-escuro: #0d3226;
+  --verde-medio: #13523d;
+  --verde-oliva: #7b7948;
+  --azul-marinho: #2d3d4d;
+  --azul-claro: #b0c1d9;
+  --bege: #efece5;
+
+  --background: #f5f3ec;
+  --foreground: #1f2a33;
+  --surface: #fff;
+  --surface-soft: #efece5;
+  --surface-strong: #e5e0d2;
+  --card: #fff;
+  --card-foreground: #1f2a33;
+  --popover: #fff;
+  --popover-foreground: #1f2a33;
+  --primary: #0d3226;
+  --primary-hover: #13523d;
+  --primary-foreground: #f5f3ec;
+  --secondary: #2d3d4d;
+  --secondary-hover: #3a4d61;
+  --secondary-foreground: #f5f3ec;
+  --accent: #7b7948;
+  --accent-hover: #8d8c5a;
+  --accent-foreground: #f5f3ec;
+  --muted: #e5e0d2;
+  --muted-foreground: #5b6770;
+  --info: #b0c1d9;
+  --info-foreground: #2d3d4d;
+  --success: #13523d;
+  --warning: #b48a30;
+  --destructive: #b54141;
+  --destructive-hover: #c95757;
+  --destructive-foreground: #f5f3ec;
+  --border: #d9d3c4;
+  --border-strong: #b9b1a0;
+  --input: #fff;
+  --input-border: #c9c1ae;
+  --ring: #13523d;
+
+  --shadow-soft: 0 1px 2px #0d32260a, 0 8px 24px #0d32260f;
+  --shadow-md: 0 4px 12px #0d322614, 0 16px 32px #0d32260f;
+  --shadow-lg: 0 12px 32px #0d32261f;
+  --radius: 0.875rem;
+
+  --chart-1: #0d3226;
+  --chart-2: #7b7948;
+  --chart-3: #2d3d4d;
+  --chart-4: #b0c1d9;
+  --chart-5: #b48a30;
+
+  --sidebar: #0d3226;
+  --sidebar-foreground: #dfe6e0;
+  --sidebar-primary: #7b7948;
+  --sidebar-primary-foreground: #f5f3ec;
+  --sidebar-accent: #13523d;
+  --sidebar-accent-foreground: #f5f3ec;
+  --sidebar-border: #1c4636;
+  --sidebar-ring: #7b7948;
+}
+
+.dark {
+  --background: #0f1a22;
+  --foreground: #eceae2;
+  --surface: #16242e;
+  --surface-soft: #1b2d38;
+  --surface-strong: #213541;
+  --card: #16242e;
+  --card-foreground: #eceae2;
+  --popover: #1b2d38;
+  --popover-foreground: #eceae2;
+  --primary: #4fa68a;
+  --primary-hover: #6cc0a4;
+  --primary-foreground: #0f1a22;
+  --secondary: #b0c1d9;
+  --secondary-hover: #c7d4e5;
+  --secondary-foreground: #0f1a22;
+  --accent: #b0a865;
+  --accent-hover: #c5bc76;
+  --accent-foreground: #0f1a22;
+  --muted: #213541;
+  --muted-foreground: #94a3ae;
+  --info: #4f6f95;
+  --info-foreground: #eceae2;
+  --success: #4fa68a;
+  --warning: #d4a04a;
+  --destructive: #e07171;
+  --destructive-hover: #e98989;
+  --destructive-foreground: #0f1a22;
+  --border: #25394a;
+  --border-strong: #3a5163;
+  --input: #16242e;
+  --input-border: #2c4254;
+  --ring: #4fa68a;
+
+  --shadow-soft: 0 1px 2px #0000004d, 0 8px 24px #00000040;
+  --shadow-md: 0 4px 12px #00000059, 0 16px 32px #0000004d;
+  --shadow-lg: 0 12px 32px #00000073;
+
+  --chart-1: #4fa68a;
+  --chart-2: #b0a865;
+  --chart-3: #b0c1d9;
+  --chart-4: #4f6f95;
+  --chart-5: #d4a04a;
+
+  --sidebar: #16242e;
+  --sidebar-foreground: #eceae2;
+  --sidebar-primary: #4fa68a;
+  --sidebar-primary-foreground: #0f1a22;
+  --sidebar-accent: #213541;
+  --sidebar-accent-foreground: #eceae2;
+  --sidebar-border: #25394a;
+  --sidebar-ring: #4fa68a;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* nada de font-black; o peso máximo do produto é 600 */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium tracking-tight;
+  }
+}
+
+/* Números e bignumbers: fonte dedicada, mais pesada e com dígitos tabulares. */
+@utility stat {
+  font-family: var(--font-numeric);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+  line-height: 1;
+}
+
+/* Piso de 12px em qualquer texto da interface. */
+@layer base {
+  body {
+    font-size: 1rem;
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "arquitetura-1": {
+    "title": "Free modern living room interior",
+    "author": "desconhecido",
+    "license": "CC0 1.0",
+    "provider": "rawpixel",
+    "source": "https://www.rawpixel.com/image/5915137/image-light-public-domain-plants"
+  },
+  "arquitetura-2": {
+    "title": "The carpenters workshed",
+    "author": "desconhecido",
+    "license": "CC0 1.0",
+    "provider": "rawpixel",
+    "source": "https://www.rawpixel.com/image/5939289/the-carpenters-workshed"
+  },
+  "arquitetura-3": {
+    "title": "Peacock side chair - Frank Lloyd Wright (24895614317)",
+    "author": "Tim Evanson from Cleveland Heights, Ohio, USA",
+    "license": "BY-SA 2.0",
+    "provider": "wikimedia",
+    "source": "https://commons.wikimedia.org/w/index.php?curid=75641768"
+  },
+  "arquitetura-4": {
+    "title": "Wood Texture",
+    "author": "Matt Bango",
+    "license": "CC0 1.0",
+    "provider": "stocksnap",
+    "source": "https://stocksnap.io/photo/wood-texture-BMGRNYDKDG"
+  },
+  "obra-1": {
+    "title": "Room Window",
+    "author": "Matt Bango",
+    "license": "CC0 1.0",
+    "provider": "stocksnap",
+    "source": "https://stocksnap.io/photo/room-window-T3QP4DRXS2"
+  },
+  "materiais-1": {
+    "title": "Linen Fabric",
+    "author": "Seacoast Sage",
+    "license": "CC0 1.0",
+    "provider": "stocksnap",
+    "source": "https://stocksnap.io/photo/linen-fabric-KXTLKQCVOS"
+  },
+  "clinica-1": {
+    "title": "Doctor Patient",
+    "author": "Direct Media",
+    "license": "CC0 1.0",
+    "provider": "stocksnap",
+    "source": "https://stocksnap.io/photo/doctor-patient-EDI8LWKSBB"
+  },
+  "clinica-2": {
+    "title": "Laparoscopic operating theatre",
+    "author": "Dr.jayesh amin",
+    "license": "BY-SA 3.0",
+    "provider": "wikimedia",
+    "source": "https://commons.wikimedia.org/w/index.php?curid=29136996"
+  },
+  "clinica-3": {
+    "title": "",
+    "author": "desconhecido",
+    "license": "CC0 1.0",
+    "provider": "rawpixel",
+    "source": "https://www.rawpixel.com/image/5962673/free-public-domain-cc0-photo"
+  },
+  "hortifruti-1": {
+    "title": "Free farmers market, vegetables display",
+    "author": "desconhecido",
+    "license": "CC0 1.0",
+    "provider": "rawpixel",
+    "source": "https://www.rawpixel.com/image/5913183/photo-image-public-domain-wooden-free"
+  },
+  "hortifruti-2": {
+    "title": "Tomato Pumpkin Soup (32881733498)",
+    "author": "Ella Olsson from Stockholm, Sweden",
+    "license": "BY 2.0",
+    "provider": "wikimedia",
+    "source": "https://commons.wikimedia.org/w/index.php?curid=83080775"
+  },
+  "hortifruti-3": {
+    "title": "Garden Lettuce",
+    "author": "Tim Sullivan",
+    "license": "CC0 1.0",
+    "provider": "stocksnap",
+    "source": "https://stocksnap.io/photo/garden-lettuce-BPGPKHVGO4"
+  },
+  "aurora-1": {
+    "title": "Lorem Picsum #193",
+    "author": "Vadim Sherbakov",
+    "license": "Unsplash License",
+    "provider": "picsum.photos",
+    "source": "https://picsum.photos/id/193"
+  },
+  "aurora-2": {
+    "title": "Lorem Picsum #24",
+    "author": "Alejandro Escamilla",
+    "license": "Unsplash License",
+    "provider": "picsum.photos",
+    "source": "https://picsum.photos/id/24"
+  },
+  "aurora-4": {
+    "title": "Writing Papers",
+    "author": "Helloquence",
+    "license": "CC0 1.0",
+    "provider": "stocksnap",
+    "source": "https://stocksnap.io/photo/writing-papers-Y01VDYAX63"
+  },
+  "motors-1": {
+    "title": "Volvo Dealership. Location Unknown. Date",
+    "author": "desconhecido",
+    "license": "CC0 1.0",
+    "provider": "rawpixel",
+    "source": "https://www.rawpixel.com/image/6111399/photo-image-public-domain-white-free"
+  },
+  "padaria-1": {
+    "title": "Free slice homemade sourdough bread",
+    "author": "desconhecido",
+    "license": "CC0 1.0",
+    "provider": "rawpixel",
+    "source": "https://www.rawpixel.com/image/5918610/photo-image-public-domain-wood-food"
+  },
+  "padaria-3": {
+    "title": "Free fresh artisan bread oven",
+    "author": "desconhecido",
+    "license": "CC0 1.0",
+    "provider": "rawpixel",
+    "source": "https://www.rawpixel.com/image/5904163/photo-image-public-domain-person-food"
+  },
+  "motors-2": {
+    "title": "Lorem Picsum #171",
+    "author": "Riley Briggs",
+    "license": "Unsplash License",
+    "provider": "picsum.photos",
+    "source": "https://picsum.photos/id/171"
+  },
+  "aurora-3": {
+    "title": "Lorem Picsum #289",
+    "author": "Jennifer Langley",
+    "license": "Unsplash License",
+    "provider": "picsum.photos",
+    "source": "https://picsum.photos/id/289"
+  },
+  "padaria-2": {
+    "title": "Lorem Picsum #112",
+    "author": "Zugr",
+    "license": "Unsplash License",
+    "provider": "picsum.photos",
+    "source": "https://picsum.photos/id/112"
+  }
+}
