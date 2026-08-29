@@ -1,0 +1,253 @@
+@import 'tailwindcss';
+
+/* Paramore Brasil DS-PB — fontes oficiais (Google Fonts) */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Special+Elite&family=Anton&family=Permanent+Marker&family=Inter:wght@200;400&family=Caveat:wght@600&family=Montserrat:wght@900&family=Righteous&family=DM+Serif+Display&display=swap');
+
+/* Seletor de era: `body.theme-*` troca as varáveis de destaque */
+@theme inline {
+  --font-display: var(--font-heading);
+  --font-detail: var(--font-ink);
+  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --color-canvas: var(--color-bg-canvas);
+  --color-surface-1: var(--color-bg-surface-1);
+  --color-surface-2: var(--color-bg-surface-2);
+  --color-surface-3: var(--color-bg-surface-3);
+  --color-line-1: var(--color-border-subtle);
+  --color-line-2: var(--color-border-strong);
+  --color-content-primary: var(--color-text-primary);
+  --color-content-secondary: var(--color-text-secondary);
+  --color-content-muted: var(--color-text-muted);
+  --color-content-inverse: var(--color-text-inverse);
+  --color-accent: var(--color-accent-primary);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-subtle: var(--color-accent-subtle);
+  --color-accent-glow: var(--color-accent-glow);
+  --color-status-success: var(--color-status-success);
+  --color-status-warning: var(--color-status-warning);
+  --color-status-danger: var(--color-status-danger);
+  --color-status-info: var(--color-status-info);
+
+  --shadow-glow: 0 0 25px var(--color-accent-glow);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.7);
+  --shadow-punk: 4px 4px 0px #000000;
+}
+
+/* ---- Tokens base (dark-first) ---- */
+:root {
+  --color-bg-canvas: #09090b;
+  --color-bg-surface-1: #121216;
+  --color-bg-surface-2: #1c1c24;
+  --color-bg-surface-3: #282834;
+
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
+
+  --color-text-primary: #f4f4f6;
+  --color-text-secondary: #a1a1b2;
+  --color-text-muted: #6e6e82;
+  --color-text-inverse: #09090b;
+
+  --color-status-success: #10b981;
+  --color-status-warning: #f59e0b;
+  --color-status-danger: #ef4444;
+  --color-status-info: #3b82f6;
+
+  --color-accent-primary: #ff5500;
+  --color-accent-hover: #ff7733;
+  --color-accent-subtle: rgba(255, 85, 0, 0.15);
+  --color-accent-glow: rgba(255, 85, 0, 0.4);
+  --font-heading: 'Space Grotesk', 'Inter Tight', sans-serif;
+  --font-ink: 'Plus Jakarta Sans', sans-serif;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+
+  --container-max: 1280px;
+  --container-editorial: 820px;
+}
+
+/* Marca Paramore Brasil */
+:root {
+  --pb-brand-primary: #ff5500;
+  --pb-brand-secondary: #0a0a0c;
+  --pb-brand-accent: #00d2d3;
+  --pb-brand-surface: #141418;
+  --pb-brand-text: #f8f9fa;
+  --pb-brand-muted: #9e9ea8;
+}
+
+/* ---- Temas dinâmicos por era ---- */
+body,
+body.theme-default {
+  --color-accent-primary: #ff5500;
+  --color-accent-hover: #ff7733;
+  --color-accent-subtle: rgba(255, 85, 0, 0.15);
+  --color-accent-glow: rgba(255, 85, 0, 0.4);
+  --font-heading: 'Space Grotesk', 'Inter Tight', sans-serif;
+  --font-ink: 'Plus Jakarta Sans', sans-serif;
+}
+
+body.theme-awkif {
+  --color-accent-primary: #9e1b1b;
+  --color-accent-hover: #c22626;
+  --color-accent-subtle: rgba(158, 27, 27, 0.2);
+  --color-accent-glow: rgba(158, 27, 27, 0.5);
+  --font-heading: 'Special Elite', 'Courier New', monospace;
+  --font-ink: 'Special Elite', 'Courier New', monospace;
+}
+
+body.theme-riot {
+  --color-accent-primary: #ff6600;
+  --color-accent-hover: #ff8533;
+  --color-accent-subtle: rgba(255, 102, 0, 0.2);
+  --color-accent-glow: rgba(255, 102, 0, 0.6);
+  --font-heading: 'Anton', 'Arial Narrow', sans-serif;
+  --font-ink: 'Permanent Marker', cursive;
+}
+
+body.theme-bne {
+  --color-accent-primary: #e5a93c;
+  --color-accent-hover: #f0bc5e;
+  --color-accent-subtle: rgba(229, 169, 60, 0.18);
+  --color-accent-glow: rgba(229, 169, 60, 0.45);
+  --font-heading: 'Inter', system-ui, sans-serif;
+  --font-ink: 'Caveat', cursive;
+}
+
+body.theme-selftitled {
+  --color-accent-primary: #00d8ed;
+  --color-accent-hover: #38e5f6;
+  --color-accent-subtle: rgba(0, 216, 237, 0.18);
+  --color-accent-glow: rgba(0, 216, 237, 0.5);
+  --font-heading: 'Montserrat', 'Arial Black', sans-serif;
+  --font-ink: 'Montserrat', 'Arial Black', sans-serif;
+}
+
+body.theme-afterlaughter {
+  --color-accent-primary: #ff6f61;
+  --color-accent-hover: #ff8c80;
+  --color-accent-subtle: rgba(255, 111, 97, 0.2);
+  --color-accent-glow: rgba(255, 111, 97, 0.5);
+  --font-heading: 'Righteous', 'Arial Black', sans-serif;
+  --font-ink: 'Righteous', cursive;
+}
+
+body.theme-thisiswhy {
+  --color-accent-primary: #c04a26;
+  --color-accent-hover: #d75b34;
+  --color-accent-subtle: rgba(192, 74, 38, 0.2);
+  --color-accent-glow: rgba(192, 74, 38, 0.4);
+  --font-heading: 'DM Serif Display', Georgia, serif;
+  --font-ink: 'DM Serif Display', Georgia, serif;
+}
+
+@layer base {
+  * {
+    @apply border-line-1;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-content-primary antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-display font-bold tracking-tight;
+  }
+
+  /* Transições suaves por padrão em elementos interativos:
+     cores, sombras, bordas e opacidade (sem transform, para não brigar
+     com o framer-motion). Utilitários transition-* das peças vencem. */
+  a,
+  button,
+  [role='button'],
+  summary,
+  label,
+  select,
+  input,
+  textarea {
+    transition-property: color, background-color, border-color, box-shadow, fill, stroke, opacity;
+    transition-duration: 1000ms;
+    transition-timing-function: ease-in-out;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent-primary);
+    outline-offset: 3px;
+  }
+}
+
+/* Peso do display é ditado pela fonte de cada era (vencer utilitários) */
+body.theme-awkif .font-display,
+body.theme-riot .font-display,
+body.theme-afterlaughter .font-display,
+body.theme-thisiswhy .font-display {
+  font-weight: 400;
+}
+
+body.theme-bne .font-display {
+  font-weight: 200;
+}
+
+body.theme-selftitled .font-display {
+  font-weight: 900;
+}
+
+/* Efeitos da landing page */
+html.pb-cursor-none,
+html.pb-cursor-none * {
+  cursor: none !important;
+}
+
+.pb-dots {
+  background-image: radial-gradient(
+    circle,
+    var(--color-border-strong) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+.pb-text-outline {
+  color: transparent;
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--color-accent-primary) 45%, transparent);
+}
+
+.pb-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: pb-marquee 32s linear infinite;
+}
+
+.pb-marquee-reverse {
+  animation-direction: reverse;
+}
+
+@keyframes pb-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Acessibilidade: respeita prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
