@@ -9,7 +9,7 @@ export const VIDEOS: VideoClip[] = [
   { id: 'aCyGvGEtOwc', title: 'Misery Business', album: 'RIOT! (2007)' },
   { id: 'OH9A6tn_P6g', title: 'Ignorance', album: 'Brand New Eyes (2009)' },
   { id: '-J7J_IWUhls', title: 'The Only Exception', album: 'Brand New Eyes (2009)' },
-  { id: 'G0m_uNaSres', title: 'Now', album: 'Paramore (2013)' },
+  { id: 'G133kjKy91U', title: 'Now', album: 'Paramore (2013)' },
   { id: 'OblL026SvD4', title: 'Still Into You', album: 'Paramore (2013)' },
   { id: 'EFEmTsfFL5A', title: "Ain't It Fun", album: 'Paramore (2013)' },
   { id: 'AEB6ibtdPZc', title: 'Hard Times', album: 'After Laughter (2017)' },

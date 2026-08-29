@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import {
   ArrowRight,
   Archive,
@@ -7,8 +6,12 @@ import {
   MessageSquare,
   Trophy,
   Users,
+  Sparkles,
+  Zap,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
+import TiltCard from '@/components/fx/TiltCard'
+import EraAmbientFX from '@/components/fx/EraAmbientFX'
 
 const STATS = [
   { value: '128 mil', label: 'Membros no fã-clube' },
@@ -60,48 +63,60 @@ const ACTIVITY = [
 
 export default function Comunidade() {
   return (
-    <section className="mx-auto max-w-[var(--container-max)] px-4 py-16 sm:px-6">
-      <header className="max-w-2xl">
+    <section className="relative mx-auto max-w-[var(--container-max)] px-4 py-16 sm:px-6">
+      <EraAmbientFX density="medium" />
+
+      <header className="relative max-w-2xl">
         <div className="mb-3 flex items-center gap-2">
-          <Badge tone="accent">Comunidade</Badge>
-          <Badge>128 mil membros</Badge>
+          <Badge tone="accent">
+            <Zap className="mr-1 size-3.5" /> Família Paramore Brasil
+          </Badge>
+          <Badge>128 mil membros ativos</Badge>
         </div>
-        <h1 className="font-display text-4xl font-extrabold tracking-tight text-content-primary sm:text-5xl">
-          Comunidade
+        <h1 className="font-display text-4xl font-extrabold tracking-tight text-content-primary sm:text-6xl">
+          Comunidade & Fã-Clube
         </h1>
         <p className="mt-4 text-lg leading-relaxed text-content-secondary">
-          A maior fã-base do Paramore no Brasil se encontra aqui: tradução
-          colaborativa, torneios de setlists e o acervo que você lê em todo o
-          portal.
+          O ponto de encontro dos fãs brasileiros: mutirões de tradução de letras,
+          torneios de setlists, organização de caravanas e o acervo histórico colaborativo.
         </p>
       </header>
 
+      {/* Estatísticas em Destaque */}
       <dl className="mt-10 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {STATS.map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-line-1 bg-surface-1 p-5">
-            <dt className="order-2 mt-1 block text-xs text-content-muted">{stat.label}</dt>
-            <dd className="order-1 font-display text-3xl font-extrabold tracking-tight text-accent">
+          <div
+            key={stat.label}
+            className="rounded-2xl border border-line-1 bg-surface-1/90 p-6 backdrop-blur shadow-md transition-transform hover:-translate-y-1"
+          >
+            <dt className="order-2 mt-2 block text-xs font-semibold text-content-muted uppercase tracking-wider">{stat.label}</dt>
+            <dd className="order-1 font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-accent drop-shadow-sm">
               {stat.value}
             </dd>
           </div>
         ))}
       </dl>
 
-      <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        <section>
+      <div className="mt-12 grid gap-8 lg:grid-cols-2">
+        {/* Canais do Discord */}
+        <section className="rounded-2xl border border-line-1 bg-surface-1/90 p-6 backdrop-blur shadow-lg">
           <h2 className="flex items-center gap-2 font-display text-2xl font-extrabold tracking-tight text-content-primary">
             <MessageSquare className="size-5 text-accent" aria-hidden="true" />
-            Discórdia #COMUNIDADE
+            Servidor Oficial #COMUNIDADE
           </h2>
+          <p className="mt-1 text-xs text-content-muted">Canais de discussão abertos para membros</p>
+
           <ul className="mt-5 space-y-3">
             {CHANNELS.map((channel) => (
               <li
                 key={channel.name}
-                className="flex items-center gap-4 rounded-xl border border-line-1 bg-surface-1 p-4 transition-colors hover:border-accent/60"
+                className="group flex items-center gap-4 rounded-xl border border-line-1 bg-surface-2/60 p-4 transition-all duration-200 hover:border-accent/80 hover:bg-surface-2"
               >
-                <channel.icon className="size-5 shrink-0 text-accent" aria-hidden="true" />
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-1 text-accent group-hover:scale-110 transition-transform">
+                  <channel.icon className="size-5" aria-hidden="true" />
+                </div>
                 <div>
-                  <p className="font-mono text-sm font-semibold text-content-primary">
+                  <p className="font-mono text-sm font-bold text-content-primary group-hover:text-accent transition-colors">
                     {channel.name}
                   </p>
                   <p className="text-xs text-content-muted">{channel.desc}</p>
@@ -109,24 +124,35 @@ export default function Comunidade() {
               </li>
             ))}
           </ul>
-          <Link
-            to="/comunidade"
-            className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-accent transition-colors hover:text-accent-hover"
+
+          <a
+            href="https://discord.gg/paramore"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-xs font-bold uppercase tracking-wider text-content-inverse shadow-glow transition-all hover:bg-accent-hover hover:scale-105"
           >
-            Entrar no servidor
-            <ArrowRight className="size-4 translate-y-[2px]" aria-hidden="true" />
-          </Link>
+            Entrar no Servidor do Discord
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </a>
         </section>
 
+        {/* Projetos Comunitários */}
         <section>
-          <h2 className="font-display text-2xl font-extrabold tracking-tight text-content-primary">
-            Projetos da comunidade
-          </h2>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-2xl font-extrabold tracking-tight text-content-primary">
+              Projetos & Iniciativas
+            </h2>
+            <span className="font-mono text-xs text-accent flex items-center gap-1">
+              <Sparkles className="size-3" /> Colaborativo
+            </span>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
             {PROJECTS.map((project) => (
-              <article
+              <TiltCard
                 key={project.title}
-                className="flex flex-col rounded-xl border border-line-1 bg-surface-1 p-5 transition-colors hover:border-accent/60"
+                maxTilt={6}
+                className="flex flex-col rounded-2xl border border-line-1 bg-surface-1/90 p-5 backdrop-blur shadow-sm transition-all duration-300 hover:border-accent/60 hover:bg-surface-2/60"
               >
                 <project.icon className="size-6 text-accent" aria-hidden="true" />
                 <h3 className="mt-3 font-display text-base font-extrabold tracking-tight text-content-primary">
@@ -136,29 +162,32 @@ export default function Comunidade() {
                   {project.desc}
                 </p>
                 <div className="mt-auto pt-4">
-                  <Badge>{project.tag}</Badge>
+                  <Badge tone="accent">{project.tag}</Badge>
                 </div>
-              </article>
+              </TiltCard>
             ))}
           </div>
         </section>
       </div>
 
-      <section className="mt-10">
+      {/* Feed de Atividade Recente */}
+      <section className="mt-12">
         <h2 className="flex items-center gap-2 font-display text-2xl font-extrabold tracking-tight text-content-primary">
           <Users className="size-5 text-accent" aria-hidden="true" />
-          Atividade recente
+          Atividade em Tempo Real
         </h2>
-        <ul className="mt-5 space-y-2">
+        <ul className="mt-5 space-y-3">
           {ACTIVITY.map((item) => (
             <li
               key={`${item.room}-${item.user}`}
-              className="rounded-lg border border-line-1 bg-surface-1 px-4 py-3"
+              className="flex items-start justify-between gap-4 rounded-xl border border-line-1 bg-surface-1/80 px-5 py-4 backdrop-blur transition-colors hover:border-accent/50"
             >
-              <p className="text-sm text-content-secondary">{item.text}</p>
-              <p className="mt-1 font-mono text-[11px] text-content-muted">
-                {item.room} · {item.user} · {item.when}
-              </p>
+              <div>
+                <p className="text-sm text-content-secondary leading-relaxed">{item.text}</p>
+                <p className="mt-1.5 font-mono text-[11px] text-content-muted">
+                  <span className="text-accent font-semibold">{item.room}</span> · @{item.user} · {item.when}
+                </p>
+              </div>
             </li>
           ))}
         </ul>

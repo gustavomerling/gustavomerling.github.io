@@ -240,6 +240,38 @@ html.pb-cursor-none * {
   }
 }
 
+@keyframes paramore-vinyl-spin {
+  from {
+    transform: translateX(7.5rem) rotate(0deg);
+  }
+  to {
+    transform: translateX(7.5rem) rotate(360deg);
+  }
+}
+
+@keyframes paramore-eq-bounce {
+  0% {
+    height: 20%;
+  }
+  100% {
+    height: 100%;
+  }
+}
+
+/* CRT Scanlines para Videografia TV */
+.crt-scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.03)
+  );
+  background-size: 100% 3px, 6px 100%;
+}
+
 /* Acessibilidade: respeita prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   *,
