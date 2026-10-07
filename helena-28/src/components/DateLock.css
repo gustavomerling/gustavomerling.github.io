@@ -1,0 +1,82 @@
+/* Tela "ainda não": ocupa a página inteira até a data */
+.lock {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: var(--space-16) var(--space-4);
+  background:
+    radial-gradient(circle at 50% 40%, var(--pink-50), transparent 60%),
+    var(--pink-100);
+  text-align: center;
+}
+
+.lock__inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-8);
+}
+
+.lock__title {
+  font-size: clamp(3rem, 11vw, 7rem);
+  font-weight: 400;
+}
+.lock__title .ransom {
+  justify-content: center;
+}
+
+.lock__count {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-6) var(--space-8);
+}
+.lock__unit {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+}
+.lock__value {
+  font-size: clamp(2.75rem, 9vw, 5rem);
+  font-variant-numeric: tabular-nums;
+}
+.lock__value .ransom {
+  flex-wrap: nowrap;
+}
+.lock__label {
+  padding: 2px var(--space-3);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-pill);
+  background: var(--white);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.lock__text {
+  max-width: 34ch;
+  font-family: var(--font-serif);
+  font-size: clamp(1.25rem, 2.6vw, 1.75rem);
+  font-style: italic;
+  line-height: var(--leading-snug);
+  color: var(--ink-soft);
+}
+
+.lock__sticker {
+  position: absolute;
+  top: 8%;
+  right: 8%;
+  z-index: 1;
+}
+@media (max-width: 640px) {
+  .lock__sticker {
+    top: var(--space-4);
+    right: var(--space-4);
+    scale: 0.7;
+  }
+}

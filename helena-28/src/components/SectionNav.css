@@ -1,0 +1,61 @@
+.section-nav {
+  position: fixed;
+  top: 50%;
+  right: var(--space-4);
+  z-index: 100;
+  display: grid;
+  gap: var(--space-3);
+  translate: 0 -50%;
+}
+
+.section-nav__dot {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--white);
+  cursor: pointer;
+  transition: background 0.2s ease, scale 0.2s ease;
+}
+.section-nav__dot:hover {
+  scale: 1.25;
+}
+.section-nav__dot.is-active {
+  background: var(--pink-500);
+  scale: 1.3;
+}
+
+/* rótulo aparece ao lado, no hover/foco */
+.section-nav__label {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + var(--space-3));
+  translate: 0 -50%;
+  padding: 2px var(--space-2);
+  border: 1.5px solid var(--ink);
+  background: var(--white);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  color: var(--ink);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.section-nav__dot:hover .section-nav__label,
+.section-nav__dot:focus-visible .section-nav__label {
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  .section-nav {
+    right: var(--space-2);
+    gap: var(--space-2);
+  }
+  .section-nav__dot {
+    width: 10px;
+    height: 10px;
+  }
+}

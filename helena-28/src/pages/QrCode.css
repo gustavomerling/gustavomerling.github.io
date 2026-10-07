@@ -1,0 +1,44 @@
+.qr {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: var(--space-12) var(--space-4);
+  background: var(--pink-100);
+  text-align: center;
+}
+
+.qr__inner {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-6);
+}
+
+.qr__title {
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  font-weight: 400;
+}
+
+/* QR colado num papel, levemente torto */
+.qr__card {
+  position: relative;
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border: var(--border);
+  box-shadow: var(--shadow-hard-lg);
+  background: var(--white);
+  rotate: -2deg;
+}
+.qr__card img {
+  display: block;
+  width: min(320px, 70vw);
+  height: auto;
+  image-rendering: pixelated;
+}
+.qr__card figcaption {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}

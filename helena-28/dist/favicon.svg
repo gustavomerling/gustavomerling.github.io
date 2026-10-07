@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- recorte de papel rosa, inclinado, com sombra dura -->
+  <g transform="rotate(-6 32 32)">
+    <rect x="9" y="9" width="50" height="50" fill="#22101a" />
+    <rect x="5" y="5" width="50" height="50" fill="#ff4f9a" stroke="#22101a" stroke-width="3" />
+  </g>
+  <!-- o H -->
+  <path
+    transform="rotate(4 30 30)"
+    d="M16 14h9v12h10V14h9v32h-9V34H25v12h-9Z"
+    fill="#fffdfa"
+    stroke="#22101a"
+    stroke-width="3"
+    stroke-linejoin="round"
+  />
+  <!-- fitinha laranja -->
+  <rect x="34" y="1" width="22" height="9" fill="#ff7417" fill-opacity=".85" transform="rotate(28 45 5.5)" />
+</svg>

@@ -1,0 +1,80 @@
+/* Folha pautada colada com fita */
+.carta {
+  position: relative;
+  display: grid;
+  gap: var(--space-4);
+  max-width: 680px;
+  margin-inline: auto;
+  padding: var(--space-12) clamp(var(--space-6), 6vw, var(--space-16));
+  background:
+    linear-gradient(90deg, transparent 0 46px, rgb(227 38 47 / 0.35) 46px 48px, transparent 48px),
+    repeating-linear-gradient(transparent 0 35px, rgb(34 16 26 / 0.1) 35px 36px),
+    var(--white);
+  box-shadow: var(--shadow-photo);
+  rotate: -1deg;
+}
+
+.carta__sticker {
+  position: absolute;
+  top: -40px;
+  right: -24px;
+}
+
+.carta__greeting {
+  font-family: var(--font-hand);
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--red-500);
+}
+
+.carta__text {
+  font-family: var(--font-serif);
+  font-size: clamp(1.25rem, 2.4vw, 1.625rem);
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.carta__diva {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--pink-500);
+}
+
+.carta__signature {
+  justify-self: end;
+  font-family: var(--font-hand);
+  font-size: 2rem;
+  font-weight: 700;
+  rotate: -3deg;
+}
+
+/* GIF de Lover colado do lado de fora da folha; no celular, entra no fluxo */
+.carta__gif {
+  position: absolute;
+  bottom: var(--space-16);
+  left: -230px;
+  z-index: 2;
+  width: 260px;
+}
+@media (max-width: 1100px) {
+  .carta__gif {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    order: 99;
+    justify-self: start;
+    width: min(280px, 100%);
+    margin-top: var(--space-4);
+  }
+}
+
+/* perspectiva para o "desdobrar" da folha */
+.carta-stage {
+  perspective: 1400px;
+}
+.carta-stage > div {
+  transform-origin: top center;
+}

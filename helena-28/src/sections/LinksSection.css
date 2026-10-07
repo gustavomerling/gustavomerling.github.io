@@ -1,0 +1,80 @@
+/* Seção pequena (sem 100dvh): fileira de "etiquetas" com logo */
+#links.section {
+  padding-block: var(--space-16);
+}
+
+.links-uteis {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.links-uteis__item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: var(--space-3);
+  align-items: center;
+  min-width: 210px;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-hard);
+  background: var(--white);
+  color: var(--ink);
+  text-decoration: none;
+  transition:
+    translate 0.25s cubic-bezier(0.3, 1.6, 0.5, 1),
+    rotate 0.25s cubic-bezier(0.3, 1.6, 0.5, 1),
+    box-shadow 0.2s ease;
+}
+.links-uteis .reveal-item:nth-child(odd) .links-uteis__item { rotate: -1.5deg; }
+.links-uteis .reveal-item:nth-child(even) .links-uteis__item { rotate: 1.5deg; }
+.links-uteis__item:hover {
+  rotate: 0deg !important;
+  translate: -3px -5px;
+  box-shadow: 7px 8px 0 var(--ink);
+}
+.links-uteis__item:hover .links-uteis__logo {
+  animation: sticker-spin 0.6s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+.links-uteis__logo {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--white);
+}
+.links-uteis__logo img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+/* selo próprio para quem não tem logo (loja da Taylor) */
+.links-uteis__badge {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: var(--pink-500);
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.links-uteis__name {
+  font-weight: 700;
+  line-height: 1.2;
+}
+.links-uteis__joke {
+  font-family: var(--font-hand);
+  font-size: var(--text-lg);
+  line-height: 1.1;
+  color: var(--red-500);
+}

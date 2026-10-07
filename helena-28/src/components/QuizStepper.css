@@ -1,0 +1,63 @@
+.quiz-stepper {
+  display: grid;
+  gap: var(--space-6);
+  max-width: 640px;
+  margin-inline: auto;
+}
+
+/* bolinhas de progresso */
+.quiz-stepper__progress {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+}
+.quiz-stepper__progress span {
+  width: 32px;
+  height: 10px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-pill);
+  background: var(--white);
+}
+.quiz-stepper__progress span.is-current {
+  background: var(--pink-300);
+}
+.quiz-stepper__progress span.is-done {
+  background: var(--pink-500);
+}
+
+.quiz-stepper__count {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  text-align: center;
+  color: var(--ink-muted);
+}
+
+.quiz-stepper__stage {
+  display: grid;
+  gap: var(--space-6);
+}
+.quiz-stepper__card {
+  position: relative;
+}
+
+.quiz-stepper__next {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.quiz-stepper__result {
+  position: relative;
+  justify-items: center;
+  align-items: center;
+  padding-block: var(--space-12);
+  text-align: center;
+}
+.quiz-stepper__gif {
+  width: min(320px, 100%);
+}
+.quiz-stepper__score {
+  font-size: clamp(2.5rem, 8vw, 4rem);
+}

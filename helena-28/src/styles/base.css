@@ -1,0 +1,116 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  /* clip (e não hidden): hidden quebraria o position: sticky da linha do tempo */
+  overflow-x: clip;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+/* Granulado por cima de tudo: a assinatura visual da Helena */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  background: var(--noise);
+  opacity: 0.32;
+  mix-blend-mode: multiply;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+blockquote {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: var(--leading-snug);
+  font-weight: 700;
+}
+
+a {
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* Scrollbar: trilho de papel, "polegar" quadrado (encaixa no topo e no fim) com contorno de tinta */
+/* Só no Firefox: no Chrome, scrollbar-color anularia o ::-webkit-scrollbar abaixo */
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-color: var(--pink-500) var(--paper-dark);
+  }
+}
+::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+::-webkit-scrollbar-track {
+  background: var(--paper-dark);
+  border-left: 2px solid var(--ink);
+}
+::-webkit-scrollbar-thumb {
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  background: linear-gradient(var(--pink-500), var(--red-500) 60%, var(--orange-500));
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--pink-500);
+}
+::-webkit-scrollbar-corner {
+  background: var(--paper-dark);
+}
+
+::selection {
+  background: var(--pink-500);
+  color: var(--white);
+}
+
+:focus-visible {
+  outline: 3px dashed var(--pink-500);
+  outline-offset: 3px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

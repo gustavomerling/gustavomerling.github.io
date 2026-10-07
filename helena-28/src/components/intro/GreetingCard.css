@@ -1,0 +1,179 @@
+/* =========================================================
+   Cartão
+   ========================================================= */
+
+/* Entrada: vem de longe, girando, com um leve "quique" no fim */
+.gcard-enter {
+  animation: gcard-in 1.1s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.gcard-enter.is-leaving {
+  animation: gcard-out 0.7s ease-in forwards;
+}
+@keyframes gcard-in {
+  from {
+    opacity: 0;
+    transform: scale(0.15) rotate(-24deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+@keyframes gcard-out {
+  to {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+/* Flutuando parado no ar */
+.gcard-float {
+  animation: gcard-float 4.5s ease-in-out 1.1s infinite;
+}
+@keyframes gcard-float {
+  0%,
+  100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-14px) rotate(2deg); }
+}
+
+.gcard {
+  position: relative;
+  display: block;
+  width: min(78vw, 340px);
+  aspect-ratio: 3 / 4;
+  container-type: inline-size;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  perspective: 1400px;
+  transition: transform 0.9s cubic-bezier(0.3, 0.9, 0.3, 1);
+}
+.gcard:disabled {
+  cursor: default;
+}
+.gcard:not(:disabled):hover .gcard__cover {
+  transform: rotateY(-12deg);
+}
+/* em telas largas, o cartão aberto desliza para centralizar as duas folhas */
+@media (min-width: 760px) {
+  .gcard.is-open {
+    transform: translateX(50%);
+  }
+}
+
+/* Miolo, revelado quando a capa abre */
+.gcard__inside {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: var(--border);
+  box-shadow: var(--shadow-hard-lg);
+  background: var(--white);
+  text-align: center;
+}
+/* tamanho proporcional à largura do cartão, numa linha só */
+.gcard__inside-title {
+  font-size: 12cqi;
+}
+.gcard__inside-title .ransom {
+  flex-wrap: nowrap;
+}
+.gcard__inside .hand {
+  font-size: 2.5rem;
+}
+
+/* Capa: gira na dobra da esquerda */
+.gcard__cover {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  transition: transform 1s cubic-bezier(0.6, 0, 0.3, 1);
+}
+.gcard.is-open .gcard__cover {
+  transform: rotateY(-170deg);
+}
+.gcard__face {
+  position: absolute;
+  inset: 0;
+  border: var(--border);
+  backface-visibility: hidden;
+}
+.gcard__face--front {
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow-hard-lg);
+  /* bolinhas, no espírito Hello Kitty */
+  background:
+    radial-gradient(circle, var(--pink-300) 3px, transparent 3.5px) 0 0 / 26px 26px,
+    radial-gradient(circle, var(--pink-300) 3px, transparent 3.5px) 13px 13px / 26px 26px,
+    var(--pink-500);
+}
+.gcard__face--back {
+  transform: rotateY(180deg);
+  background:
+    repeating-linear-gradient(transparent 0 23px, rgb(34 16 26 / 0.1) 23px 24px),
+    var(--paper);
+}
+
+.gcard__title {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  font-size: clamp(2.25rem, 11vw, 3.25rem);
+  rotate: -4deg;
+}
+.gcard__to {
+  font-family: var(--font-hand);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--white);
+}
+
+.gcard__cta {
+  position: absolute;
+  bottom: var(--space-6);
+  left: 50%;
+  translate: -50% 0;
+  padding: var(--space-1) var(--space-4);
+  border: var(--border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-hard);
+  background: var(--white);
+  font-family: var(--font-hand);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  animation: gcard-pulse 1.6s ease-in-out infinite;
+}
+@keyframes gcard-pulse {
+  0%,
+  100% { scale: 1; }
+  50% { scale: 1.08; }
+}
+
+.gcard__bow,
+.gcard__sticker,
+.gcard__ghost,
+.gcard__heart {
+  position: absolute;
+  line-height: 0;
+}
+.gcard__bow { top: 6%; left: 7%; rotate: -14deg; }
+.gcard__sticker { top: -6%; right: -8%; }
+.gcard__ghost { bottom: 22%; left: 8%; rotate: 10deg; animation: gcard-boo 3s ease-in-out infinite; }
+.gcard__heart { bottom: 26%; right: 10%; rotate: 12deg; }
+@keyframes gcard-boo {
+  0%,
+  100% { translate: 0 0; }
+  50% { translate: 0 -6px; }
+}

@@ -1,0 +1,79 @@
+/* =========================================================
+   Explosão de partículas
+   ========================================================= */
+.burst {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  overflow: hidden;
+  pointer-events: none;
+}
+.burst--local {
+  position: absolute;
+  z-index: 20;
+  overflow: visible;
+}
+.burst--local .particle {
+  animation-delay: var(--delay);
+}
+.particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  line-height: 0;
+  opacity: 0;
+  animation: particle-fly var(--dur) cubic-bezier(0.15, 0.7, 0.35, 1) calc(0.35s + var(--delay)) forwards;
+}
+@keyframes particle-fly {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.3) rotate(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--x1)), calc(-50% + var(--y1))) scale(1) rotate(calc(var(--rot) * 0.4));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--x2)), calc(-50% + var(--y2))) scale(0.9) rotate(var(--rot));
+  }
+}
+.particle__shape {
+  display: block;
+  border: 1.5px solid var(--ink);
+}
+.particle--dot .particle__shape {
+  border-radius: 50%;
+}
+
+.particle--butterfly {
+  animation-name: butterfly-fly;
+  animation-timing-function: ease-in-out;
+}
+@keyframes butterfly-fly {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2) rotate(0);
+  }
+  10% {
+    opacity: 1;
+  }
+  45% {
+    transform: translate(calc(-50% + var(--x1)), calc(-50% + var(--y1))) scale(1) rotate(var(--rot));
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--x2)), calc(-50% + var(--y2))) scale(0.8) rotate(calc(var(--rot) * -1));
+  }
+}
+.butterfly__wing {
+  transform-box: view-box;
+  transform-origin: 20px 16px;
+  animation: flap var(--flap, 0.18s) ease-in-out infinite alternate;
+}
+@keyframes flap {
+  to { transform: scaleX(0.25); }
+}

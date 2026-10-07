@@ -1,0 +1,204 @@
+/* Estilos só do catálogo; não fazem parte do design system */
+.ds-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: var(--border);
+  background: var(--ink);
+  color: var(--paper);
+}
+.ds-header__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-6);
+  padding-block: var(--space-3);
+}
+.ds-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+.ds-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+.ds-toc button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--pink-300);
+  cursor: pointer;
+}
+.ds-toc button:hover {
+  color: var(--white);
+}
+
+.section[id] {
+  scroll-margin-top: 56px;
+}
+
+.ds-stack {
+  display: grid;
+  gap: var(--space-16);
+}
+
+.ds-specimen {
+  display: grid;
+  gap: var(--space-6);
+}
+.ds-specimen__name {
+  justify-self: start;
+  padding: 2px var(--space-2);
+  border: 1.5px solid var(--ink);
+  background: var(--white);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink);
+}
+
+/* Moldura para blocos de largura total */
+.ds-frame {
+  overflow: hidden;
+  border: 2px dashed var(--ink);
+  background: var(--paper);
+}
+.ds-frame--padded {
+  padding: var(--space-8) var(--space-6);
+}
+.ds-frame--bleed {
+  padding-block: var(--space-6);
+}
+.ds-frame .hero {
+  padding-block: var(--space-12);
+}
+.ds-frame .section {
+  padding-block: var(--space-12);
+}
+.ds-center {
+  display: grid;
+  place-items: center;
+}
+
+.ds-palette {
+  display: grid;
+  gap: var(--space-6);
+}
+.ds-palette__group {
+  display: grid;
+  gap: var(--space-2);
+}
+.ds-palette__label {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  font-style: italic;
+}
+.ds-swatches {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+}
+.ds-swatch {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+}
+.ds-swatch__color {
+  aspect-ratio: 3 / 2;
+  border: var(--border);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.ds-fonts {
+  display: grid;
+  border-top: var(--border);
+}
+.ds-font {
+  display: grid;
+  gap: var(--space-2);
+  padding-block: var(--space-4);
+  border-bottom: 1px solid var(--paper-dark);
+}
+.ds-font__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+.ds-font__sample {
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.ds-shape {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 3 / 2;
+  border: var(--border);
+  background: var(--white);
+  font-size: var(--text-xs);
+}
+.ds-shape--noise {
+  background: var(--pink-300);
+}
+.ds-shape--noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--noise);
+  mix-blend-mode: multiply;
+}
+.ds-shape code {
+  position: relative;
+  z-index: 1;
+  padding: 2px var(--space-2);
+  background: var(--white);
+}
+
+.ds-ransom {
+  display: grid;
+  gap: var(--space-6);
+  font-size: clamp(3rem, 10vw, 6rem);
+}
+
+.ds-icon {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+}
+
+.ds-taped {
+  position: relative;
+}
+
+.ds-polaroids {
+  display: grid;
+  gap: var(--space-8);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 240px));
+  padding-top: var(--space-4);
+}
+
+.ds-tone {
+  padding-block: var(--space-8);
+}
+.ds-tone code {
+  font-size: var(--text-sm);
+}
+
+/* No catálogo, blocos de altura total ficam compactos */
+.ds-frame .hero,
+.ds-frame .section--full {
+  min-height: auto;
+}
