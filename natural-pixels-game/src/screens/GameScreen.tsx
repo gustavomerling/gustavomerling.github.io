@@ -1,13 +1,26 @@
-import { ArrowLeft, Moon, Sun, Thermometer } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { ArrowLeft, Moon, Settings, Sun, Thermometer } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Navigate } from '../app/screens.ts'
+import { SoundEngine } from '../audio/SoundEngine.ts'
 import { GRAIN_CELLS, useSettings } from '../app/settings.ts'
 import { EMPTY, PALETTE, elementIndex } from '../elements/registry.ts'
+import { daylightAt } from '../engine/daylight.ts'
 import type { SandboxStats } from '../engine/Sandbox.ts'
 import { SandboxView, type SandboxHandle } from '../game/SandboxView.tsx'
 import { BRUSH_SIZES, SPEEDS } from '../game/settings.ts'
+import { SettingsPanel } from '../game/SettingsPanel.tsx'
 import { Sidebar } from '../game/Sidebar.tsx'
 import { Button } from '../ui/Button.tsx'
+
+/** Elements whose numbers drive the ambient sound. */
+const SOUND_SOURCES = {
+  fire: elementIndex('fire'),
+  steam: elementIndex('steam'),
+  cloud: elementIndex('cloud'),
+  birds: elementIndex('bird'),
+  bees: elementIndex('bee'),
+  grass: elementIndex('grass'),
+}
 
 /** Time of day (0..1) as a 24h clock, e.g. 0.5 -> "12:00". */
 function clock(timeOfDay: number): string {
@@ -30,10 +43,54 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
     counts: new Uint32Array(0),
   })
   const isDay = stats.timeOfDay >= 0.25 && stats.timeOfDay < 0.75
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const closeSettings = useCallback(() => setSettingsOpen(false), [])
+
+  // Ambient sound: starts on the first click/key (browser rule), follows the settings,
+  // and listens to the world through the stats.
+  const soundRef = useRef<SoundEngine | null>(null)
+  const pausedRef = useRef(paused)
+  useEffect(() => {
+    pausedRef.current = paused
+  }, [paused])
+
+  useEffect(() => {
+    const sound = new SoundEngine()
+    soundRef.current = sound
+    const unlock = () => sound.unlock()
+    window.addEventListener('pointerdown', unlock)
+    window.addEventListener('keydown', unlock)
+    return () => {
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('keydown', unlock)
+      sound.dispose()
+      soundRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    soundRef.current?.setVolume(settings.sound, settings.volume)
+  }, [settings.sound, settings.volume])
+
+  const handleStats = useCallback((next: SandboxStats) => {
+    setStats(next)
+    const { counts } = next
+    const level = (index: number) => (pausedRef.current ? 0 : counts[index])
+    soundRef.current?.update({
+      fire: level(SOUND_SOURCES.fire),
+      steam: level(SOUND_SOURCES.steam),
+      cloud: level(SOUND_SOURCES.cloud),
+      birds: level(SOUND_SOURCES.birds),
+      bees: level(SOUND_SOURCES.bees),
+      grass: level(SOUND_SOURCES.grass),
+      light: daylightAt(next.timeOfDay),
+    })
+  }, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey) return
+      // The settings panel handles its own keys (Escape closes it).
+      if (settingsOpen || e.ctrlKey || e.metaKey || e.altKey) return
       // Keys 1–9 pick the first nine elements, 0 the tenth.
       if (/^[0-9]$/.test(e.key)) {
         const slot = e.key === '0' ? 9 : Number(e.key) - 1
@@ -68,7 +125,7 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onNavigate])
+  }, [onNavigate, settingsOpen])
 
   return (
     <main className="screen game">
@@ -90,6 +147,7 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
           </span>
           {stats.particles.toLocaleString('en-US')} particles · {stats.fps} fps
         </span>
+        <Button variant="ghost" size="sm" icon={Settings} aria-label="Settings" onClick={() => setSettingsOpen(true)} />
       </header>
 
       <div className="game__body">
@@ -106,6 +164,7 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
           onClear={() => sandboxRef.current?.clear()}
           dayCycle={settings.dayCycle}
           onDayCycle={(dayCycle) => update({ dayCycle })}
+          getSandbox={() => sandboxRef.current?.sandbox ?? null}
         />
 
         <SandboxView
@@ -117,9 +176,11 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
           dayCycle={settings.dayCycle}
           cellTarget={GRAIN_CELLS[settings.grain]}
           renderMode={settings.graphics}
-          onStats={setStats}
+          onStats={handleStats}
         />
       </div>
+
+      {settingsOpen && <SettingsPanel inGame onClose={closeSettings} />}
     </main>
   )
 }

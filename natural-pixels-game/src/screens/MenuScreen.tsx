@@ -1,11 +1,12 @@
-import { BookOpen, Info, Play } from 'lucide-react'
+import { BookOpen, Info, Play, Settings } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import type { Navigate } from '../app/screens.ts'
+import { SettingsPanel } from '../game/SettingsPanel.tsx'
 import { Button } from '../ui/Button.tsx'
 import { FallingParticles } from '../ui/FallingParticles.tsx'
 import { Panel } from '../ui/Panel.tsx'
 
-type MenuPanel = 'how-to-play' | 'about' | null
+type MenuPanel = 'how-to-play' | 'settings' | 'about' | null
 
 export function MenuScreen({ onNavigate }: { onNavigate: Navigate }) {
   const [panel, setPanel] = useState<MenuPanel>(null)
@@ -25,6 +26,9 @@ export function MenuScreen({ onNavigate }: { onNavigate: Navigate }) {
           <Button variant="ghost" icon={BookOpen} onClick={() => setPanel('how-to-play')}>
             How to Play
           </Button>
+          <Button variant="ghost" icon={Settings} onClick={() => setPanel('settings')}>
+            Settings
+          </Button>
           <Button variant="ghost" icon={Info} onClick={() => setPanel('about')}>
             About
           </Button>
@@ -33,19 +37,28 @@ export function MenuScreen({ onNavigate }: { onNavigate: Navigate }) {
 
       {panel === 'how-to-play' && (
         <Panel title="How to Play" onClose={closePanel}>
+          <h3 className="tips__heading">Controls</h3>
           <ul className="tips">
-            <li>Pick an element from the toolbar (or press 1–9, 0) and draw on the canvas.</li>
-            <li>Hold the button to keep pouring. Right-click or E to erase.</li>
-            <li>Space pauses, N steps one tick, [ and ] change the brush size.</li>
-            <li>Water soaks into soil and darkens it. Sprinkle seeds on wet soil to make them sprout.</li>
-            <li>Keep the soil watered: the sprout grows tall, forms a crown and turns into a tree.</li>
-            <li>Grown trees bear fruit. Release some birds: they eat fruit and drop the seeds far away.</li>
-            <li>Build a metal pot, fill it with water and light a fire under it: the water boils into steam, which turns into clouds and rains back down.</li>
-            <li>Dry wood and plants burn into ash. Living, watered trees resist fire for a while; water puts it out.</li>
-            <li>Hover the canvas to see what's there and how hot it is.</li>
+            <li>Pick an element in the sidebar (or press 1–9, 0) and draw on the canvas. Hold to keep pouring.</li>
+            <li>Right-click or E erases. Space pauses, N steps, [ and ] resize the brush.</li>
+            <li>Hover the canvas to see what's there and how hot it is. Save your world in the Scene section.</li>
+          </ul>
+          <h3 className="tips__heading">Life</h3>
+          <ul className="tips">
+            <li>Water soaks into soil. Seeds sprout in wet soil and grow into trees that bear fruit.</li>
+            <li>Plants grow by day. Ash and fallen leaves fertilize the soil; worms turn them into rich earth.</li>
+            <li>Bees pollinate tree crowns for more fruit. Birds eat fruit and drop the seeds far away.</li>
+            <li>Grass spreads over wet soil. Fish live in water. Soaked soil turns into mud.</li>
+          </ul>
+          <h3 className="tips__heading">Heat</h3>
+          <ul className="tips">
+            <li>Fire under a metal pot of water boils it into steam, which becomes clouds and rains back down.</li>
+            <li>Dry wood and plants burn into ash. Living, watered trees resist fire; water puts it out.</li>
           </ul>
         </Panel>
       )}
+
+      {panel === 'settings' && <SettingsPanel onClose={closePanel} />}
 
       {panel === 'about' && (
         <Panel title="About" onClose={closePanel}>

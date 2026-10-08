@@ -9,16 +9,18 @@ Deploy: `https://gustavomerling.github.io/natural-pixels-game/dist/` (estático,
 
 ## 1. Visão
 
-O jogador desenha elementos numa tela (terra, água, sementes, metal, fogo...) e assiste eles
-interagirem sozinhos: água molha a terra, semente em terra molhada vira planta, planta bem regada
-vira árvore, fogo embaixo de uma panela de metal ferve a água, o vapor sobe, vira nuvem e chove.
+O jogador desenha elementos numa tela e assiste eles interagirem sozinhos: água molha a terra,
+semente brota e vira árvore, a árvore dá fruta, o pássaro come e espalha a semente; fogo embaixo de
+uma panela de metal ferve a água, o vapor vira nuvem e chove; madeira queima em cinza, que aduba a
+terra.
 
 Pilares:
 
 1. **Emergência** — regras simples por elemento, comportamentos complexos no conjunto.
 2. **Componentização** — cada elemento é um módulo isolado; adicionar um novo não exige mexer no motor.
-3. **Bonito, não "pixelado"** — a simulação é em grade, mas a renderização suaviza (líquidos com
-   superfície contínua, fogo com brilho, gases difusos, variação orgânica de cor).
+3. **Bonito, não "pixelado"** — a simulação é em grade, mas o renderer WebGL suaviza tudo.
+4. **Tudo é partícula** — inclusive os animais. O jogador coloca tudo; o jogo não spawna nada sozinho
+   (exceto o que nasce de reações: grama selvagem, frutas, folhas...).
 
 ---
 
@@ -27,18 +29,20 @@ Pilares:
 | Item | Escolha |
 |---|---|
 | Build | Vite |
-| UI (telas, menus, HUD, toolbar) | React + TypeScript |
+| UI (telas, menus, HUD, sidebar) | React + TypeScript, ícones `lucide-react` |
 | Simulação | TypeScript puro, sem React, em `TypedArray`s |
-| Renderização | Canvas 2D na fase 1 → WebGL2 (shaders) na fase visual |
+| Renderização | WebGL2 ("Smooth") com fallback Canvas 2D ("Pixel") |
+| Som | WebAudio procedural (sem arquivos) |
 | Deploy | `vite build` → `dist/` commitado; `base: './'` |
 | Navegação | estado no React (sem router — GitHub Pages não tem fallback de rota) |
 
 Regras:
 
-- **React não toca na simulação a cada frame.** O loop roda em `requestAnimationFrame` fora do
-  ciclo de render do React; o React só recebe eventos (elemento selecionado, pausa, pincel).
-- **TS com `erasableSyntaxOnly`**: sem `enum`; usar objetos `as const` + union types.
-- Se a performance pedir, a simulação pode ir para um **Web Worker** (o motor já nasce isolado para isso).
+- **React não toca na simulação a cada frame.** O loop roda em `requestAnimationFrame` dentro do
+  `Sandbox`; o React só empurra configurações e eventos de ponteiro, e recebe stats 4×/s.
+- **TS com `erasableSyntaxOnly`**: sem `enum` nem parameter properties.
+- **Sem Web Worker por enquanto**: medido ~2,7 ms por tick numa grade 360×200 (60 ticks/s ≈ 16% de
+  um núcleo). O motor é isolado do React, então mover para um Worker continua possível.
 
 ---
 
@@ -50,33 +54,31 @@ Splash ──(click / any key)──▶ Menu ──(Play)──▶ Game
                                └──(Esc / Menu)───┘
 ```
 
-### 3.1 Splash
-- Título **Natural Pixels**, subtítulo curto ("A tiny world of elements").
-- Fundo animado leve (partículas caindo).
-- "Click to start" — avança no clique ou em qualquer tecla.
+- **Splash**: título, partículas caindo, "Click or press any key to start".
+- **Menu**: Play · How to Play (controles, vida, calor) · Settings · About.
+- **Game**:
+  - **Topo (HUD)**: voltar ao menu, elemento + temperatura sob o cursor, relógio do dia (☀/☾),
+    partículas, FPS, engrenagem de Settings.
+  - **Sidebar à esquerda (30%)**:
+    - *Simulation*: play/pause, passo, velocidade (0.5×–4×), limpar, ciclo dia/noite.
+    - *Brush*: tamanho do pincel e borracha.
+    - *Elements*: um accordion por família (`elements/categories.ts`), gerado do registro; estado
+      aberto/fechado lembrado; ponto verde na família do elemento selecionado.
+    - *Scene*: Save/Load rápido (navegador) e download/abrir arquivo `.npscene`.
+    - Em telas ≤ 760px a sidebar vai para baixo do canvas.
+  - **Canvas** ocupando o resto.
 
-### 3.2 Menu
-- **Play** — abre o sandbox.
-- **How to Play** — painel com controles e dicas de combinações.
-- **About** — créditos/inspiração.
-- (futuro) **Settings** — qualidade gráfica, tamanho da grade, som.
+Atalhos: `1–9`, `0` elementos (na ordem da sidebar) · `E` / botão direito = borracha ·
+`Espaço` pausa · `N` passo · `[` `]` pincel · `Esc` menu (ou fecha o painel aberto).
 
-### 3.3 Game
+### Settings (persistidas no navegador — `app/settings.ts`)
 
-Atalhos: `1–9` elemento · `E` / botão direito = borracha · `Espaço` pausa · `N` passo ·
-`[` `]` pincel · `Esc` menu.
-
-- Canvas da simulação ocupando a maior parte da tela.
-- **Sidebar à esquerda (30% da largura)**, com o canvas ocupando o resto:
-  - *Simulation*: play/pause, passo, velocidade, limpar.
-  - *Brush*: tamanho do pincel e borracha.
-  - *Elements*: um accordion por família (`elements/categories.ts`: Terrain, Water, Plants,
-    Animals, Fire, Materials), gerado do registro; estado aberto/fechado lembrado no navegador;
-    a família com o elemento selecionado ganha um ponto verde mesmo fechada.
-  - Em telas estreitas (≤ 760px) a sidebar vai para baixo do canvas, com rolagem própria.
-- HUD (topo): elemento e temperatura sob o cursor, contagem de partículas, FPS.
-- Botão / `Esc` para voltar ao menu.
-- Input: mouse e toque (desenhar arrastando, com interpolação entre pontos para não deixar buracos).
+| Opção | Valores |
+|---|---|
+| Graphics | Smooth (WebGL2) · Pixel (Canvas 2D nítido) |
+| Grain size | Coarse (40k células) · Normal (72k) · Fine (120k) — vale para o próximo mundo |
+| Day/night cycle | On · Off (dia eterno) |
+| Sound | On · Off + volume |
 
 ---
 
@@ -84,267 +86,217 @@ Atalhos: `1–9` elemento · `E` / botão direito = borracha · `Espaço` pausa 
 
 ```
 src/
-  app/            App.tsx (máquina de telas), tipos de Screen
+  app/            App (máquina de telas), settings (store + provider)
   screens/        SplashScreen, MenuScreen, GameScreen
-  game/           SandboxView (canvas ↔ motor), ElementToolbar, SimControls, settings
-  ui/             componentes reutilizáveis (Button, Panel, FallingParticles, useKey)
+  game/           SandboxView (canvas ↔ motor), Sidebar, ElementPalette, SimControls,
+                  SceneControls, SettingsPanel
+  ui/             Button, Panel, Segmented, FallingParticles, useKey
+  audio/          SoundEngine (WebAudio procedural)
   engine/
-    Sandbox.ts    fachada: loop (passo fixo), pincel, pausa/velocidade, stats
+    Sandbox.ts    fachada: loop (passo fixo), pincel, renderer, cenas, stats
     grid.ts       estado em TypedArrays (+ camada `under`)
     simulation.ts passo: lifetime → umidade → update do elemento → movimento; depois calor
     context.ts    CellContext: API relativa que os elementos usam
     moisture.ts   absorção e difusão de umidade
-    thermal.ts    condução, resfriamento, queima, mudanças de fase
+    thermal.ts    condução, resfriamento, secagem, queima, mudanças de fase
+    daylight.ts   relógio do dia, luz, posição do sol/lua
+    scene.ts      salvar/carregar cenas (gzip)
     brush.ts      pincel → células
     behaviors/    movimentos por matter: powder, liquid, gas, energy
-    renderer/     canvas2d.ts (→ webgl.ts na fase 4)
-    constants.ts, random.ts
+    renderer/     webgl.ts + shaders.ts (smooth), canvas2d.ts (pixel), cellColors, sky
   elements/
     types.ts      contrato ElementDefinition
-    registry.ts   lista de todos os elementos (posição = índice numérico; ordem da toolbar)
+    registry.ts   lista de elementos (posição = índice numérico; ordem da sidebar)
+    categories.ts famílias (rótulo + ícone) na ordem da sidebar
     core/         air
-    terrain/      sand, soil, ash
+    terrain/      sand, soil, mud, ash + fertility.ts
     water/        water, steam, cloud
-    plants/       seed, plant, leaf, wood, fruit + tissue.ts (regras compartilhadas)
-    animals/      bird
+    plants/       seed, grass, wood, fruit, plant, leaf, litter + tissue.ts
+    animals/      bird, bee, fish, worm + shared.ts
     fire/         fire
     materials/    metal
 ```
 
-Cada pasta de `elements/` é uma família (= campo `category`) e tem um `index.ts` que exporta seus
-elementos.
-
 ### 4.1 Grade (estado do mundo)
 
-Uma grade `W × H` de células (ex.: 320×180; configurável). Cada atributo é um array separado
-(Structure of Arrays), indexado por `i = y * W + x`:
+Grade `W × H` (tamanho calculado pela área do canvas e pelo "grain"). Structure of Arrays,
+índice `i = y * W + x`:
 
 | Array | Tipo | Uso |
 |---|---|---|
-| `type` | `Uint8Array` | índice do elemento (0 = vazio) |
-| `temp` | `Float32Array` | temperatura em °C (ambiente = 20) — ✅ fase 3 |
-| `water` | `Uint8Array` | umidade/água absorvida (terra, planta) 0–255 — ✅ fase 2 |
-| `life` | `Uint16Array` | timer livre por elemento (atividade do pássaro; futuro: vida útil de vapor, fogo, nuvem) — ✅ |
-| `data` | `Uint8Array` | estado livre por elemento (estágio de crescimento, carga de chuva...) — ✅ fase 2 |
-| `shade` | `Uint8Array` | variação de cor fixa por célula (aspecto orgânico) |
-| `stamp` | `Uint32Array` | tick em que a célula se moveu (evita mover a mesma célula 2×) |
-| `under.*` | type/water/data/life/shade | camada "embaixo": o que uma partícula está cobrindo ao passar por cima (pássaro dentro da copa). `moveOver` guarda o alvo embaixo e devolve ao sair; `place` limpa |
+| `type` | `Uint8Array` | índice do elemento (0 = ar) |
+| `temp` | `Float32Array` | temperatura em °C (ambiente 20; o ar não guarda calor) |
+| `water` | `Uint8Array` | umidade (terra, plantas) 0–255 |
+| `data` | `Uint8Array` | estado livre por elemento (bits documentados em cada arquivo) |
+| `life` | `Uint16Array` | timer livre por elemento; usado pelo motor em elementos com `lifetime` |
+| `shade` | `Uint8Array` | variação de cor fixa por célula |
+| `stamp` | `Uint32Array` | tick em que a célula se moveu (evita mover 2× no mesmo tick) |
+| `under.*` | type/temp/water/data/life/shade | o que uma partícula está cobrindo ao passar por cima (pássaro/abelha dentro da copa). `moveOver` guarda o alvo e devolve ao sair; `place` limpa |
 
 ### 4.2 Passo da simulação
 
-A cada tick (passo fixo, ex.: 60/s):
+A cada tick (60/s × velocidade): o relógio do dia avança; a grade é varrida **de baixo para cima**,
+alternando a direção horizontal. Para cada célula:
 
-1. **Movimento** — varre de baixo para cima, alternando a direção horizontal a cada tick
-   (evita viés para um lado). Cada célula chama o comportamento do seu `matter`.
-2. **Reações** — cada célula testa vizinhos (8-vizinhança) contra a tabela de reações do elemento.
-3. **Temperatura** — difusão entre vizinhos ponderada pela condutividade; fontes (fogo) injetam
-   calor; tudo tende ao ambiente lentamente. Transições de fase por limiar.
-4. **Vida útil** — decrementa `life`; ao zerar, aplica a transformação definida (`into`).
-5. **`update` customizado** — hook opcional do elemento para lógica especial (crescimento de planta).
+1. **Lifetime** — conta o `life`; ao acabar, vira `lifetime.into` (fogo → ar, vapor → nuvem, nuvem → água).
+2. **Umidade** — absorve líquido vizinho e equaliza com um dos 8 vizinhos do mesmo grupo.
+3. **`update`** do elemento — pode retornar `true` para pular o movimento.
+4. **Movimento** do `matter` (powder, liquid, gas, energy). Densidade decide quem afunda.
 
-Densidade decide trocas: um elemento mais denso afunda trocando de lugar com um menos denso
-(areia afunda na água; vapor sobe no ar).
+Depois da varredura, o **passe de calor** (seção 4.5).
 
 ### 4.3 Contrato de elemento
 
-Todo elemento é **dados + hooks opcionais**. O motor só conhece o contrato:
-
 ```ts
-type Matter = 'static' | 'powder' | 'liquid' | 'gas' | 'energy'
-
 interface ElementDefinition {
-  id: string                 // 'water'
-  name: string               // 'Water' (exibido na UI)
-  category: ElementCategory  // família = pasta: 'core' | 'terrain' | 'water' | 'plants' | 'animals' | 'fire' | 'materials'
-  matter: Matter             // comportamento de movimento padrão
-  density: number            // decide quem afunda/sobe (ar = 1)
-  color: ElementColor        // { base: '#hex', variation?, alpha? } + (futuro) parâmetros de shader
-  icon: LucideIcon           // ícone na toolbar (lucide-react)
-  movement?: {
-    slide?: number           // powder: chance de escorregar na diagonal (1 = areia solta)
-    spread?: number          // liquid: quantas células flui para o lado por tick
-    sink?: number            // chance por tick de atravessar outro fluido (arrasto)
-  }
-  brushFill?: number         // fração do pincel preenchida por frame
-  hidden?: boolean           // não aparece na toolbar (ex.: plant, cloud — só surgem por reação)
-
-  thermal?: {
-    conductivity: number     // 0..1
-    initialTemp?: number
-    heatSource?: number      // temperatura que mantém (fogo)
-    transitions?: { above?: number; below?: number; into: string }[]
-  }
-
-  lifetime?: { min: number; max: number; into?: string }  // em ticks
-
-  reactions?: Reaction[]     // regras declarativas com vizinhos
-
-  update?: (ctx: CellContext) => void  // lógica especial, opcional
-}
-
-interface Reaction {
-  with: string               // id do vizinho
-  chance: number             // probabilidade por tick (0..1)
-  self?: string | null       // no que eu viro (null = some; omitido = não muda)
-  other?: string | null      // no que o vizinho vira
-  // efeitos sobre atributos (ex.: transferir água) ficam no hook update
+  id, name, description            // 'water', 'Water', tooltip
+  category: ElementCategory        // família = pasta
+  matter: 'empty' | 'static' | 'powder' | 'liquid' | 'gas' | 'energy'
+  density: number                  // ar = 1
+  color: { base, variation?, alpha?, wet? }
+  icon: LucideIcon
+  movement?: { slide?, spread?, viscosity?, rise?, drift?, sink? }
+  moisture?: { capacity, group, absorbs?, flow?, bias? }
+  thermal?: { conductivity?, initialTemp?, source?, above?, below?, burn? }
+  lifetime?: { min, max, into? }
+  update?: (ctx: CellContext) => boolean | void
+  brushFill?: number
+  hidden?: boolean                 // só surge por reação (plant, leaf, cloud, litter)
 }
 ```
 
-`CellContext` (`engine/context.ts`) expõe uma API pequena e segura, relativa à célula atual:
-`get(dx, dy)` → id, `set(dx, dy, id, { water?, data? })`, `swap(dx, dy)`, `moveOver(dx, dy)`,
-`under(dx, dy)`, `water/setWater`,
-`data/setData`, `life/setLife`, `random()`. O `update` pode retornar `true` para pular o
-movimento padrão do tick. Células criadas por `set` só agem no próximo tick. Elementos **nunca** acessam a grade
-diretamente.
+`CellContext` (relativo à célula atual): `get`, `set(dx, dy, id, { water?, data?, temp? })`,
+`swap`, `moveOver`, `under`, `water/setWater`, `data/setData`, `life/setLife`, `temp/setTemp`,
+`light()` (luz do dia), `random()`. Células criadas por `set` só agem no próximo tick.
 
-Adicionar um elemento = criar `elements/<família>/<id>.ts` exportando um `ElementDefinition`,
-exportá-lo no `index.ts` da pasta e incluí-lo em `registry.ts`. A toolbar (ícone, cor, atalho numérico) se atualiza sozinha.
+Adicionar um elemento = `elements/<família>/<id>.ts` + exportar no `index.ts` da pasta + incluir em
+`registry.ts`. A sidebar (ícone, cor, atalho) se atualiza sozinha.
 
-O ar (`air`) é o elemento de índice 0, densidade 1: pós/líquidos descem trocando com o que for
-mais leve; gases (futuro) sobem trocando com o que for mais pesado.
-
-> Implementado: `name`, `description`, `category`, `matter`, `density`, `color` (com `wet`), `icon`,
-> `movement`, `brushFill`, `hidden` (fase 1); `moisture` e `update` (fase 2); `thermal` e
-> `lifetime` (fase 3). `reactions` declarativas ainda não foram necessárias (as interações estão
-> nos `update`s e no `thermal`).
-
-### 4.3.2 Calor (`thermal`) e vida útil (`lifetime`) — fase 3
-
-```ts
-thermal?: {
-  conductivity?: number                       // 0..1 (metal 0.9, água 0.3, madeira 0.05)
-  initialTemp?: number                        // ao ser pintado/criado
-  source?: number                             // mantém essa temperatura (fogo = 800)
-  above?: { temp, into, chance? }             // água > 100 → vapor (chance 0.01/tick)
-  below?: { temp, into, chance? }
-  burn?: { at, temp?, rate, into? }           // inflamável
-}
-lifetime?: { min, max, into? }                // ticks; usa o `life` da célula
-```
-
-Passe de calor (`engine/thermal.ts`), uma vez por tick depois do movimento:
-1. fontes fixam a temperatura; 2. condução entre vizinhos (cada par uma vez, taxa =
-`min(condutividades) × 0.25`); 3. lados encostados no ar perdem calor para o ambiente (o ar não
-guarda calor); 4. células com umidade acima de 100 °C secam; 5. inflamáveis **secas** (água ≤ 30)
-acima de `burn.at` queimam: se mantêm quentes, soltam chamas no ar vizinho e são consumidas em
-`burn.into` (água encostada apaga); 6. mudanças de fase. Com `chance` < 1, a célula fica presa na
-temperatura de transição até mudar (calor latente: água fervendo segura a panela em 100 °C).
-
-Calibração (simulada sem navegador): panela de metal com 133 células de água e fogo segurado
-embaixo começa a ferver em ~3 s e seca em ~15 s; metal fica ~330 °C com água e só fica em brasa
-seco. Bloco de madeira seca queima todo em ~15 s; madeira molhada (árvore viva) resiste a 2 s de fogo.
-
-O renderer faz sólidos/pós/líquidos acima de 350 °C brilharem em vermelho-alaranjado. O HUD mostra
-elemento e temperatura sob o cursor.
-
-### 4.3.1 Umidade (`moisture`) — fase 2
+### 4.4 Umidade (`moisture`)
 
 ```ts
 moisture?: {
-  capacity: number        // máx. de unidades (≤ 255); 1 célula de água = 100 unidades
-  group: string           // só troca umidade com células do mesmo grupo ('soil', 'plant')
-  absorbs?: string        // líquido que absorve dos vizinhos (soil absorve 'water')
+  capacity: number        // máx. (≤ 255); 1 célula de água = 100 unidades
+  group: string           // só troca com o mesmo grupo ('soil', 'plant')
+  absorbs?: string        // líquido que absorve dos vizinhos
   flow?: number           // fração da diferença equalizada por troca
   bias?: 'down' | 'up'    // terra drena para baixo; seiva sobe
 }
 ```
 
-O motor roda isso para toda célula com `moisture` antes do `update`. Atravessar grupos (raiz
-puxando da terra) é lógica do elemento, via `update` (`elements/plants/tissue.ts`).
+Atravessar grupos (raiz puxando da terra) é lógica do elemento (`plants/tissue.ts`).
 
-### 4.4 Renderização (sem cara de pixel)
+### 4.5 Calor (`thermal`)
 
-- **Fase 1 (Canvas 2D):** escreve a grade num `ImageData` em resolução de simulação, desenha
-  ampliado com suavização ligada. Já fica menos "quadrado" que pixel art.
-- **Fase visual (WebGL2):** a grade vira textura; um fragment shader faz:
-  - líquidos: borrão + limiar (efeito "metaball") → superfície contínua, brilho na borda, leve ondulação;
-  - pós/terra: textura granulada a partir de `shade`, sombra sutil de profundidade;
-  - fogo: cor por temperatura + bloom;
-  - vapor/nuvem: blur forte, alfa baixo, deriva suave;
-  - plantas/árvores: tons por estágio de crescimento.
-- Fundo com gradiente de céu; (opcional) modo de visualização de temperatura.
+```ts
+thermal?: {
+  conductivity?: number             // 0..1 (metal 0.9, água 0.3, madeira 0.05)
+  initialTemp?: number
+  source?: number                   // mantém essa temperatura (fogo = 800)
+  above?: { temp, into, chance? }   // água > 100 → vapor (chance 0.01/tick)
+  below?: { temp, into, chance? }
+  burn?: { at, temp?, rate, into? } // inflamável
+}
+```
+
+Passe (`engine/thermal.ts`): fontes → condução entre vizinhos (cada par uma vez,
+`min(condutividades) × 0.25`) → perda para o ar por lado exposto → células úmidas acima de 100 °C
+secam → inflamáveis **secas** acima de `burn.at` queimam (se mantêm quentes, soltam chamas, viram
+`burn.into`; água encostada apaga) → mudanças de fase. Com `chance` < 1 a célula fica presa na
+temperatura de transição (calor latente).
+
+Calibração (simulada sem navegador): panela com 133 células de água começa a ferver em ~3 s e seca
+em ~15 s com fogo segurado; madeira seca queima toda em ~15 s; madeira molhada resiste a 2 s de fogo.
+
+### 4.6 Dia e noite (`engine/daylight.ts`)
+
+Um dia = 3 min (10 800 ticks); mundos começam de manhã. `light` 0..1 com amanhecer/entardecer
+curtos. Efeitos: plantas crescem a `0.1 + 0.9 × light` da velocidade; pássaros e abelhas dormem à
+noite; o céu muda (estrelas, lua, crepúsculo) e o fogo ilumina os arredores. Desligado = sempre 10h.
+
+### 4.7 Renderização
+
+- **Smooth (WebGL2)** — `renderer/webgl.ts` envia duas texturas por frame (cor da célula; tipo +
+  calor + shade) e `shaders.ts` desenha em resolução de tela olhando os 5×5 vizinhos de cada pixel:
+  céu (gradiente, sol/lua, estrelas) → líquidos como superfície contínua com brilho na linha d'água
+  e leve ondulação → sólidos/pós com cantos expostos arredondados e "escadas" suavizadas, luz de cima
+  → gases como nuvens suaves → fogo aditivo com flicker e halo; material em brasa irradia luz.
+- **Pixel (Canvas 2D)** — uma célula = um pixel, `image-rendering: pixelated`, mesmo céu e luz.
+  Também é o fallback se WebGL2 não existir ou o shader falhar.
+- Cores por célula (`cellColors.ts`): paleta por elemento × shade × umidade (`color.wet`) + brasa
+  acima de 350 °C.
+
+### 4.8 Cenas (`engine/scene.ts`)
+
+Cabeçalho JSON (dimensões, ids dos elementos por índice, hora do dia) + todos os arrays da grade,
+comprimidos com gzip (`CompressionStream`). Os ids permitem carregar cenas depois de adicionar ou
+reordenar elementos. Cena de outro tamanho é colocada alinhada embaixo e centralizada. Save rápido
+fica no `localStorage` (base64); arquivos usam a extensão `.npscene`.
+
+### 4.9 Som (`audio/SoundEngine.ts`)
+
+WebAudio procedural, liberado no primeiro clique/tecla. Camadas guiadas pelas contagens de
+elementos (4×/s): estalos ∝ fogo, bolhas ∝ vapor, chuva ∝ nuvens, piados ∝ pássaros (de dia),
+zumbido ∝ abelhas, grilos à noite se houver grama. Silencia com o jogo pausado.
 
 ---
 
 ## 5. Elementos
 
-### 5.1 Lista inicial
-
-| Elemento | id | Matter | Na toolbar | Resumo |
+| Família | Elemento | Matter | Na sidebar | Resumo |
 |---|---|---|---|---|
-| Soil | `soil` | powder (pesado, pouco escorrega) | ✅ | absorve água, fica mais escura molhada |
-| Sand | `sand` | powder | ✅ | cai e escorrega em montes, afunda na água |
-| Water | `water` | liquid | ✅ | escorre, molha a terra, ferve a 100 °C |
-| Seed | `seed` | powder (densidade 8: flutua na água) | ✅ | germina em terra molhada |
-| Plant | `plant` | static | ❌ | cresce consumindo água; vira árvore |
-| Wood | `wood` | static | ✅ | tronco da árvore (com raiz se `data & WOOD_TREE`); material de construção; combustível futuro |
-| Leaf | `leaf` | static | ❌ | copa da árvore |
-| Metal | `metal` | static | ✅ | sólido flutuante, ótimo condutor de calor |
-| Fire | `fire` | energy | ✅ | sobe, vida curta (20–45 ticks), fonte de 800 °C, água apaga |
-| Steam | `steam` | gas | ✅ | sobe (atravessa água), vira nuvem após ~10 s |
-| Ash | `ash` | powder (leve, flutua) | ❌ | resto de madeira queimada (futuro: adubo) |
-| Cloud | `cloud` | gas (lento) | ❌ | deriva; cada célula vira 1 gota de água após 5–15 s |
-| Fruit | `fruit` | powder (densidade 9: flutua) | ✅ | nasce na copa, pássaros comem; caída apodrece em semente |
-| Bird | `bird` | static (move-se sozinho via `update`) | ✅ | voa, come fruta, solta semente longe, pousa e dorme |
+| Terrain | Sand | powder | ✅ | escorre em montes, afunda na água |
+| | Soil | powder | ✅ | absorve água (escurece), aduba com cinza/folhas (`data` = fertilidade), vira lama saturada |
+| | Mud | liquid viscoso | ✅ | terra encharcada; escorre devagar e seca de volta (rápido com calor) |
+| | Ash | powder leve | ✅ | resto de fogo; se mistura na terra e aduba |
+| Water | Water | liquid | ✅ | escorre, encharca a terra, ferve a 100 °C (calor latente) |
+| | Steam | gas | ✅ | sobe (atravessa água), vira nuvem após ~10 s |
+| | Cloud | gas lento | ❌ | deriva; cada célula vira 1 gota de chuva |
+| Plants | Seed | powder (flutua) | ✅ | enterra-se 2 células na terra; brota com umidade (mais rápido em terra fértil) |
+| | Grass | static | ✅ | cobre terra úmida, se espalha (mais em terra fértil, de dia); surge sozinha às vezes |
+| | Wood | static | ✅ | tronco (vivo se `WOOD_TREE`) ou material de construção; queima em cinza |
+| | Fruit | powder (flutua) | ✅ | nasce na copa; pássaros comem; caída apodrece em semente |
+| | Plant | static | ❌ | caule crescendo |
+| | Leaf | static | ❌ | copa; dá fruta (15× se polinizada); envelhece e cai |
+| | Dry Leaf | powder leve | ❌ | folha caída; apodrece e aduba; muito inflamável |
+| Animals | Bird | static (move-se) | ✅ | voa através das árvores, come fruta, solta a semente longe, pousa e dorme |
+| | Bee | static (move-se) | ✅ | voa pelas copas polinizando folhas; descansa; para à noite |
+| | Fish | static (move-se) | ✅ | nada só na água; fora dela morre; água quente cozinha |
+| | Worm | static (move-se) | ✅ | cava a terra adubando; come folha seca/cinza → terra fértil |
+| Fire | Fire | energy | ✅ | sobe, vida curta, fonte de 800 °C, água apaga |
+| Materials | Metal | static | ✅ | sólido flutuante, ótimo condutor de calor |
 
-### 5.2 Interações
+### 5.1 Ciclos
 
-**Ciclo da planta** (implementado)
-1. `soil` absorve `water` vizinha: a célula de água some e a terra ganha 100 unidades (capacidade
-   200 → duas células de água saturam uma de terra; o excesso empoça). A umidade desce/espalha entre
-   terras e a terra escurece (`color.wet`).
-2. `seed` flutua na água; encostada em `soil` (acima, abaixo ou dos lados) com umidade ≥ 60 → vira
-   `plant` (broto), gastando 30 da terra mais úmida. Vale para semente enterrada.
-   Ponta enterrada sobe reto atravessando a terra (ocupa a célula e herda a umidade dela); altura
-   só conta no ar, e copa/folhas laterais só nascem fora da terra.
-3. `plant`: a célula com terra embaixo é raiz (puxa umidade); a seiva sobe entre tecidos (grupo
-   `plant`). A ponta (`GROW_TIP`) cresce 1 célula por vez pagando 40 de água, às vezes na diagonal,
-   e solta folhas laterais pequenas. `data` = altura (bits 0–5) + `GROW_TIP` + `MATURE`.
-4. A partir da altura 9, a ponta pode virar copa: ela vira `wood` e nasce uma `leaf` acima com
-   orçamento 5, que se espalha em copa enquanto houver água.
-5. A maturidade (`MATURE`) desce pelo caule a partir da copa; caule maduro com terra/madeira embaixo
-   vira `wood` → o tronco "lignifica" de baixo para cima. Madeira de árvore mantém a raiz.
-6. A árvore continua crescendo enquanto tiver água: o topo do tronco (`wood` com `WOOD_TOP`) sobe
-   1 célula por vez (custa 60), atravessando as próprias folhas, até altura 31; a cada passo
-   renova a copa acima. A partir da altura 14 pode bifurcar em galhos (galho não bifurca de novo).
-   `data` da madeira: bit 0 `WOOD_TREE`, bit 1 `WOOD_TOP`, bit 2 `BRANCH`, bits 3–7 altura.
-7. Caule, folhas e madeira de árvore também absorvem água encostada (regar a árvore, chuva na
-   copa). Madeira pintada é inerte. A umidade se espalha pelos 8 vizinhos, então a seiva segue
-   caules e galhos inclinados.
-8. Sem água, nada cresce. (Futuro: murchar/secar, folhas caindo, queimar.)
+**Planta → árvore**
+1. Água encharca a terra (1 célula de água = 100 unidades; terra guarda 200).
+2. Semente se enterra até 2 células e brota quando a terra encostada tem umidade ≥ 60. Caule
+   enterrado atravessa a terra até a superfície.
+3. O caule cresce consumindo água (raiz puxa da terra; seiva sobe pelos 8 vizinhos), solta folhas
+   laterais, e a partir da altura 9 forma a copa.
+4. O caule lignifica em madeira de baixo para cima; o topo do tronco segue crescendo até altura 31,
+   bifurca em galhos e renova a copa. Adulto, gasta a água mantendo a copa cheia.
+5. Folhas envelhecem (~1 min) e caem como folha seca, que apodrece e aduba a terra.
+6. Tudo cresce mais de dia; terra fértil acelera brotar, beber e a grama.
 
-**Frutas e pássaros** (implementado)
-1. Folha de copa (`leaf` com bit `CROWN`) bem regada às vezes pendura uma `fruit` embaixo de si
-   (custa 60 de água; nunca a menos de 3 células de outra fruta).
-2. Fruta com `FRUIT_ATTACHED` não cai enquanto tiver folha/madeira/caule vizinho (o `update`
-   retorna `true` para pular o movimento). Sem galho, cai; parada no chão, apodrece em `seed`.
-3. `bird` é uma partícula (1 célula) colocada pelo jogador. Voa ~30 células/s **atravessando
-   folhas, madeira e caules** (`moveOver`: a árvore fica guardada embaixo e volta intacta), desvia de paredes,
-   sobe quando está perto do chão. Faminto, enxerga fruta num raio de 10 células e vai até ela.
-4. Encostado na fruta: come (1 s), fica `FULL` e sai voando numa direção aleatória; a semente cai
-   em pleno voo após 2,5–6 s (≈75–180 células de distância).
-5. De barriga vazia, às vezes pousa no que estiver embaixo (qualquer coisa exceto ar/água/pássaro)
-   e pode cochilar; se o poleiro sumir, volta a voar.
-   `data`: bits 0–1 estado (`FLY`/`PERCH`/`SLEEP`/`EAT`), bit 2 `FULL`, bit 3 direção.
-   `life`: timer da atividade atual.
-6. Sementes que caem na terra se enterram até 2 células (`seed.data` = profundidade).
+**Fruta → pássaro → semente**
+1. Folha de copa bem regada pendura uma fruta (nunca a < 3 células de outra); abelhas polinizam e
+   multiplicam por 15 a chance.
+2. Fruta presa não cai enquanto tiver galho/folha encostado (o `update` pula o movimento).
+3. O pássaro faminto enxerga fruta a 10 células, atravessa a copa (`moveOver`), come, voa numa
+   direção e solta a semente em pleno voo depois de 2,5–6 s (~75–180 células).
 
-**Ciclo da água**
-1. `fire` aquece vizinhos (`heatSource ≈ 600 °C`) e some após vida curta, subindo.
-2. `metal` conduz calor muito bem → uma **panela de metal** com fogo embaixo aquece por inteiro.
-3. `water` com `temp ≥ 100` → `steam`.
-4. `steam` sobe; após ~10 s (`lifetime`) vira `cloud`.
-5. `cloud` deriva devagar e solta gotas de `water` (`data` = carga de chuva); esgotada, some.
+**Água**
+Fogo → panela de metal conduz → água ferve (fica em 100 °C) → vapor sobe → nuvem após ~10 s →
+chuva (1 gota por célula de nuvem) → rega terra e árvores.
 
-**Outros**
-- `sand` afunda na `water` (densidade maior).
-- `fire` em contato com `water` → apaga (fogo some, água pode virar vapor).
-- (futuro) `fire` + `wood`/`plant`/`leaf` → queima.
+**Fogo → cinza → solo**
+Fogo seca e incendeia madeira/folhas/grama secas; madeira vira cinza; cinza e folhas caídas se
+misturam na terra (fertilidade); minhocas aceleram isso.
 
-### 5.3 Ideias para depois
-Lava, pedra, gelo (água < 0 °C), óleo (inflamável, flutua na água), vento/ventilador, ácido,
-lama (terra saturada), sementes de tipos diferentes, animais/insetos simples, sol/ciclo dia-noite.
+### 5.2 Ideias para depois
+Lava e pedra, gelo (água < 0 °C), óleo (inflamável, flutua), vento/ventilador, ácido, tipos de
+semente (flores, cactos), estações do ano, colmeia (abelhas se reproduzem), pássaros fazendo ninho.
 
 ---
 
@@ -352,18 +304,18 @@ lama (terra saturada), sementes de tipos diferentes, animais/insetos simples, so
 
 | Fase | Entrega |
 |---|---|
-| ✅ **0 — Hello World** | Vite + React + TS, `base: './'`, telas Splash / Menu / Game (placeholder), deploy em `dist/` |
-| ✅ **1 — Motor base** | grade, loop de passo fixo, renderer Canvas 2D, pincel (mouse/touch), toolbar a partir do registro; elementos `sand`, `water`, `soil` com movimento; controles (pausa, passo, velocidade, pincel, limpar, borracha) e ícones Lucide |
-| ✅ **2 — Vida** | umidade da terra, `seed` → `plant` → `wood`/`leaf` |
-| ✅ **3 — Calor** | temperatura e difusão, `metal`, `fire`, `steam`, `cloud` + chuva |
-| **4 — Visual** | renderer WebGL2 com shaders (líquido contínuo, bloom, gases suaves), fundo |
-| **5 — Polimento** | How to Play, settings, sons, salvar/carregar cena (localStorage / arquivo), Web Worker se precisar |
+| ✅ **0 — Hello World** | Vite + React + TS, telas Splash / Menu / Game, deploy em `dist/` |
+| ✅ **1 — Motor base** | grade, loop de passo fixo, pincel, toolbar do registro; sand, water, soil |
+| ✅ **2 — Vida** | umidade, semente → planta → árvore, frutas, pássaros |
+| ✅ **3 — Calor** | temperatura, metal, fogo, vapor, nuvem + chuva, queima |
+| ✅ **3b — Ecossistema** | cinza/fertilidade, grama, folhas caindo, lama, minhoca, peixe, abelha |
+| ✅ **4 — Visual** | renderer WebGL2, céu, ciclo dia/noite |
+| ✅ **5 — Polimento** | settings, sons procedurais, salvar/carregar cenas, sidebar por famílias |
 
 ---
 
 ## 7. Decisões em aberto
 
-- Tamanho da grade padrão (320×180?) e se adapta à proporção da tela.
-- Simulação na thread principal ou Worker desde o início (começar na principal, medir).
-- Quanto o shader pode "esconder" a grade sem confundir onde o elemento realmente está.
-- Plantas: crescimento puramente por regras locais vs. "agente" com estado (estágio no `data`).
+- Web Worker: não necessário hoje (ver seção 2); revisitar se o grain "Fine" ficar pesado.
+- Calibração fina dos ritmos (crescimento, frutificação, dia de 3 min) depende de jogar.
+- Cena salva em grade de outro tamanho é recortada/centralizada, não redimensionada.

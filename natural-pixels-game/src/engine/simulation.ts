@@ -83,6 +83,12 @@ export class Simulation {
     return this.dayCycle ? this.clock / DAY_TICKS : FIXED_TIME
   }
 
+  /** Jumps to a time of day (0..1), e.g. when loading a scene. */
+  setTimeOfDay(time: number) {
+    this.clock = Math.round((((time % 1) + 1) % 1) * DAY_TICKS) % DAY_TICKS
+    this.daylight = daylightAt(this.timeOfDay)
+  }
+
   sunPosition() {
     return sunPositionAt(this.timeOfDay)
   }

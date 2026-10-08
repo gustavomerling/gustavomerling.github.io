@@ -2,6 +2,7 @@ import { ELEMENTS, EMPTY } from '../elements/registry.ts'
 import { paintStroke } from './brush.ts'
 import { Grid } from './grid.ts'
 import { createRenderer, type RenderMode, type Renderer } from './renderer/index.ts'
+import { decodeScene, encodeScene } from './scene.ts'
 import { Simulation } from './simulation.ts'
 
 const TICKS_PER_SECOND = 60
@@ -100,6 +101,18 @@ export class Sandbox {
 
   clear() {
     this.grid.clear()
+    this.render(performance.now())
+  }
+
+  /** The whole world as a compressed scene file. */
+  exportScene(): Promise<Blob> {
+    return encodeScene(this.grid, this.sim.timeOfDay)
+  }
+
+  /** Replaces the world with a scene file (throws if it isn't one). */
+  async importScene(blob: Blob) {
+    const timeOfDay = await decodeScene(blob, this.grid)
+    this.sim.setTimeOfDay(timeOfDay)
     this.render(performance.now())
   }
 

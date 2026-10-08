@@ -1,7 +1,9 @@
 import { Sun, SunMoon } from 'lucide-react'
 import { EMPTY } from '../elements/registry.ts'
 import { Button } from '../ui/Button.tsx'
+import type { Sandbox } from '../engine/Sandbox.ts'
 import { ElementPalette } from './ElementPalette.tsx'
+import { SceneControls } from './SceneControls.tsx'
 import { BrushControls, PlaybackControls } from './SimControls.tsx'
 
 interface SidebarProps {
@@ -17,10 +19,11 @@ interface SidebarProps {
   onClear: () => void
   dayCycle: boolean
   onDayCycle: (on: boolean) => void
+  getSandbox: () => Sandbox | null
 }
 
-/** Left-hand panel: simulation controls, brush, and the element families. */
-export function Sidebar({ tool, onTool, brush, onBrush, dayCycle, onDayCycle, ...playback }: SidebarProps) {
+/** Left-hand panel: simulation controls, brush, element families and scene save/load. */
+export function Sidebar({ tool, onTool, brush, onBrush, dayCycle, onDayCycle, getSandbox, ...playback }: SidebarProps) {
   return (
     <aside className="sidebar" aria-label="Tools and elements">
       <section className="sidebar__section">
@@ -47,6 +50,11 @@ export function Sidebar({ tool, onTool, brush, onBrush, dayCycle, onDayCycle, ..
       <section className="sidebar__section">
         <h2 className="sidebar__label">Elements</h2>
         <ElementPalette tool={tool} onSelect={onTool} />
+      </section>
+
+      <section className="sidebar__section">
+        <h2 className="sidebar__label">Scene</h2>
+        <SceneControls getSandbox={getSandbox} />
       </section>
     </aside>
   )
