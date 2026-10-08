@@ -1,4 +1,4 @@
-import { bird } from './animals/index.ts'
+import { bee, bird, fish, worm } from './animals/index.ts'
 import { air } from './core/index.ts'
 import { fire } from './fire/index.ts'
 import { metal } from './materials/index.ts'
@@ -35,6 +35,9 @@ export const ELEMENTS: readonly ElementDefinition[] = [
   litter,
   // Animals
   bird,
+  bee,
+  fish,
+  worm,
   // Fire
   fire,
   // Materials

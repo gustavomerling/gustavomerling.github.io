@@ -1,6 +1,7 @@
 import { Bird } from 'lucide-react'
 import type { CellContext } from '../../engine/context.ts'
 import type { ElementDefinition } from '../types.ts'
+import { NIGHT, between, findNearest, type Range } from './shared.ts'
 
 /*
  * Bird `data` layout:
@@ -27,12 +28,9 @@ const DIGEST_TICKS: Range = [150, 360]
 const PERCH_CHANCE = 0.004
 const PERCH_TICKS: Range = [120, 360]
 const SLEEP_CHANCE = 0.35
-/** Below this daylight it's night: birds land and sleep until morning. */
-const NIGHT = 0.3
 const NIGHT_PERCH_CHANCE = 0.05
 const SLEEP_TICKS: Range = [360, 900]
 
-type Range = [number, number]
 
 export const bird: ElementDefinition = {
   id: 'bird',
@@ -168,19 +166,7 @@ function adjacentFruit(ctx: CellContext): [number, number] | null {
   return null
 }
 
-/** Nearest fruit within SIGHT, searching ring by ring outwards. */
+/** Nearest fruit within SIGHT. */
 function findFruit(ctx: CellContext): [number, number] | null {
-  for (let r = 2; r <= SIGHT; r++) {
-    for (let d = -r; d <= r; d++) {
-      if (ctx.get(d, -r) === 'fruit') return [d, -r]
-      if (ctx.get(d, r) === 'fruit') return [d, r]
-      if (ctx.get(-r, d) === 'fruit') return [-r, d]
-      if (ctx.get(r, d) === 'fruit') return [r, d]
-    }
-  }
-  return null
-}
-
-function between(ctx: CellContext, [min, max]: Range): number {
-  return Math.round(min + ctx.random() * (max - min))
+  return findNearest(SIGHT, (dx, dy) => ctx.get(dx, dy) === 'fruit')
 }
