@@ -16,8 +16,8 @@ export class Canvas2DRenderer implements Renderer {
   private readonly pixels: Uint32Array
   private readonly colors: Uint32Array
   private readonly cellColors: CellColors
-  /** Fire and other energy glow by themselves: night doesn't darken them. */
-  private readonly emissive = Uint8Array.from(ELEMENTS, (el) => (el.matter === 'energy' ? 1 : 0))
+  /** How much each element glows by itself (fire, lava, lamps): night doesn't darken that part. */
+  private readonly emissive = Float32Array.from(ELEMENTS, (el) => (el.matter === 'energy' ? 1 : (el.color.emissive ?? 0)))
 
   constructor(canvas: HTMLCanvasElement, grid: Grid) {
     const ctx = canvas.getContext('2d')
@@ -49,7 +49,7 @@ export class Canvas2DRenderer implements Renderer {
           pixels[i] = (0xff000000 | (sb << 16) | (sg << 8) | sr) >>> 0
           continue
         }
-        const lit = emissive[type[i]] ? 1 : ambient
+        const lit = ambient + (1 - ambient) * emissive[type[i]]
         const k = a / 255
         const r = (c & 0xff) * lit * k + sr * (1 - k)
         const g = ((c >>> 8) & 0xff) * lit * k + sg * (1 - k)

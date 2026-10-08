@@ -44,7 +44,7 @@ export function updateThermal(sim: Simulation) {
       }
       if (x > 0 && type[i - 1] === EMPTY) airSides++
       if (y > 0 && type[i - width] === EMPTY) airSides++
-      if (airSides > 0) temp[i] += (AMBIENT_TEMP - temp[i]) * AIR_LOSS * airSides
+      if (airSides > 0) temp[i] += (AMBIENT_TEMP - temp[i]) * AIR_LOSS * airSides * sim.airExposure[t]
 
       if (sim.capacity[t] > 0 && temp[i] > DRY_TEMP && water[i] > 0) water[i]--
 

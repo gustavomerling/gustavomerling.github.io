@@ -1,11 +1,12 @@
 import { bee, bird, fish, worm } from './animals/index.ts'
 import { air } from './core/index.ts'
-import { fire } from './fire/index.ts'
-import { metal } from './materials/index.ts'
+import { acid, gunpowder, nitrogen, oil } from './chemistry/index.ts'
+import { fire, lava } from './fire/index.ts'
+import { glass, lamp, metal, plank } from './materials/index.ts'
 import { fruit, grass, leaf, litter, plant, seed, wood } from './plants/index.ts'
-import { ash, mud, sand, soil } from './terrain/index.ts'
+import { ash, mud, sand, soil, stone } from './terrain/index.ts'
 import type { ElementDefinition } from './types.ts'
-import { cloud, steam, water } from './water/index.ts'
+import { cloud, ice, steam, water } from './water/index.ts'
 
 /**
  * Every element in the game. The array position is the numeric id stored in the grid,
@@ -19,10 +20,12 @@ export const ELEMENTS: readonly ElementDefinition[] = [
   // Terrain
   sand,
   soil,
+  stone,
   mud,
   ash,
   // Water
   water,
+  ice,
   steam,
   cloud,
   // Plants
@@ -40,8 +43,17 @@ export const ELEMENTS: readonly ElementDefinition[] = [
   worm,
   // Fire
   fire,
+  lava,
+  // Chemistry
+  oil,
+  acid,
+  nitrogen,
+  gunpowder,
   // Materials
   metal,
+  glass,
+  plank,
+  lamp,
 ]
 
 export const EMPTY = 0

@@ -11,5 +11,6 @@ export const sand: ElementDefinition = {
   color: { base: '#e2c27d', variation: 0.09 },
   icon: Hourglass,
   movement: { slide: 1, sink: 0.5 },
-  thermal: { conductivity: 0.15 },
+  // Melts into glass when very hot (lava does it).
+  thermal: { conductivity: 0.15, above: { temp: 900, into: 'glass', chance: 0.01 } },
 }

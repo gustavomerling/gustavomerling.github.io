@@ -30,6 +30,8 @@ export class WebGLRenderer implements Renderer {
   private readonly info: Uint8Array
   private readonly cellColors: CellColors
   private readonly kinds = Uint8Array.from(ELEMENTS, (el) => KIND[el.matter])
+  /** Self-glow 0..255 per element (lava, lamps). */
+  private readonly emissive = Uint8Array.from(ELEMENTS, (el) => Math.round((el.color.emissive ?? 0) * 255))
   private readonly uniforms: Record<string, WebGLUniformLocation | null>
 
   /** Throws if WebGL2 isn't available, so the caller can fall back to Canvas 2D. */
@@ -59,15 +61,20 @@ export class WebGLRenderer implements Renderer {
   }
 
   render({ time, light, sun }: FrameInfo) {
-    const { gl, grid, info, kinds, uniforms } = this
+    const { gl, grid, info, kinds, emissive, uniforms } = this
     const { width, height, size, type, temp, shade } = grid
 
     this.cellColors.fill(this.colors)
     for (let i = 0, o = 0; i < size; i++, o += 4) {
-      info[o] = kinds[type[i]]
+      const t = type[i]
+      const glow = emissive[t]
+      info[o] = kinds[t]
       const heat = (temp[i] - HALO_START) / HALO_RANGE
-      info[o + 1] = heat <= 0 ? 0 : heat >= 1 ? 255 : (heat * 255) | 0
+      const halo = heat <= 0 ? 0 : heat >= 1 ? 255 : (heat * 255) | 0
+      // Glowing things light up their surroundings like hot ones do.
+      info[o + 1] = Math.max(halo, glow >> 1)
       info[o + 2] = shade[i]
+      info[o + 3] = glow
     }
 
     gl.viewport(0, 0, this.canvas.width, this.canvas.height)

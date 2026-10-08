@@ -3,9 +3,10 @@ import type { ElementDefinition, Matter } from '../elements/types.ts'
 import { BEHAVIORS, type Behavior } from './behaviors/index.ts'
 import { AMBIENT_TEMP } from './constants.ts'
 import { SimulationContext } from './context.ts'
-import { DAY_TICKS, FIXED_TIME, START_TIME, daylightAt, sunPositionAt } from './daylight.ts'
+import { FIXED_TIME, START_TIME, advanceTime, daylightAt, sunPositionAt } from './daylight.ts'
 import type { Grid } from './grid.ts'
 import { updateMoisture } from './moisture.ts'
+import { compileReactions, react } from './reactions.ts'
 import { createRandom } from './random.ts'
 import { updateThermal } from './thermal.ts'
 
@@ -35,8 +36,8 @@ export class Simulation {
   tick = 0
   /** Day/night cycle on; off = endless day at FIXED_TIME. */
   dayCycle = true
-  /** Ticks into the current day. */
-  private clock = Math.round(START_TIME * DAY_TICKS)
+  /** Current time of day 0..1 while the cycle runs. */
+  private clock = START_TIME
   /** Daylight 0..1, refreshed every tick (plants and animals read it via ctx.light()). */
   daylight = daylightAt(START_TIME)
 
@@ -57,6 +58,7 @@ export class Simulation {
   readonly conductivity = Float32Array.from(ELEMENTS, (el) => el.thermal?.conductivity ?? 0.1)
   readonly initialTemp = Float32Array.from(ELEMENTS, (el) => el.thermal?.initialTemp ?? AMBIENT_TEMP)
   readonly heatSource = Float32Array.from(ELEMENTS, (el) => el.thermal?.source ?? 0)
+  readonly airExposure = Float32Array.from(ELEMENTS, (el) => 1 - (el.thermal?.insulation ?? 0))
   readonly aboveTemp = Float32Array.from(ELEMENTS, (el) => el.thermal?.above?.temp ?? Infinity)
   readonly aboveInto = Uint8Array.from(ELEMENTS, (el) => indexOf(el.thermal?.above?.into))
   readonly aboveChance = Float32Array.from(ELEMENTS, (el) => el.thermal?.above?.chance ?? 1)
@@ -70,6 +72,8 @@ export class Simulation {
   readonly lifeMin = Uint16Array.from(ELEMENTS, (el) => el.lifetime?.min ?? 0)
   readonly lifeMax = Uint16Array.from(ELEMENTS, (el) => el.lifetime?.max ?? 0)
   readonly lifeInto = Uint8Array.from(ELEMENTS, (el) => indexOf(el.lifetime?.into))
+  readonly reactions = compileReactions()
+  private readonly reacts = Uint8Array.from(ELEMENTS, (el) => (el.reactions?.length ? 1 : 0))
   private readonly behaviors: (Behavior | undefined)[] = ELEMENTS.map((el) => BEHAVIORS[el.matter])
   private readonly updates = ELEMENTS.map((el) => el.update)
   private readonly ctx = new SimulationContext(this)
@@ -80,12 +84,12 @@ export class Simulation {
 
   /** Time of day 0..1 (0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset). */
   get timeOfDay(): number {
-    return this.dayCycle ? this.clock / DAY_TICKS : FIXED_TIME
+    return this.dayCycle ? this.clock : FIXED_TIME
   }
 
   /** Jumps to a time of day (0..1), e.g. when loading a scene. */
   setTimeOfDay(time: number) {
-    this.clock = Math.round((((time % 1) + 1) % 1) * DAY_TICKS) % DAY_TICKS
+    this.clock = ((time % 1) + 1) % 1
     this.daylight = daylightAt(this.timeOfDay)
   }
 
@@ -96,7 +100,7 @@ export class Simulation {
   step() {
     const { width, height, type, stamp } = this.grid
     const tick = ++this.tick
-    if (this.dayCycle) this.clock = (this.clock + 1) % DAY_TICKS
+    if (this.dayCycle) this.clock = advanceTime(this.clock)
     this.daylight = daylightAt(this.timeOfDay)
     // Alternate horizontal scan direction every tick so nothing drifts to one side.
     const leftToRight = (tick & 1) === 0
@@ -111,6 +115,7 @@ export class Simulation {
         if (t === EMPTY || stamp[i] === tick) continue
 
         if (this.lifeMax[t] > 0 && this.age(i, t)) continue
+        if (this.reacts[t] && react(this, x, y, i, t)) continue
         if (this.capacity[t] > 0) updateMoisture(this, x, y, i, t)
 
         const update = this.updates[t]

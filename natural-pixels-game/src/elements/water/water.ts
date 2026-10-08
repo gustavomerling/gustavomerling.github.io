@@ -4,7 +4,7 @@ import type { ElementDefinition } from '../types.ts'
 export const water: ElementDefinition = {
   id: 'water',
   name: 'Water',
-  description: 'Flows and levels out. Soaks into soil, boils into steam at 100 °C.',
+  description: 'Flows and levels out. Soaks into soil, boils at 100 °C and freezes at 0 °C.',
   category: 'water',
   matter: 'liquid',
   density: 10,
@@ -12,5 +12,9 @@ export const water: ElementDefinition = {
   icon: Droplets,
   movement: { spread: 5 },
   // Boils gradually: boiling water holds at 100 °C and turns to steam a little at a time.
-  thermal: { conductivity: 0.3, above: { temp: 100, into: 'steam', chance: 0.01 } },
+  thermal: {
+    conductivity: 0.3,
+    above: { temp: 100, into: 'steam', chance: 0.01 },
+    below: { temp: 0, into: 'ice', chance: 0.02 },
+  },
 }

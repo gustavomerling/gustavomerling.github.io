@@ -13,7 +13,8 @@ void main() {
  * around it and composites, back to front:
  *   sky → liquids (continuous surface) → solids/powders (rounded) → gases (soft) → fire (glow).
  *
- * uInfo channels: r = kind (see KIND_* in webgl.ts), g = heat glow 0..1, b = shade.
+ * uInfo channels: r = kind (see KIND_* in webgl.ts), g = heat glow 0..1, b = shade,
+ * a = self-glow (emissive) 0..1.
  * Sky/lighting numbers mirror renderer/sky.ts.
  */
 export const FRAGMENT_SHADER = /* glsl */ `#version 300 es
@@ -87,6 +88,8 @@ void main() {
   vec4 liqC = vec4(0.0);
   float kinds[9];
   vec4 colors[9];
+  float emits[9];
+  float liqEmit = 0.0;
 
   for (int dy = -2; dy <= 2; dy++) {
     for (int dx = -2; dx <= 2; dx++) {
@@ -112,11 +115,13 @@ void main() {
         int k = (dy + 1) * 3 + (dx + 1);
         kinds[k] = kind;
         colors[k] = col;
+        emits[k] = info.a;
         float wl = exp(-d2 * 1.6);
         liqTotal += wl;
         if (kind == KIND_LIQUID) {
           liqW += wl;
           liqC += col * wl;
+          liqEmit += info.a * wl;
         }
       }
     }
@@ -135,7 +140,7 @@ void main() {
     float coverage = liqW / liqTotal + sin(p.x * 1.3 + uTime * 2.0) * 0.02;
     float drop = here == KIND_LIQUID ? smoothstep(0.62, 0.42, length(f - 0.5)) : 0.0;
     float a = max(smoothstep(0.3, 0.48, coverage), drop);
-    vec3 water = lc.rgb * light;
+    vec3 water = lc.rgb * mix(light, vec3(1.0), liqEmit / liqW);
     // Bright line along the surface (open air above).
     if (here == KIND_LIQUID && kinds[1] != KIND_LIQUID && !isSolid(kinds[1])) {
       water += vec3(0.35) * (1.0 - smoothstep(0.0, 0.35, f.y)) * (0.6 + 0.4 * uLight);
@@ -154,7 +159,7 @@ void main() {
     float a = 1.0;
     if (!sideX && !sideY) a = 1.0 - smoothstep(0.5 - aa, 0.5 + aa, length(q));
     float rim = isSolid(kinds[1]) ? 0.0 : (1.0 - smoothstep(0.0, 0.3, f.y)) * 0.12;
-    col = mix(col, sc.rgb * (1.0 + rim) * light, a * sc.a);
+    col = mix(col, sc.rgb * (1.0 + rim) * mix(light, vec3(1.0), emits[4]), a * sc.a);
   } else if (sideX && sideY) {
     // Fillet between two solid neighbours: smooths staircases into slopes.
     vec4 sc = (colors[4 + sx] + colors[4 + sy * 3]) * 0.5;

@@ -5,7 +5,16 @@ import type { CellContext } from '../engine/context.ts'
 export type Matter = 'empty' | 'static' | 'powder' | 'liquid' | 'gas' | 'energy'
 
 /** Element family. Each one is a folder in `src/elements/`. */
-export type ElementCategory = 'core' | 'terrain' | 'water' | 'plants' | 'animals' | 'fire' | 'materials'
+export type ElementCategory =
+  | 'core'
+  | 'terrain'
+  | 'water'
+  | 'plants'
+  | 'animals'
+  | 'people'
+  | 'fire'
+  | 'chemistry'
+  | 'materials'
 
 export interface ElementColor {
   /** Base color as hex (`#rrggbb`). */
@@ -16,6 +25,8 @@ export interface ElementColor {
   alpha?: number
   /** Color when fully soaked; blends from `base` as moisture rises. */
   wet?: string
+  /** Glows by itself 0..1 (lava, lamps): not darkened at night and lights up its surroundings. */
+  emissive?: number
 }
 
 export interface ElementMovement {
@@ -63,6 +74,8 @@ export interface ElementThermal {
   initialTemp?: number
   /** Heat source: the cell is held at this temperature (fire). */
   source?: number
+  /** 0..1: how much less heat it loses to the air (ice melts slowly, lava stays molten). */
+  insulation?: number
   /** Turns into another element when hotter than `temp` (water → steam at 100). */
   above?: PhaseChange
   /** Turns into another element when colder than `temp`. */
@@ -72,6 +85,22 @@ export interface ElementThermal {
    * and is consumed with chance `rate` per tick into `into` (default air).
    */
   burn?: { at: number; temp?: number; rate: number; into?: string }
+}
+
+/**
+ * Declarative reaction with a touching element, e.g. lava + water → stone + steam.
+ * Checked against one random neighbour per tick.
+ */
+export interface Reaction {
+  with: string
+  /** Chance per tick while touching. */
+  chance: number
+  /** What this cell becomes (unchanged if omitted). */
+  self?: string
+  /** What the neighbour becomes (unchanged if omitted). */
+  other?: string
+  /** Chance that `self` applies when it reacts (default 1): acid wears out slowly. */
+  selfChance?: number
 }
 
 export interface ElementLifetime {
@@ -100,6 +129,11 @@ export interface ElementDefinition {
   thermal?: ElementThermal
   /** Transforms automatically after a while. Uses the cell's `life` timer. */
   lifetime?: ElementLifetime
+  reactions?: Reaction[]
+  /** Extra hover text (e.g. what a human is doing). */
+  describe?: (ctx: CellContext) => string | undefined
+  /** Brush places a single cell per click instead of a spray (humans). */
+  brushSingle?: boolean
   /**
    * Custom per-tick logic (growth, germination...). Runs before movement.
    * Movement is skipped if it returns `true` (e.g. fruit hanging from a branch)
