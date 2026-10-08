@@ -1,7 +1,7 @@
 import { Leaf } from 'lucide-react'
 import type { CellContext } from '../../engine/context.ts'
 import { FRUIT_ATTACHED } from './fruit.ts'
-import { TISSUE_GROUP } from './tissue.ts'
+import { TISSUE_GROUP, sunlight } from './tissue.ts'
 import type { ElementDefinition } from '../types.ts'
 
 /*
@@ -61,7 +61,7 @@ export const leaf: ElementDefinition = {
 
     const budget = data & BUDGET_MASK
     const water = ctx.water(0, 0)
-    if (budget === 0 || water < GROW_COST || ctx.random() >= GROW_CHANCE) return
+    if (budget === 0 || water < GROW_COST || ctx.random() >= GROW_CHANCE * sunlight(ctx)) return
 
     // Spread sideways and up more than down, for a rounded canopy.
     const dx = ctx.random() < 0.5 ? -1 : 1
@@ -78,7 +78,7 @@ export const leaf: ElementDefinition = {
 /** A well-watered crown leaf occasionally hangs a fruit below itself. */
 function bearFruit(ctx: CellContext, pollinated: boolean) {
   const water = ctx.water(0, 0)
-  const chance = pollinated ? FRUIT_CHANCE * POLLEN_BOOST : FRUIT_CHANCE
+  const chance = (pollinated ? FRUIT_CHANCE * POLLEN_BOOST : FRUIT_CHANCE) * sunlight(ctx)
   if (water < FRUIT_COST || ctx.random() >= chance) return
   if (ctx.get(0, 1) !== 'air') return
 

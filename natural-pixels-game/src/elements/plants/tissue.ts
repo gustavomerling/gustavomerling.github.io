@@ -9,6 +9,11 @@ import { consumeFertility, fertilityAt, fertilityBoost } from '../terrain/fertil
 
 export const TISSUE_GROUP = 'plant'
 
+/** Plants grow mostly by daylight: 10% speed at night, full speed by day. */
+export function sunlight(ctx: CellContext): number {
+  return 0.1 + 0.9 * ctx.light()
+}
+
 /** Roots drink up to this many times faster from the most fertile soil. */
 const FERTILE_DRINK_BOOST = 1.5
 

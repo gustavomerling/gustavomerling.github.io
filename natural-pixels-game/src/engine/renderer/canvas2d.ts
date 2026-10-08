@@ -1,34 +1,23 @@
 import { ELEMENTS } from '../../elements/registry.ts'
-import type { ElementColor } from '../../elements/types.ts'
 import type { Grid } from '../grid.ts'
-
-const SHADES = 16
-/** Moisture steps blended between `color.base` and `color.wet`. */
-const WET_LEVELS = 4
-const COLORS_PER_ELEMENT = SHADES * WET_LEVELS
-/** Solids, powders and liquids start glowing red-hot above this temperature (°C)... */
-const GLOW_START = 350
-/** ...and reach full glow this many degrees later. */
-const GLOW_RANGE = 650
+import { CellColors } from './cellColors.ts'
+import { ambientLight, skyColor } from './sky.ts'
+import type { FrameInfo, Renderer } from './types.ts'
 
 /**
- * Phase 1 renderer: writes one pixel per cell into an ImageData at grid resolution.
- * The canvas is scaled up by CSS with smoothing, which softens the grid look.
+ * "Pixel" renderer: one pixel per cell at grid resolution, drawn crisp (CSS pixelated).
+ * Also the fallback when WebGL2 isn't available. Composites cells over the sky on the CPU.
  */
-export class Canvas2DRenderer {
+export class Canvas2DRenderer implements Renderer {
+  readonly mode = 'pixel'
   private readonly grid: Grid
   private readonly ctx: CanvasRenderingContext2D
   private readonly image: ImageData
   private readonly pixels: Uint32Array
-  /** Packed colors: palette[type * COLORS_PER_ELEMENT + wetLevel * SHADES + shade]. */
-  private readonly palette: Uint32Array
-  /** Per element: multiplier from moisture units to wet level. */
-  private readonly wetScale = Float32Array.from(ELEMENTS, (el) =>
-    el.color.wet && el.moisture ? WET_LEVELS / (el.moisture.capacity + 1) : 0,
-  )
-  private readonly glows = Uint8Array.from(ELEMENTS, (el) =>
-    el.matter === 'static' || el.matter === 'powder' || el.matter === 'liquid' ? 1 : 0,
-  )
+  private readonly colors: Uint32Array
+  private readonly cellColors: CellColors
+  /** Fire and other energy glow by themselves: night doesn't darken them. */
+  private readonly emissive = Uint8Array.from(ELEMENTS, (el) => (el.matter === 'energy' ? 1 : 0))
 
   constructor(canvas: HTMLCanvasElement, grid: Grid) {
     const ctx = canvas.getContext('2d')
@@ -39,58 +28,41 @@ export class Canvas2DRenderer {
     this.ctx = ctx
     this.image = ctx.createImageData(grid.width, grid.height)
     this.pixels = new Uint32Array(this.image.data.buffer)
-    this.palette = buildPalette()
+    this.colors = new Uint32Array(grid.size)
+    this.cellColors = new CellColors(grid)
   }
 
-  render() {
-    const { type, shade, water, temp, size } = this.grid
-    const { pixels, palette, wetScale, glows } = this
-    for (let i = 0; i < size; i++) {
-      const t = type[i]
-      const wet = (water[i] * wetScale[t]) | 0
-      const color = palette[t * COLORS_PER_ELEMENT + wet * SHADES + (shade[i] >> 4)]
-      const heat = temp[i]
-      pixels[i] = heat > GLOW_START && glows[t] ? glow(color, Math.min(1, (heat - GLOW_START) / GLOW_RANGE)) : color
+  render({ light }: FrameInfo) {
+    const { width, height, type } = this.grid
+    const { pixels, colors, emissive } = this
+    this.cellColors.fill(colors)
+    const ambient = ambientLight(light)
+
+    for (let y = 0; y < height; y++) {
+      const [sr, sg, sb] = skyColor(y / (height - 1), light)
+      const row = y * width
+      for (let x = 0; x < width; x++) {
+        const i = row + x
+        const c = colors[i]
+        const a = c >>> 24
+        if (a === 0) {
+          pixels[i] = (0xff000000 | (sb << 16) | (sg << 8) | sr) >>> 0
+          continue
+        }
+        const lit = emissive[type[i]] ? 1 : ambient
+        const k = a / 255
+        const r = (c & 0xff) * lit * k + sr * (1 - k)
+        const g = ((c >>> 8) & 0xff) * lit * k + sg * (1 - k)
+        const b = ((c >>> 16) & 0xff) * lit * k + sb * (1 - k)
+        pixels[i] = (0xff000000 | (Math.round(b) << 16) | (Math.round(g) << 8) | Math.round(r)) >>> 0
+      }
     }
     this.ctx.putImageData(this.image, 0, 0)
   }
-}
 
-/** Blends a packed color towards red-hot orange by `amount` (0..1). */
-function glow(color: number, amount: number): number {
-  const k = amount * 0.85
-  const r = color & 0xff
-  const g = (color >>> 8) & 0xff
-  const b = (color >>> 16) & 0xff
-  const a = color >>> 24
-  const nr = Math.round(r + (255 - r) * k)
-  const ng = Math.round(g + (96 - g) * k)
-  const nb = Math.round(b + (32 - b) * k)
-  const na = Math.max(a, Math.round(255 * amount))
-  return ((na << 24) | (nb << 16) | (ng << 8) | nr) >>> 0
-}
-
-function buildPalette(): Uint32Array {
-  const palette = new Uint32Array(ELEMENTS.length * COLORS_PER_ELEMENT)
-  ELEMENTS.forEach((el, t) => {
-    for (let w = 0; w < WET_LEVELS; w++) {
-      for (let s = 0; s < SHADES; s++) {
-        palette[t * COLORS_PER_ELEMENT + w * SHADES + s] = shadeColor(el.color, w / (WET_LEVELS - 1), s / (SHADES - 1))
-      }
-    }
-  })
-  return palette
-}
-
-/** Packs a color for a little-endian Uint32 view over RGBA bytes (0xAABBGGRR). */
-function shadeColor({ base, wet, variation = 0, alpha = 1 }: ElementColor, wetness: number, shade: number): number {
-  const factor = 1 + (shade - 0.5) * 2 * variation
-  const channel = (offset: number) => {
-    const dry = parseInt(base.slice(offset, offset + 2), 16)
-    const soaked = wet ? parseInt(wet.slice(offset, offset + 2), 16) : dry
-    const value = dry + (soaked - dry) * wetness
-    return Math.max(0, Math.min(255, Math.round(value * factor)))
+  resize() {
+    // Fixed grid resolution; CSS scales it.
   }
-  const a = Math.round(alpha * 255)
-  return ((a << 24) | (channel(5) << 16) | (channel(3) << 8) | channel(1)) >>> 0
+
+  destroy() {}
 }

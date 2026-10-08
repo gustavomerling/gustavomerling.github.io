@@ -1,7 +1,7 @@
 import { Axe } from 'lucide-react'
 import type { CellContext } from '../../engine/context.ts'
 import { CROWN_LEAF, POLLINATED } from './leaf.ts'
-import { TISSUE_GROUP, absorbWater, drinkFromSoil } from './tissue.ts'
+import { TISSUE_GROUP, absorbWater, drinkFromSoil, sunlight } from './tissue.ts'
 import type { ElementDefinition } from '../types.ts'
 
 /*
@@ -59,7 +59,7 @@ export const wood: ElementDefinition = {
 function growTrunk(ctx: CellContext, data: number) {
   const water = ctx.water(0, 0)
   const height = data >> HEIGHT_SHIFT
-  if (water < TRUNK_COST || ctx.random() >= TRUNK_CHANCE) return
+  if (water < TRUNK_COST || ctx.random() >= TRUNK_CHANCE * sunlight(ctx)) return
 
   const isBranch = (data & BRANCH) !== 0
   const r = ctx.random()

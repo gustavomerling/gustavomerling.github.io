@@ -1,6 +1,7 @@
 import { Clover } from 'lucide-react'
 import { fertilityAt, fertilityBoost } from '../terrain/fertility.ts'
 import type { ElementDefinition } from '../types.ts'
+import { sunlight } from './tissue.ts'
 
 /*
  * Grass is a thin carpet on top of soil. `data` = blade part: 1 = base (sits on soil),
@@ -55,7 +56,7 @@ export const grass: ElementDefinition = {
 
     if (above === 'air' && ctx.random() < TIP_CHANCE) ctx.set(0, -1, 'grass', { data: TIP })
 
-    const chance = SPREAD_CHANCE * fertilityBoost(fertilityAt(ctx, 0, 1), FERTILE_SPREAD_BOOST)
+    const chance = SPREAD_CHANCE * fertilityBoost(fertilityAt(ctx, 0, 1), FERTILE_SPREAD_BOOST) * sunlight(ctx)
     if (moisture < SPREAD_MOISTURE || ctx.random() >= chance) return
 
     // Spread to a nearby patch of exposed soil (same level, a step up or a step down).

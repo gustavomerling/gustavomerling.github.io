@@ -1,32 +1,48 @@
-import { useEffect, useImperativeHandle, useRef, type PointerEvent, type Ref } from 'react'
+import { useEffect, useImperativeHandle, useRef, useState, type PointerEvent, type Ref } from 'react'
+import type { RenderMode } from '../engine/renderer/index.ts'
 import { Sandbox, type SandboxSettings, type SandboxStats } from '../engine/Sandbox.ts'
-
-/** Roughly how many cells the grid has; sets the "grain size" for the screen. */
-const TARGET_CELLS = 72_000
 
 export interface SandboxHandle {
   step: () => void
   clear: () => void
+  /** The live engine, for features like saving scenes. */
+  readonly sandbox: Sandbox | null
 }
 
 interface SandboxViewProps extends SandboxSettings {
+  /** Roughly how many cells the grid has (the "grain size"). Fixed at mount. */
+  cellTarget: number
+  renderMode: RenderMode
   onStats: (stats: SandboxStats) => void
   ref?: Ref<SandboxHandle>
 }
 
-function gridSizeFor(width: number, height: number) {
+/** Checked once: browsers without WebGL2 go straight to pixel mode. */
+const SMOOTH_SUPPORTED = (() => {
+  try {
+    return document.createElement('canvas').getContext('webgl2') !== null
+  } catch {
+    return false
+  }
+})()
+
+function gridSizeFor(width: number, height: number, cellTarget: number) {
   if (width <= 0 || height <= 0) return { width: 320, height: 180 }
-  const cell = Math.sqrt((width * height) / TARGET_CELLS)
+  const cell = Math.sqrt((width * height) / cellTarget)
   return { width: Math.max(64, Math.round(width / cell)), height: Math.max(48, Math.round(height / cell)) }
 }
 
 /** Mounts the engine on a canvas and bridges React props and pointer events into it. */
-export function SandboxView({ tool, brushRadius, paused, speed, onStats, ref }: SandboxViewProps) {
+export function SandboxView({ tool, brushRadius, paused, speed, dayCycle, cellTarget, renderMode, onStats, ref }: SandboxViewProps) {
   const stageRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sandboxRef = useRef<Sandbox | null>(null)
   const onStatsRef = useRef(onStats)
+  const cellTargetRef = useRef(cellTarget)
+  // Smooth graphics may be unsupported (or its shader may fail): stick to pixel mode then.
+  const [smoothFailed, setSmoothFailed] = useState(!SMOOTH_SUPPORTED)
+  const mode: RenderMode = smoothFailed ? 'pixel' : renderMode
 
   useEffect(() => {
     onStatsRef.current = onStats
@@ -36,11 +52,10 @@ export function SandboxView({ tool, brushRadius, paused, speed, onStats, ref }: 
   useEffect(() => {
     const stage = stageRef.current
     const frame = frameRef.current
-    const canvas = canvasRef.current
-    if (!stage || !frame || !canvas) return
+    if (!stage || !frame) return
 
-    const size = gridSizeFor(stage.clientWidth, stage.clientHeight)
-    const sandbox = new Sandbox(canvas, size.width, size.height)
+    const size = gridSizeFor(stage.clientWidth, stage.clientHeight, cellTargetRef.current)
+    const sandbox = new Sandbox(size.width, size.height)
     sandbox.onStats = (stats) => onStatsRef.current(stats)
     sandboxRef.current = sandbox
 
@@ -51,10 +66,11 @@ export function SandboxView({ tool, brushRadius, paused, speed, onStats, ref }: 
       const height = size.height * scale
       frame.style.width = `${width}px`
       frame.style.height = `${height}px`
+      sandbox.resize(width, height)
     }
-    fit()
     const observer = new ResizeObserver(fit)
     observer.observe(stage)
+    fit()
 
     sandbox.start()
     return () => {
@@ -64,13 +80,32 @@ export function SandboxView({ tool, brushRadius, paused, speed, onStats, ref }: 
     }
   }, [])
 
+  // (Re)attach a renderer whenever the mode changes. The canvas is keyed by mode, so each
+  // mode gets a fresh element (a canvas can't switch between WebGL and 2D).
   useEffect(() => {
-    sandboxRef.current?.configure({ tool, brushRadius, paused, speed })
-  }, [tool, brushRadius, paused, speed])
+    const sandbox = sandboxRef.current
+    const canvas = canvasRef.current
+    if (!sandbox || !canvas) return
+    try {
+      sandbox.attach(canvas, mode)
+    } catch (error) {
+      console.warn('Smooth graphics unavailable, falling back to pixel mode.', error)
+      // Reacting to the GPU refusing the shader: remount a fresh canvas in pixel mode.
+      // oxlint-disable-next-line react/set-state-in-effect
+      setSmoothFailed(true)
+    }
+  }, [mode])
+
+  useEffect(() => {
+    sandboxRef.current?.configure({ tool, brushRadius, paused, speed, dayCycle })
+  }, [tool, brushRadius, paused, speed, dayCycle])
 
   useImperativeHandle(ref, () => ({
     step: () => sandboxRef.current?.step(),
     clear: () => sandboxRef.current?.clear(),
+    get sandbox() {
+      return sandboxRef.current
+    },
   }))
 
   const toGrid = (e: PointerEvent<HTMLCanvasElement>) => {
@@ -87,8 +122,9 @@ export function SandboxView({ tool, brushRadius, paused, speed, onStats, ref }: 
     <div className="sandbox" ref={stageRef}>
       <div className="sandbox__frame" ref={frameRef}>
         <canvas
+          key={mode}
           ref={canvasRef}
-          className="sandbox__canvas"
+          className={`sandbox__canvas sandbox__canvas--${mode}`}
           onContextMenu={(e) => e.preventDefault()}
           onPointerDown={(e) => {
             const p = toGrid(e)

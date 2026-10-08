@@ -18,6 +18,8 @@ export interface CellContext {
   readonly x: number
   readonly y: number
   random(): number
+  /** World daylight 0 (night) .. 1 (day). */
+  light(): number
   /** Element id at the offset, or `null` outside the world. */
   get(dx: number, dy: number): string | null
   /** Replaces the cell at the offset (fresh water/data unless given). */
@@ -60,6 +62,10 @@ export class SimulationContext implements CellContext {
 
   random(): number {
     return this.sim.random()
+  }
+
+  light(): number {
+    return this.sim.daylight
   }
 
   get(dx: number, dy: number): string | null {

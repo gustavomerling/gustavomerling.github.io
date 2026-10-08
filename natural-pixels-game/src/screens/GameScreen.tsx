@@ -1,6 +1,7 @@
-import { ArrowLeft, Thermometer } from 'lucide-react'
+import { ArrowLeft, Moon, Sun, Thermometer } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { Navigate } from '../app/screens.ts'
+import { GRAIN_CELLS, useSettings } from '../app/settings.ts'
 import { EMPTY, PALETTE, elementIndex } from '../elements/registry.ts'
 import type { SandboxStats } from '../engine/Sandbox.ts'
 import { SandboxView, type SandboxHandle } from '../game/SandboxView.tsx'
@@ -8,13 +9,27 @@ import { BRUSH_SIZES, SPEEDS } from '../game/settings.ts'
 import { Sidebar } from '../game/Sidebar.tsx'
 import { Button } from '../ui/Button.tsx'
 
+/** Time of day (0..1) as a 24h clock, e.g. 0.5 -> "12:00". */
+function clock(timeOfDay: number): string {
+  const minutes = Math.floor(timeOfDay * 24 * 60)
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+}
+
 export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
+  const { settings, update } = useSettings()
   const sandboxRef = useRef<SandboxHandle>(null)
   const [tool, setTool] = useState(() => elementIndex('sand'))
   const [brush, setBrush] = useState(3)
   const [paused, setPaused] = useState(false)
   const [speed, setSpeed] = useState(1)
-  const [stats, setStats] = useState<SandboxStats>({ fps: 0, particles: 0, hover: null })
+  const [stats, setStats] = useState<SandboxStats>({
+    fps: 0,
+    particles: 0,
+    hover: null,
+    timeOfDay: 0.32,
+    counts: new Uint32Array(0),
+  })
+  const isDay = stats.timeOfDay >= 0.25 && stats.timeOfDay < 0.75
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -69,6 +84,10 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
               {stats.hover.name} · {Math.round(stats.hover.temp)} °C
             </span>
           )}
+          <span className="game__probe" title={settings.dayCycle ? 'Time of day' : 'Day/night cycle off'}>
+            {isDay ? <Sun size={14} aria-hidden /> : <Moon size={14} aria-hidden />}
+            {clock(stats.timeOfDay)}
+          </span>
           {stats.particles.toLocaleString('en-US')} particles · {stats.fps} fps
         </span>
       </header>
@@ -85,6 +104,8 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
           speed={speed}
           onSpeed={setSpeed}
           onClear={() => sandboxRef.current?.clear()}
+          dayCycle={settings.dayCycle}
+          onDayCycle={(dayCycle) => update({ dayCycle })}
         />
 
         <SandboxView
@@ -93,6 +114,9 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
           brushRadius={BRUSH_SIZES[brush]}
           paused={paused}
           speed={SPEEDS[speed]}
+          dayCycle={settings.dayCycle}
+          cellTarget={GRAIN_CELLS[settings.grain]}
+          renderMode={settings.graphics}
           onStats={setStats}
         />
       </div>

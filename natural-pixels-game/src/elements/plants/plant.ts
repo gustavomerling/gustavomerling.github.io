@@ -1,7 +1,7 @@
 import { Sprout } from 'lucide-react'
 import type { CellContext } from '../../engine/context.ts'
 import { CROWN_LEAF } from './leaf.ts'
-import { TISSUE_GROUP, drinkFromSoil } from './tissue.ts'
+import { TISSUE_GROUP, drinkFromSoil, sunlight } from './tissue.ts'
 import type { ElementDefinition } from '../types.ts'
 import { WOOD_TREE, trunkTop } from './wood.ts'
 
@@ -54,7 +54,7 @@ export const plant: ElementDefinition = {
 /** The tip climbs one cell at a time, paying water; tall enough, it forms a crown. */
 function grow(ctx: CellContext, data: number) {
   const water = ctx.water(0, 0)
-  if (water < GROW_COST || ctx.random() >= GROW_CHANCE) return
+  if (water < GROW_COST || ctx.random() >= GROW_CHANCE * sunlight(ctx)) return
   const height = data & HEIGHT_MASK
 
   // Buried tips push straight up through the soil; only open air counts towards height.

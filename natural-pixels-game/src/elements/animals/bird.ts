@@ -27,6 +27,9 @@ const DIGEST_TICKS: Range = [150, 360]
 const PERCH_CHANCE = 0.004
 const PERCH_TICKS: Range = [120, 360]
 const SLEEP_CHANCE = 0.35
+/** Below this daylight it's night: birds land and sleep until morning. */
+const NIGHT = 0.3
+const NIGHT_PERCH_CHANCE = 0.05
 const SLEEP_TICKS: Range = [360, 900]
 
 type Range = [number, number]
@@ -71,7 +74,8 @@ function fly(ctx: CellContext, data: number) {
     }
   } else {
     if (adjacentFruit(ctx)) return setState(ctx, data, EAT, EAT_TICKS)
-    if (isPerch(ctx.get(0, 1)) && ctx.random() < PERCH_CHANCE) {
+    const night = ctx.light() < NIGHT
+    if (isPerch(ctx.get(0, 1)) && ctx.random() < (night ? NIGHT_PERCH_CHANCE : PERCH_CHANCE)) {
       return setState(ctx, data, PERCH, between(ctx, PERCH_TICKS))
     }
   }
@@ -110,8 +114,13 @@ function eat(ctx: CellContext, data: number) {
 function rest(ctx: CellContext, data: number) {
   if (!isPerch(ctx.get(0, 1))) return setState(ctx, data, FLY, 0)
 
+  // At night, perched birds fall asleep and stay asleep until it gets light.
+  const night = ctx.light() < NIGHT
+  if (night && (data & STATE_MASK) !== SLEEP) return setState(ctx, data, SLEEP, between(ctx, SLEEP_TICKS))
+
   const life = ctx.life(0, 0)
   if (life > 0) return ctx.setLife(0, 0, life - 1)
+  if (night) return
 
   if ((data & STATE_MASK) === PERCH && ctx.random() < SLEEP_CHANCE) {
     return setState(ctx, data, SLEEP, between(ctx, SLEEP_TICKS))

@@ -3,6 +3,7 @@ import type { ElementDefinition, Matter } from '../elements/types.ts'
 import { BEHAVIORS, type Behavior } from './behaviors/index.ts'
 import { AMBIENT_TEMP } from './constants.ts'
 import { SimulationContext } from './context.ts'
+import { DAY_TICKS, FIXED_TIME, START_TIME, daylightAt, sunPositionAt } from './daylight.ts'
 import type { Grid } from './grid.ts'
 import { updateMoisture } from './moisture.ts'
 import { createRandom } from './random.ts'
@@ -32,6 +33,12 @@ export class Simulation {
   readonly grid: Grid
   readonly random = createRandom()
   tick = 0
+  /** Day/night cycle on; off = endless day at FIXED_TIME. */
+  dayCycle = true
+  /** Ticks into the current day. */
+  private clock = Math.round(START_TIME * DAY_TICKS)
+  /** Daylight 0..1, refreshed every tick (plants and animals read it via ctx.light()). */
+  daylight = daylightAt(START_TIME)
 
   /** Per-element lookup tables, indexed by registry index. */
   readonly density = Float32Array.from(ELEMENTS, (el) => el.density)
@@ -71,9 +78,20 @@ export class Simulation {
     this.grid = grid
   }
 
+  /** Time of day 0..1 (0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset). */
+  get timeOfDay(): number {
+    return this.dayCycle ? this.clock / DAY_TICKS : FIXED_TIME
+  }
+
+  sunPosition() {
+    return sunPositionAt(this.timeOfDay)
+  }
+
   step() {
     const { width, height, type, stamp } = this.grid
     const tick = ++this.tick
+    if (this.dayCycle) this.clock = (this.clock + 1) % DAY_TICKS
+    this.daylight = daylightAt(this.timeOfDay)
     // Alternate horizontal scan direction every tick so nothing drifts to one side.
     const leftToRight = (tick & 1) === 0
 

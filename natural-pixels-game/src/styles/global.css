@@ -318,6 +318,10 @@ body {
     0 18px 50px rgba(0, 0, 0, 0.35);
 }
 
+.sandbox__canvas--pixel {
+  image-rendering: pixelated;
+}
+
 .sandbox__canvas {
   position: absolute;
   inset: 0;
