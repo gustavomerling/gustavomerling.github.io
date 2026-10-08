@@ -50,6 +50,16 @@ export function MenuScreen({ onNavigate }: { onNavigate: Navigate }) {
             <li>Bees pollinate tree crowns for more fruit. Birds eat fruit and drop the seeds far away.</li>
             <li>Grass spreads over wet soil. Fish live in water. Soaked soil turns into mud.</li>
           </ul>
+          <h3 className="tips__heading">Humans</h3>
+          <ul className="tips">
+            <li>Place a human (Animals) and it lives on its own, Minecraft-style: chops trees into logs and planks, crafts a pickaxe, mines stone, and builds a house before night.</li>
+            <li>It eats fruit and fish, sleeps at home, replants trees and waters saplings with a bucket. Hover it to see its inventory and what it's doing.</li>
+          </ul>
+          <h3 className="tips__heading">Chemistry</h3>
+          <ul className="tips">
+            <li>Lava hardens into stone, turns water to steam and melts sand into glass. Oil floats and burns fast.</li>
+            <li>Acid eats almost anything except glass and metal. Liquid nitrogen freezes water. Gunpowder explodes in chains.</li>
+          </ul>
           <h3 className="tips__heading">Heat</h3>
           <ul className="tips">
             <li>Fire under a metal pot of water boils it into steam, which becomes clouds and rains back down.</li>

@@ -136,9 +136,10 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
         <span className="game__title">Natural Pixels</span>
         <span className="game__stats">
           {stats.hover && (
-            <span className="game__probe">
+            <span className="game__probe game__probe--hover" title={stats.hover.detail}>
               <Thermometer size={14} aria-hidden />
               {stats.hover.name} · {Math.round(stats.hover.temp)} °C
+              {stats.hover.detail && <span className="game__detail">{stats.hover.detail}</span>}
             </span>
           )}
           <span className="game__probe" title={settings.dayCycle ? 'Time of day' : 'Day/night cycle off'}>

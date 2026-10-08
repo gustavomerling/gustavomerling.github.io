@@ -43,6 +43,17 @@ export interface CellContext {
   /** Per-cell countdown (0..65535), free for each element to use as a timer (not with `lifetime`). */
   life(dx: number, dy: number): number
   setLife(dx: number, dy: number, value: number): void
+  /**
+   * Moves the cell at offset `from` over offset `to`, like `moveOver` but for any cell
+   * (multi-cell bodies, e.g. a human's torso and head following its feet).
+   */
+  moveCell(fromDx: number, fromDy: number, toDx: number, toDy: number): void
+  /**
+   * Persistent memory object for the current cell (a human's inventory and plans).
+   * Created with `create` the first time. It follows the cell as it moves and is saved
+   * with scenes, so keep it JSON-friendly. Uses the cell's `life` as the key.
+   */
+  memory<T>(create: () => T): T
 }
 
 /** Single reusable context the simulation re-binds to each cell (no per-cell allocation). */
@@ -137,6 +148,24 @@ export class SimulationContext implements CellContext {
   setLife(dx: number, dy: number, value: number) {
     const i = this.index(dx, dy)
     if (i >= 0) this.sim.grid.life[i] = Math.max(0, Math.min(0xffff, value | 0))
+  }
+
+  moveCell(fromDx: number, fromDy: number, toDx: number, toDy: number) {
+    const from = this.index(fromDx, fromDy)
+    const to = this.index(toDx, toDy)
+    if (from >= 0 && to >= 0) this.sim.moveOver(from, to)
+  }
+
+  memory<T>(create: () => T): T {
+    const i = this.index(0, 0)
+    const { life } = this.sim.grid
+    if (life[i] === 0) life[i] = this.sim.newMemoryKey()
+    let memory = this.sim.memory.get(life[i])
+    if (memory === undefined) {
+      memory = create()
+      this.sim.memory.set(life[i], memory)
+    }
+    return memory as T
   }
 
   private index(dx: number, dy: number): number {

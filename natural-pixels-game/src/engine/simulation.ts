@@ -40,6 +40,9 @@ export class Simulation {
   private clock = START_TIME
   /** Daylight 0..1, refreshed every tick (plants and animals read it via ctx.light()). */
   daylight = daylightAt(START_TIME)
+  /** Per-cell memory objects (see CellContext.memory), keyed by the cell's `life`. */
+  readonly memory = new Map<number, unknown>()
+  private nextMemoryKey = 1
 
   /** Per-element lookup tables, indexed by registry index. */
   readonly density = Float32Array.from(ELEMENTS, (el) => el.density)
@@ -85,6 +88,32 @@ export class Simulation {
   /** Time of day 0..1 (0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset). */
   get timeOfDay(): number {
     return this.dayCycle ? this.clock : FIXED_TIME
+  }
+
+  /** A fresh key for CellContext.memory (1..65535). */
+  newMemoryKey(): number {
+    for (let tries = 0; tries < 0xffff; tries++) {
+      const key = this.nextMemoryKey
+      this.nextMemoryKey = (key % 0xffff) + 1
+      if (!this.memory.has(key)) return key
+    }
+    return 1
+  }
+
+  /** Replaces all cell memories (when loading a scene or clearing). */
+  resetMemory(entries: [number, unknown][] = []) {
+    this.memory.clear()
+    for (const [key, value] of entries) this.memory.set(key, value)
+    this.nextMemoryKey = 1
+  }
+
+  /** Extra hover text for the element at (x, y), via its `describe` hook. */
+  describeCell(x: number, y: number): string | undefined {
+    const t = this.grid.type[y * this.grid.width + x]
+    const describe = ELEMENTS[t].describe
+    if (!describe) return undefined
+    this.ctx.bind(x, y)
+    return describe(this.ctx)
   }
 
   /** Jumps to a time of day (0..1), e.g. when loading a scene. */

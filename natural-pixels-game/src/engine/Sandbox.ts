@@ -26,7 +26,7 @@ export interface SandboxStats {
   fps: number
   particles: number
   /** Element and temperature under the cursor (null when off the canvas). */
-  hover: { name: string; temp: number } | null
+  hover: { name: string; temp: number; detail?: string } | null
   /** Time of day 0..1 (0 = midnight, 0.5 = noon). */
   timeOfDay: number
   /** Cell count per element index (for sounds and the like). */
@@ -44,7 +44,7 @@ export class Sandbox {
 
   private renderer: Renderer | null = null
   private settings: SandboxSettings = { tool: EMPTY, brushRadius: 3, paused: false, speed: 1, dayCycle: true }
-  private pointer = { down: false, erase: false, inside: false, x: 0, y: 0, lastX: 0, lastY: 0 }
+  private pointer = { down: false, erase: false, inside: false, singlePlaced: false, x: 0, y: 0, lastX: 0, lastY: 0 }
   private size = { width: 0, height: 0 }
 
   private frameId = 0
@@ -101,24 +101,26 @@ export class Sandbox {
 
   clear() {
     this.grid.clear()
+    this.sim.resetMemory()
     this.render(performance.now())
   }
 
   /** The whole world as a compressed scene file. */
   exportScene(): Promise<Blob> {
-    return encodeScene(this.grid, this.sim.timeOfDay)
+    return encodeScene(this.grid, { timeOfDay: this.sim.timeOfDay, memory: [...this.sim.memory] })
   }
 
   /** Replaces the world with a scene file (throws if it isn't one). */
   async importScene(blob: Blob) {
-    const timeOfDay = await decodeScene(blob, this.grid)
+    const { timeOfDay, memory } = await decodeScene(blob, this.grid)
     this.sim.setTimeOfDay(timeOfDay)
+    this.sim.resetMemory(memory)
     this.render(performance.now())
   }
 
   /** Pointer coordinates are in grid cells. `erase` paints air regardless of the tool. */
   pointerDown(x: number, y: number, erase = false) {
-    this.pointer = { down: true, erase, inside: true, x, y, lastX: x, lastY: y }
+    this.pointer = { down: true, erase, inside: true, singlePlaced: false, x, y, lastX: x, lastY: y }
   }
 
   pointerMove(x: number, y: number) {
@@ -166,6 +168,17 @@ export class Sandbox {
   private paint() {
     const p = this.pointer
     const type = p.erase ? EMPTY : this.settings.tool
+
+    // Single-placement elements (humans): one per click, only into empty space.
+    if (ELEMENTS[type].brushSingle) {
+      const x = Math.floor(p.x)
+      const y = Math.floor(p.y)
+      if (!p.singlePlaced && this.grid.inBounds(x, y) && this.grid.type[y * this.grid.width + x] === EMPTY) {
+        this.grid.place(y * this.grid.width + x, type)
+        p.singlePlaced = true
+      }
+      return
+    }
     paintStroke(this.grid, p.lastX, p.lastY, p.x, p.y, this.settings.brushRadius, type, this.sim.random)
     p.lastX = p.x
     p.lastY = p.y
@@ -198,6 +211,14 @@ export class Sandbox {
     const y = Math.floor(pointer.y)
     if (!pointer.inside || !grid.inBounds(x, y)) return null
     const i = y * grid.width + x
-    return { name: ELEMENTS[grid.type[i]].name, temp: grid.temp[i] }
+    // Parts of a body (a human's head) show their main cell's details.
+    const part = ELEMENTS[grid.type[i]].partOf
+    const my = part ? Math.min(grid.height - 1, y + part.below) : y
+    const main = my * grid.width + x
+    return {
+      name: ELEMENTS[grid.type[main]].name,
+      temp: grid.temp[i],
+      detail: this.sim.describeCell(x, my),
+    }
   }
 }

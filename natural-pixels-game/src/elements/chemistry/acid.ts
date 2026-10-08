@@ -21,6 +21,9 @@ const DISSOLVES = [
   'fish',
   'bird',
   'bee',
+  'human',
+  'human_body',
+  'human_head',
   'gunpowder',
 ]
 

@@ -1,4 +1,4 @@
-import { Bird, Box, Droplets, Flame, FlaskConical, Mountain, PersonStanding, Sprout, type LucideIcon } from 'lucide-react'
+import { Bird, Box, Droplets, Flame, FlaskConical, Mountain, Sprout, type LucideIcon } from 'lucide-react'
 import type { ElementCategory } from './types.ts'
 
 export interface CategoryInfo {
@@ -13,7 +13,6 @@ export const CATEGORIES: readonly CategoryInfo[] = [
   { id: 'water', label: 'Water', icon: Droplets },
   { id: 'plants', label: 'Plants', icon: Sprout },
   { id: 'animals', label: 'Animals', icon: Bird },
-  { id: 'people', label: 'People', icon: PersonStanding },
   { id: 'fire', label: 'Fire', icon: Flame },
   { id: 'chemistry', label: 'Chemistry', icon: FlaskConical },
   { id: 'materials', label: 'Materials & Objects', icon: Box },

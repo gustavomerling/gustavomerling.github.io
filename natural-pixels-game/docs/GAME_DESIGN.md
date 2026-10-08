@@ -109,12 +109,14 @@ src/
     registry.ts   lista de elementos (posição = índice numérico; ordem da sidebar)
     categories.ts famílias (rótulo + ícone) na ordem da sidebar
     core/         air
-    terrain/      sand, soil, mud, ash + fertility.ts
-    water/        water, steam, cloud
+    terrain/      sand, soil, stone, mud, ash + fertility.ts
+    water/        water, ice, steam, cloud
     plants/       seed, grass, wood, fruit, plant, leaf, litter + tissue.ts
     animals/      bird, bee, fish, worm + shared.ts
-    fire/         fire
-    materials/    metal
+      human/      human.ts (elementos), body, mind, craft, senses, brain + tasks/
+    fire/         fire, lava
+    chemistry/    oil, acid, nitrogen, gunpowder
+    materials/    metal, glass, plank, lamp
 ```
 
 ### 4.1 Grade (estado do mundo)
@@ -159,15 +161,26 @@ interface ElementDefinition {
   moisture?: { capacity, group, absorbs?, flow?, bias? }
   thermal?: { conductivity?, initialTemp?, source?, above?, below?, burn? }
   lifetime?: { min, max, into? }
+  reactions?: { with, chance, self?, other?, selfChance? }[]  // lava + água → pedra + vapor
   update?: (ctx: CellContext) => boolean | void
+  describe?: (ctx) => string       // texto extra no hover (o que o humano está fazendo)
   brushFill?: number
+  brushSingle?: boolean            // 1 por clique (humano)
+  partOf?: { below }               // parte de um corpo multi-célula (cabeça/tronco do humano)
   hidden?: boolean                 // só surge por reação (plant, leaf, cloud, litter)
 }
 ```
 
+`color.emissive` (0..1) faz o elemento brilhar sozinho (lava, lâmpada): não escurece à noite e
+ilumina os arredores. `thermal.insulation` (0..1) reduz a perda de calor para o ar (gelo derrete
+devagar, lava fica líquida). Reações declarativas (`engine/reactions.ts`) testam um vizinho
+aleatório por tick.
+
 `CellContext` (relativo à célula atual): `get`, `set(dx, dy, id, { water?, data?, temp? })`,
-`swap`, `moveOver`, `under`, `water/setWater`, `data/setData`, `life/setLife`, `temp/setTemp`,
-`light()` (luz do dia), `random()`. Células criadas por `set` só agem no próximo tick.
+`swap`, `moveOver`, `moveCell` (mover outra célula do corpo), `under`, `water/setWater`,
+`data/setData`, `life/setLife`, `temp/setTemp`, `light()` (luz do dia), `random()` e
+`memory(create)` — objeto persistente da célula (a "mente" do humano), chaveado pelo `life`,
+que acompanha a célula e é salvo nas cenas. Células criadas por `set` só agem no próximo tick.
 
 Adicionar um elemento = `elements/<família>/<id>.ts` + exportar no `index.ts` da pasta + incluir em
 `registry.ts`. A sidebar (ícone, cor, atalho) se atualiza sozinha.
@@ -210,7 +223,7 @@ em ~15 s com fogo segurado; madeira seca queima toda em ~15 s; madeira molhada r
 
 ### 4.6 Dia e noite (`engine/daylight.ts`)
 
-Um dia = 3 min (10 800 ticks); mundos começam de manhã. `light` 0..1 com amanhecer/entardecer
+Dia de 3 min e noite de 45 s (o relógio anda em duas velocidades); mundos começam de manhã. `light` 0..1 com amanhecer/entardecer
 curtos. Efeitos: plantas crescem a `0.1 + 0.9 × light` da velocidade; pássaros e abelhas dormem à
 noite; o céu muda (estrelas, lua, crepúsculo) e o fogo ilumina os arredores. Desligado = sempre 10h.
 
@@ -263,8 +276,19 @@ zumbido ∝ abelhas, grilos à noite se houver grama. Silencia com o jogo pausad
 | | Bee | static (move-se) | ✅ | voa pelas copas polinizando folhas; descansa; para à noite |
 | | Fish | static (move-se) | ✅ | nada só na água; fora dela morre; água quente cozinha |
 | | Worm | static (move-se) | ✅ | cava a terra adubando; come folha seca/cinza → terra fértil |
-| Fire | Fire | energy | ✅ | sobe, vida curta, fonte de 800 °C, água apaga |
+| | Human | static (3 células) | ✅ | vive sozinho estilo Minecraft (seção 5.2) |
+| Terrain | Stone | static | ✅ | rocha; minerada com picareta; derrete a 1100 °C |
+| Water | Ice | static | ✅ | −60 °C, derrete devagar (calor latente); água vira gelo abaixo de 0 °C |
+| Fire | Fire | energy | ✅ | sobe, vida curta, 800 °C, aquece o que toca; água apaga |
+| | Lava | liquid viscoso, brilha | ✅ | 1200 °C; endurece em pedra; + água → pedra + vapor; derrete areia em vidro |
+| Chemistry | Oil | liquid (flutua) | ✅ | pega fogo a 120 °C; a chama corre pela poça |
+| | Acid | liquid | ✅ | corrói quase tudo e se gasta; vidro e metal resistem |
+| | Liquid Nitrogen | liquid | ✅ | −196 °C, congela água, apaga fogo, evapora |
+| | Gunpowder | powder | ✅ | explode com calor/chama (raio 5), em cadeia; pedra/metal/vidro resistem |
 | Materials | Metal | static | ✅ | sólido flutuante, ótimo condutor de calor |
+| | Glass | static transparente | ✅ | areia derretida; à prova de ácido |
+| | Plank | static | ✅ | tábua (o humano fabrica); queima em cinza |
+| | Lamp | static, brilha | ✅ | ilumina a noite sem calor |
 
 ### 5.1 Ciclos
 
@@ -294,7 +318,34 @@ chuva (1 gota por célula de nuvem) → rega terra e árvores.
 Fogo seca e incendeia madeira/folhas/grama secas; madeira vira cinza; cinza e folhas caídas se
 misturam na terra (fertilidade); minhocas aceleram isso.
 
-### 5.2 Ideias para depois
+### 5.2 Humano (`elements/animals/human/`)
+
+Coluna de 3 células: pés (`human`, que pensa), tronco (`human_body`) e cabeça (`human_head`),
+movidas juntas com `moveCell`. Atravessa ar, grama, folhas, troncos, frutas e água (ficam
+guardados embaixo); sobe degraus de 1, escala paredes, cai, e cava quando fica preso (terra à mão,
+pedra com picareta; nunca quebra tábua/vidro/metal). Age ~12×/s.
+
+**Mente** (`mind.ts`, na memória da célula): tarefa atual, fome (0–100), inventário (toras,
+tábuas, pedra, comida, sementes, balde cheio), ferramentas (picareta/machado de madeira ou pedra,
+balde), casa, obra em andamento, mudas plantadas. O hover mostra tudo isso.
+
+**Crafting** (`craft.ts`, automático): 1 tora → 4 tábuas · 3 tábuas → picareta de madeira
+(necessária para pedra) · 3 tábuas → machado · 3 pedras + 2 tábuas → picareta/machado de pedra ·
+3 tábuas → balde · 1 tábua + 1 pedra → lâmpada.
+
+**Cérebro** (`brain.ts`), em ordem de prioridade:
+1. Noite → vai para casa e dorme (sem casa, dorme onde está).
+2. Fome ≥ 50 come do inventário; ≥ 60 sem comida → colhe fruta ou pesca.
+3. Sem casa → derruba árvores (a árvore inteira cai: toras, folhas viram folha seca, frutas caem,
+   sementes) → fabrica ferramentas → minera pedra (sem pedra à vista, cava uma **escada** para baixo,
+   nunca um poço) → constrói a casa (19 tábuas + 7 pedras: alicerce de pedra, paredes e telhado de
+   tábua, porta à direita, lâmpada no teto) num terreno plano sem árvores.
+4. Com casa → rega as mudas com o balde (busca água, despeja ao lado), planta sementes em volta,
+   mantém estoques (tábuas, pedra, comida) e passeia perto de casa. Replanta onde derrubou.
+
+Morre com calor (fogo, lava → cinza) e com ácido.
+
+### 5.3 Ideias para depois
 Lava e pedra, gelo (água < 0 °C), óleo (inflamável, flutua), vento/ventilador, ácido, tipos de
 semente (flores, cactos), estações do ano, colmeia (abelhas se reproduzem), pássaros fazendo ninho.
 
@@ -311,6 +362,7 @@ semente (flores, cactos), estações do ano, colmeia (abelhas se reproduzem), p�
 | ✅ **3b — Ecossistema** | cinza/fertilidade, grama, folhas caindo, lama, minhoca, peixe, abelha |
 | ✅ **4 — Visual** | renderer WebGL2, céu, ciclo dia/noite |
 | ✅ **5 — Polimento** | settings, sons procedurais, salvar/carregar cenas, sidebar por famílias |
+| ✅ **6 — Química e humano** | pedra, lava, gelo, óleo, ácido, nitrogênio, pólvora, vidro, tábua, lâmpada; reações declarativas; humano estilo Minecraft |
 
 ---
 

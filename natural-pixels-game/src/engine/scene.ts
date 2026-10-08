@@ -19,6 +19,13 @@ interface SceneHeader {
   /** Element id for each index used in the `type` arrays. */
   elements: string[]
   timeOfDay: number
+  /** Cell memories (humans' minds), keyed like the cells' `life`. */
+  memory?: [number, unknown][]
+}
+
+export interface SceneExtras {
+  timeOfDay: number
+  memory: [number, unknown][]
 }
 
 /** Per-cell arrays in file order. Must match between save and load. */
@@ -40,7 +47,7 @@ function arraysOf(grid: Grid) {
   ] as const
 }
 
-export async function encodeScene(grid: Grid, timeOfDay: number): Promise<Blob> {
+export async function encodeScene(grid: Grid, { timeOfDay, memory }: SceneExtras): Promise<Blob> {
   const header: SceneHeader = {
     format: FORMAT,
     version: VERSION,
@@ -48,6 +55,7 @@ export async function encodeScene(grid: Grid, timeOfDay: number): Promise<Blob> 
     height: grid.height,
     elements: ELEMENTS.map((el) => el.id),
     timeOfDay,
+    memory,
   }
   const headerBytes = new TextEncoder().encode(JSON.stringify(header))
   const length = new Uint8Array(4)
@@ -63,9 +71,9 @@ export async function encodeScene(grid: Grid, timeOfDay: number): Promise<Blob> 
 
 /**
  * Loads a scene into `grid`. A scene of another size is placed bottom-aligned and
- * horizontally centered (cropped or padded). Returns the scene's time of day.
+ * horizontally centered (cropped or padded). Returns the scene's time of day and memories.
  */
-export async function decodeScene(blob: Blob, grid: Grid): Promise<number> {
+export async function decodeScene(blob: Blob, grid: Grid): Promise<SceneExtras> {
   const stream = blob.stream().pipeThrough(new DecompressionStream('gzip'))
   const bytes = new Uint8Array(await new Response(stream).arrayBuffer())
 
@@ -108,7 +116,7 @@ export async function decodeScene(blob: Blob, grid: Grid): Promise<number> {
   }
   // Air holds no heat.
   for (let i = 0; i < grid.size; i++) if (grid.type[i] === EMPTY) grid.temp[i] = AMBIENT_TEMP
-  return header.timeOfDay
+  return { timeOfDay: header.timeOfDay, memory: header.memory ?? [] }
 }
 
 function remapTypes(types: Uint8Array, remap: Uint8Array) {

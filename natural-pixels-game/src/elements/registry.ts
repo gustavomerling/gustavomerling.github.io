@@ -1,4 +1,4 @@
-import { bee, bird, fish, worm } from './animals/index.ts'
+import { bee, bird, fish, human, humanBody, humanHead, worm } from './animals/index.ts'
 import { air } from './core/index.ts'
 import { acid, gunpowder, nitrogen, oil } from './chemistry/index.ts'
 import { fire, lava } from './fire/index.ts'
@@ -41,6 +41,9 @@ export const ELEMENTS: readonly ElementDefinition[] = [
   bee,
   fish,
   worm,
+  human,
+  humanBody,
+  humanHead,
   // Fire
   fire,
   lava,

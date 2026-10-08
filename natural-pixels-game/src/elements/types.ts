@@ -11,7 +11,6 @@ export type ElementCategory =
   | 'water'
   | 'plants'
   | 'animals'
-  | 'people'
   | 'fire'
   | 'chemistry'
   | 'materials'
@@ -134,6 +133,8 @@ export interface ElementDefinition {
   describe?: (ctx: CellContext) => string | undefined
   /** Brush places a single cell per click instead of a spray (humans). */
   brushSingle?: boolean
+  /** Part of a multi-cell body whose main cell sits this many cells below (hover shows the main cell). */
+  partOf?: { below: number }
   /**
    * Custom per-tick logic (growth, germination...). Runs before movement.
    * Movement is skipped if it returns `true` (e.g. fruit hanging from a branch)
