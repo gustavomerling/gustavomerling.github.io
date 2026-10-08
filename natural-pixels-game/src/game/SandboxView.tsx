@@ -36,7 +36,7 @@ function gridSizeFor(width: number, height: number, cellTarget: number) {
 }
 
 /** Mounts the engine on a canvas and bridges React props and pointer events into it. */
-export function SandboxView({ tool, brushRadius, paused, speed, dayCycle, cellTarget, renderMode, showThoughts, onStats, ref }: SandboxViewProps) {
+export function SandboxView({ tool, brushRadius, paused, speed, dayCycle, weather, cellTarget, renderMode, showThoughts, onStats, ref }: SandboxViewProps) {
   const stageRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -111,8 +111,8 @@ export function SandboxView({ tool, brushRadius, paused, speed, dayCycle, cellTa
   }, [showThoughts])
 
   useEffect(() => {
-    sandboxRef.current?.configure({ tool, brushRadius, paused, speed, dayCycle })
-  }, [tool, brushRadius, paused, speed, dayCycle])
+    sandboxRef.current?.configure({ tool, brushRadius, paused, speed, dayCycle, weather })
+  }, [tool, brushRadius, paused, speed, dayCycle, weather])
 
   useImperativeHandle(ref, () => ({
     step: () => sandboxRef.current?.step(),

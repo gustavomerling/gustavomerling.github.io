@@ -1,5 +1,5 @@
 import { ELEMENTS, EMPTY } from '../elements/registry.ts'
-import type { Thought } from '../elements/types.ts'
+import type { Status, Thought } from '../elements/types.ts'
 import { paintStroke } from './brush.ts'
 import { Grid } from './grid.ts'
 import { createRenderer, type RenderMode, type Renderer } from './renderer/index.ts'
@@ -15,6 +15,8 @@ const STATS_INTERVAL_MS = 250
 const THOUGHTS_INTERVAL_MS = 100
 /** Elements that think out loud (have a `thought` hook). */
 const THINKERS = Uint8Array.from(ELEMENTS, (el) => (el.thought ? 1 : 0))
+/** Elements with a status card (have a `status` hook). */
+const PEOPLE = Uint8Array.from(ELEMENTS, (el) => (el.status ? 1 : 0))
 
 export interface SandboxSettings {
   /** Element index painted by the primary button (EMPTY = eraser). */
@@ -25,6 +27,8 @@ export interface SandboxSettings {
   speed: number
   /** Day/night cycle on; off = endless day. */
   dayCycle: boolean
+  /** Daily rain on/off. */
+  weather: boolean
 }
 
 export interface SandboxStats {
@@ -36,6 +40,14 @@ export interface SandboxStats {
   timeOfDay: number
   /** Cell count per element index (for sounds and the like). */
   counts: Uint32Array
+  /** Everyone with a status card (humans), for the top bar. */
+  people: Person[]
+}
+
+export interface Person {
+  /** Stable while it lives (its memory key). */
+  key: number
+  status: Status
 }
 
 /** A thought bubble anchored at a cell (grid coordinates of the thinking cell). */
@@ -57,7 +69,7 @@ export class Sandbox {
   onThoughts?: (bubbles: ThoughtBubble[]) => void
 
   private renderer: Renderer | null = null
-  private settings: SandboxSettings = { tool: EMPTY, brushRadius: 3, paused: false, speed: 1, dayCycle: true }
+  private settings: SandboxSettings = { tool: EMPTY, brushRadius: 3, paused: false, speed: 1, dayCycle: true, weather: true }
   private pointer = { down: false, erase: false, inside: false, singlePlaced: false, x: 0, y: 0, lastX: 0, lastY: 0 }
   private size = { width: 0, height: 0 }
 
@@ -95,6 +107,7 @@ export class Sandbox {
   configure(settings: Partial<SandboxSettings>) {
     this.settings = { ...this.settings, ...settings }
     this.sim.dayCycle = this.settings.dayCycle
+    this.sim.weather.enabled = this.settings.weather
   }
 
   start() {
@@ -117,6 +130,7 @@ export class Sandbox {
   clear() {
     this.grid.clear()
     this.sim.resetMemory()
+    this.sim.weather.reset()
     this.render(performance.now())
   }
 
@@ -124,6 +138,7 @@ export class Sandbox {
   generate() {
     generateWorld(this.grid, this.sim.random)
     this.sim.resetMemory()
+    this.sim.weather.reset()
     this.render(performance.now())
   }
 
@@ -137,6 +152,7 @@ export class Sandbox {
     const { timeOfDay, memory } = await decodeScene(blob, this.grid)
     this.sim.setTimeOfDay(timeOfDay)
     this.sim.resetMemory(memory)
+    this.sim.weather.reset()
     this.render(performance.now())
   }
 
@@ -184,7 +200,8 @@ export class Sandbox {
 
   private render(now: number) {
     const { sim } = this
-    this.renderer?.render({ time: now / 1000, light: sim.daylight, sun: sim.sunPosition() })
+    const { overcast, flash, rainbow } = sim.weather
+    this.renderer?.render({ time: now / 1000, light: sim.daylight, sun: sim.sunPosition(), overcast, flash, rainbow })
   }
 
   /** Called every frame while held, so holding still keeps pouring. */
@@ -213,9 +230,17 @@ export class Sandbox {
     if (elapsed < STATS_INTERVAL_MS) return
 
     const { counts } = this
-    const { type, size } = this.grid
+    const { type, size, width, life } = this.grid
     counts.fill(0)
-    for (let i = 0; i < size; i++) counts[type[i]]++
+    const people: Person[] = []
+    for (let i = 0; i < size; i++) {
+      const t = type[i]
+      counts[t]++
+      if (!PEOPLE[t]) continue
+      const status = this.sim.statusAt(i % width, Math.floor(i / width))
+      if (status) people.push({ key: life[i], status })
+    }
+    people.sort((a, b) => a.key - b.key)
 
     this.onStats?.({
       fps: Math.round((this.statsFrames * 1000) / elapsed),
@@ -223,6 +248,7 @@ export class Sandbox {
       hover: this.probe(),
       timeOfDay: this.sim.timeOfDay,
       counts,
+      people,
     })
     this.statsFrames = 0
     this.statsTime = now

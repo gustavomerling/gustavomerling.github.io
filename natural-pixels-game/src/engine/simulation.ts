@@ -1,5 +1,5 @@
 import { ELEMENTS, EMPTY, elementIndex } from '../elements/registry.ts'
-import type { ElementDefinition, Matter, Thought } from '../elements/types.ts'
+import type { ElementDefinition, Matter, Status, Thought } from '../elements/types.ts'
 import { BEHAVIORS, type Behavior } from './behaviors/index.ts'
 import { AMBIENT_TEMP } from './constants.ts'
 import { SimulationContext } from './context.ts'
@@ -9,8 +9,12 @@ import { updateMoisture } from './moisture.ts'
 import { compileReactions, react } from './reactions.ts'
 import { createRandom } from './random.ts'
 import { updateThermal } from './thermal.ts'
+import { Weather } from './weather.ts'
 
 const FLUID_MATTER: ReadonlySet<Matter> = new Set(['empty', 'liquid', 'gas'])
+const WATER = elementIndex('water')
+/** Low plants water flows through. */
+const SEEPS_THROUGH = Uint8Array.from(ELEMENTS, (el) => (['grass', 'flower', 'firefly'].includes(el.id) ? 1 : 0))
 
 /** Numeric id per moisture group name; 0 = no moisture. */
 const MOISTURE_GROUPS = new Map<string, number>()
@@ -40,6 +44,8 @@ export class Simulation {
   private clock = START_TIME
   /** Daylight 0..1, refreshed every tick (plants and animals read it via ctx.light()). */
   daylight = daylightAt(START_TIME)
+  /** Rain, storms and rainbows (see weather.ts). */
+  readonly weather = new Weather()
   /** Per-cell memory objects (see CellContext.memory), keyed by the cell's `life`. */
   readonly memory = new Map<number, unknown>()
   private nextMemoryKey = 1
@@ -116,6 +122,14 @@ export class Simulation {
     return describe(this.ctx)
   }
 
+  /** Status card for the element at (x, y), via its `status` hook. */
+  statusAt(x: number, y: number): Status | undefined {
+    const status = ELEMENTS[this.grid.type[y * this.grid.width + x]].status
+    if (!status) return undefined
+    this.ctx.bind(x, y)
+    return status(this.ctx)
+  }
+
   /** Thought bubble for the element at (x, y), via its `thought` hook. */
   thoughtAt(x: number, y: number): Thought | undefined {
     const thought = ELEMENTS[this.grid.type[y * this.grid.width + x]].thought
@@ -139,6 +153,7 @@ export class Simulation {
     const tick = ++this.tick
     if (this.dayCycle) this.clock = advanceTime(this.clock)
     this.daylight = daylightAt(this.timeOfDay)
+    this.weather.tick(this)
     // Alternate horizontal scan direction every tick so nothing drifts to one side.
     const leftToRight = (tick & 1) === 0
 
@@ -211,11 +226,32 @@ export class Simulation {
     const { grid } = this
     if (!grid.inBounds(tx, ty)) return false
     const to = ty * grid.width + tx
+    if (this.seeps(t, to)) {
+      this.relocate(from, to)
+      return true
+    }
     if (!this.canEnter(t, to, dy)) return false
     // Pushing through another fluid is slower than falling through air.
     if (grid.type[to] !== EMPTY && this.random() >= this.sink[t]) return false
-    this.swap(from, to)
+    this.relocate(from, to)
     return true
+  }
+
+  /** Water runs over grass and flowers without washing them away (they stay underneath). */
+  seeps(t: number, to: number): boolean {
+    return t === WATER && SEEPS_THROUGH[this.grid.type[to]] === 1 && this.grid.under.type[to] === EMPTY
+  }
+
+  /**
+   * Moves a fluid from `from` to `to`: a plain swap, unless it flows over a plant (or off one
+   * it was covering), which stays put underneath.
+   */
+  relocate(from: number, to: number) {
+    const { type, under } = this.grid
+    if (under.type[from] !== EMPTY || SEEPS_THROUGH[type[to]]) {
+      if (type[to] === EMPTY || SEEPS_THROUGH[type[to]]) return this.moveOver(from, to)
+    }
+    this.swap(from, to)
   }
 
   /** Moves `from` over `to`, keeping `to` hidden underneath (see `Grid.moveOver`). */

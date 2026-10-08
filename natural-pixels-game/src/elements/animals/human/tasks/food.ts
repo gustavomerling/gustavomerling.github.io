@@ -13,14 +13,12 @@ export function eat(mind: Mind) {
   mind.hunger = Math.max(0, mind.hunger - MEAL)
 }
 
-/** Pick a fruit within reach of the ground. Keeps the seed for replanting. */
+const PICKABLE: ReadonlySet<string | null> = new Set(['fruit', 'mushroom'])
+
+/** Pick a fruit (keeping its seed for replanting) or a mushroom within reach of the ground. */
 export const forage: Task = {
   start(body) {
-    const fruit = findNearest(
-      body,
-      SEARCH,
-      (x, y) => body.get(x, y) === 'fruit' && reachableFromGround(body, { x, y }),
-    )
+    const fruit = findNearest(body, SEARCH, (x, y) => PICKABLE.has(body.get(x, y)) && reachableFromGround(body, { x, y }))
     if (!fruit) return false
     body.mind.target = fruit
     body.mind.patience = 150
@@ -28,12 +26,13 @@ export const forage: Task = {
   },
   run(body) {
     const { mind } = body
-    if (!mind.target || body.get(mind.target.x, mind.target.y) !== 'fruit') return 'failed'
+    const picked = mind.target && body.get(mind.target.x, mind.target.y)
+    if (!mind.target || !PICKABLE.has(picked ?? null)) return 'failed'
     const status = approach(body)
     if (status !== 'arrived') return status
     body.set(mind.target.x, mind.target.y, 'air')
     mind.inv.food++
-    mind.inv.seed++
+    if (picked === 'fruit') mind.inv.seed++
     return 'done'
   },
 }
@@ -58,7 +57,9 @@ export const fish: Task = {
   run(body) {
     const { mind } = body
     if (mind.phase === 0) {
-      const status = approach(body)
+      // Out on its boat it can fish right from there.
+      const fromBoat = body.riding() && mind.target && Math.abs(mind.target.x - body.x) <= FISHING_RANGE
+      const status = fromBoat ? 'arrived' : approach(body)
       if (status !== 'arrived') return status
       mind.phase = 1
     }

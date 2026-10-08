@@ -16,6 +16,9 @@ const TURN_CHANCE = 0.3
 const DRY_OUT = 480
 /** Fertility added to soil the worm crawls through (castings). */
 const CASTING_CHANCE = 0.3
+/** In the rain, worms near the surface crawl out (and don't dry out until it stops). */
+const SURFACE_CHANCE = 0.02
+const RAINY = 0.3
 /** Organic matter it eats turns into this fertile soil. */
 const EATEN_FERTILITY = 80
 
@@ -40,6 +43,11 @@ export const worm: ElementDefinition = {
       return true
     }
     ctx.setLife(0, 0, 0)
+    const buried = ctx.get(-1, 0) === 'soil' || ctx.get(1, 0) === 'soil'
+    if (ctx.rain() > RAINY && buried && ctx.get(0, -1) === 'air' && ctx.random() < SURFACE_CHANCE) {
+      ctx.swap(0, -1)
+      return true
+    }
     if (ctx.random() < MOVE_CHANCE) crawl(ctx)
     return true
   },
@@ -67,6 +75,14 @@ function crawl(ctx: CellContext) {
 
 /** Out of the soil: fall, wriggle back in if possible, or dry out. */
 function exposed(ctx: CellContext) {
+  if (ctx.rain() > RAINY) {
+    // Out in the rain: wriggle along the wet ground.
+    ctx.setLife(0, 0, 0)
+    if (trySwap(ctx, 0, 1, FALLS_THROUGH)) return
+    const side = ctx.random() < 0.5 ? -1 : 1
+    if (ctx.random() < 0.05 && ctx.get(side, 0) === 'air' && ctx.get(side, 1) !== 'air') ctx.swap(side, 0)
+    return
+  }
   const dried = ctx.life(0, 0) + 1
   if (dried > DRY_OUT) return decompose(ctx, 20)
   ctx.setLife(0, 0, dried)

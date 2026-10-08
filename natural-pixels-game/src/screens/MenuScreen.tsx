@@ -48,14 +48,22 @@ export function MenuScreen({ onNavigate }: { onNavigate: Navigate }) {
             <li>Water soaks into soil. Seeds sprout in wet soil and grow into trees that bear fruit.</li>
             <li>Plants grow by day. Ash and fallen leaves fertilize the soil; worms turn them into rich earth.</li>
             <li>Bees pollinate tree crowns for more fruit. Birds eat fruit and drop the seeds far away.</li>
-            <li>Grass spreads over wet soil. Fish live in water. Soaked soil turns into mud.</li>
+            <li>Grass spreads over wet soil; flowers bloom in it and fireflies come out at night. Mushrooms grow in the shade.</li>
+            <li>Rabbits nibble grass and wheat and have babies. Fish live in water. Soaked soil turns into mud.</li>
           </ul>
           <h3 className="tips__heading">Humans</h3>
           <ul className="tips">
             <li>Place a human (Animals) and it lives on its own, Minecraft-style: chops trees into logs and planks, crafts a pickaxe, mines stone, and builds a house before night.</li>
             <li>It eats fruit and fish, sleeps at home, replants trees and waters saplings with a bucket. Hover it to see its inventory and what it's doing.</li>
+            <li>Its house grows in 4 stages, wider and taller, with ladders, beds and doors. It farms wheat (seeds come from cutting grass), spends time at home and greets its neighbours.</li>
+            <li>At night zombies may rise. Humans fight them (swords, or a musket with gunpowder zombies drop) or hide behind their doors. Out after dark, they carry a torch.</li>
             <li>It can't walk underwater: it swims, or with 5 planks it builds a boat and rows across. The boat stays moored at the shore for the trip back.</li>
             <li>A bubble shows what it's thinking. When it glows orange it needs something: paint Wood, Stone or Fruit near it and it will happily take your gift.</li>
+          </ul>
+          <h3 className="tips__heading">Weather</h3>
+          <ul className="tips">
+            <li>It rains for a while every day; some rains are storms with lightning that can start fires. After a gentle rain, look for a rainbow.</li>
+            <li>Puddles evaporate in the sun, rise as steam and come back as rain.</li>
           </ul>
           <h3 className="tips__heading">Chemistry</h3>
           <ul className="tips">

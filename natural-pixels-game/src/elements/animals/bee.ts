@@ -2,7 +2,7 @@ import { Bug } from 'lucide-react'
 import type { CellContext } from '../../engine/context.ts'
 import { POLLINATED } from '../plants/leaf.ts'
 import type { ElementDefinition } from '../types.ts'
-import { NIGHT, between, findNearest, tryMoveOver, type Range } from './shared.ts'
+import { between, findNearest, shelterTime, tryMoveOver, type Range } from './shared.ts'
 
 /*
  * Bee `data`: bit 0 = resting, bit 1 = heading right.
@@ -16,6 +16,10 @@ const MOVE_CHANCE = 0.6
 const SIGHT = 8
 const REST_CHANCE = 0.01
 const REST_TICKS: Range = [60, 180]
+/** Bees visiting flowers sometimes bring a new bee along, up to a swarm. */
+const BROOD_CHANCE = 0.002
+const SWARM = 8
+const SWARM_RADIUS = 8
 
 /** Bees zip through foliage like birds do, without disturbing it. */
 const FLY_THROUGH: ReadonlySet<string | null> = new Set(['air', 'leaf', 'wood', 'plant', 'grass'])
@@ -36,8 +40,8 @@ export const bee: ElementDefinition = {
     pollinate(ctx)
     const data = ctx.data(0, 0)
 
-    // At night bees settle on whatever is below and wait for the sun.
-    if (ctx.light() < NIGHT) {
+    // At night (and in the rain) bees settle on whatever is below and wait for the sun.
+    if (shelterTime(ctx)) {
       if (ctx.get(0, 1) === 'air') ctx.moveOver(0, 1)
       return true
     }
@@ -79,14 +83,29 @@ function fly(ctx: CellContext, data: number) {
 }
 
 function needsPollen(ctx: CellContext, dx: number, dy: number): boolean {
-  return ctx.get(dx, dy) === 'leaf' && (ctx.data(dx, dy) & POLLINATED) === 0
+  const id = ctx.get(dx, dy)
+  return id === 'flower' || (id === 'leaf' && (ctx.data(dx, dy) & POLLINATED) === 0)
 }
 
-/** Every leaf touching the bee gets pollinated. */
+/** Every leaf touching the bee gets pollinated; a flower may bring a new bee. */
 function pollinate(ctx: CellContext) {
+  let flower = false
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
-      if ((dx || dy) && ctx.get(dx, dy) === 'leaf') ctx.setData(dx, dy, ctx.data(dx, dy) | POLLINATED)
+      if (!dx && !dy) continue
+      const id = ctx.get(dx, dy)
+      if (id === 'leaf') ctx.setData(dx, dy, ctx.data(dx, dy) | POLLINATED)
+      else if (id === 'flower') flower = true
     }
   }
+  if (flower && ctx.random() < BROOD_CHANCE) brood(ctx)
+}
+
+function brood(ctx: CellContext) {
+  let bees = 0
+  for (let dy = -SWARM_RADIUS; dy <= SWARM_RADIUS; dy++) {
+    for (let dx = -SWARM_RADIUS; dx <= SWARM_RADIUS; dx++) if (ctx.get(dx, dy) === 'bee') bees++
+  }
+  if (bees >= SWARM) return
+  if (ctx.get(0, -1) === 'air') ctx.set(0, -1, 'bee')
 }

@@ -8,6 +8,13 @@ export type Range = [number, number]
 
 /** Below this daylight it's night: animals rest. */
 export const NIGHT = 0.3
+/** Rain heavier than this sends flying animals to shelter. */
+const DOWNPOUR = 0.4
+
+/** Time to rest: night, or a downpour. */
+export function shelterTime(ctx: CellContext): boolean {
+  return ctx.light() < NIGHT || ctx.rain() > DOWNPOUR
+}
 
 /** Random whole number of ticks in `[min, max]`. */
 export function between(ctx: CellContext, [min, max]: Range): number {

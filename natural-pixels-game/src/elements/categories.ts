@@ -12,7 +12,7 @@ export const CATEGORIES: readonly CategoryInfo[] = [
   { id: 'terrain', label: 'Terrain', icon: Mountain },
   { id: 'water', label: 'Water', icon: Droplets },
   { id: 'plants', label: 'Plants', icon: Sprout },
-  { id: 'animals', label: 'Animals', icon: Bird },
+  { id: 'animals', label: 'Creatures', icon: Bird },
   { id: 'fire', label: 'Fire', icon: Flame },
   { id: 'chemistry', label: 'Chemistry', icon: FlaskConical },
   { id: 'materials', label: 'Materials & Objects', icon: Box },

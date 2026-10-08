@@ -55,7 +55,8 @@ export const mine: Task = {
       mind.phase = MINE_STONE
       return true
     }
-    if (mind.noStone) return false
+    // Settled humans don't dig for stone: they mine what they can see (or build with planks).
+    if (mind.noStone || mind.home) return false
     mind.target = null
     mind.phase = DIG_STAIRS
     mind.dug = 0

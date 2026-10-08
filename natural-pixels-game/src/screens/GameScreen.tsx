@@ -9,6 +9,7 @@ import type { SandboxStats } from '../engine/Sandbox.ts'
 import { SandboxView, type SandboxHandle } from '../game/SandboxView.tsx'
 import { BRUSH_SIZES, SPEEDS } from '../game/settings.ts'
 import { SettingsPanel } from '../game/SettingsPanel.tsx'
+import { PeopleBar } from '../game/PeopleBar.tsx'
 import { Sidebar } from '../game/Sidebar.tsx'
 import { Button } from '../ui/Button.tsx'
 
@@ -41,6 +42,7 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
     hover: null,
     timeOfDay: 0.32,
     counts: new Uint32Array(0),
+    people: [],
   })
   const isDay = stats.timeOfDay >= 0.25 && stats.timeOfDay < 0.75
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -134,6 +136,7 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
           Menu
         </Button>
         <span className="game__title">Natural Pixels</span>
+        <PeopleBar people={stats.people} />
         <span className="game__stats">
           {stats.hover && (
             <span className="game__probe game__probe--hover" title={stats.hover.detail}>
@@ -175,6 +178,7 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
           paused={paused}
           speed={SPEEDS[speed]}
           dayCycle={settings.dayCycle}
+          weather={settings.weather}
           cellTarget={GRAIN_CELLS[settings.grain]}
           renderMode={settings.graphics}
           showThoughts={settings.thoughts}

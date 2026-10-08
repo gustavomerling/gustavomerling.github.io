@@ -50,7 +50,7 @@ export class WebGLRenderer implements Renderer {
     this.info = new Uint8Array(grid.size * 4)
     this.cellColors = new CellColors(grid)
 
-    const names = ['uColor', 'uInfo', 'uGrid', 'uTime', 'uLight', 'uSun', 'uCellsPerPixel']
+    const names = ['uColor', 'uInfo', 'uGrid', 'uTime', 'uLight', 'uSun', 'uCellsPerPixel', 'uOvercast', 'uFlash', 'uRainbow']
     this.uniforms = Object.fromEntries(names.map((n) => [n, gl.getUniformLocation(this.program, n)]))
   }
 
@@ -60,7 +60,7 @@ export class WebGLRenderer implements Renderer {
     this.canvas.height = Math.max(1, Math.round(cssHeight * dpr))
   }
 
-  render({ time, light, sun }: FrameInfo) {
+  render({ time, light, sun, overcast, flash, rainbow }: FrameInfo) {
     const { gl, grid, info, kinds, emissive, uniforms } = this
     const { width, height, size, type, temp, shade } = grid
 
@@ -94,6 +94,9 @@ export class WebGLRenderer implements Renderer {
     gl.uniform1f(uniforms.uTime, time)
     gl.uniform1f(uniforms.uLight, light)
     gl.uniform2f(uniforms.uSun, sun.x, sun.y)
+    gl.uniform1f(uniforms.uOvercast, overcast)
+    gl.uniform1f(uniforms.uFlash, flash)
+    gl.uniform1f(uniforms.uRainbow, rainbow)
     gl.uniform1f(uniforms.uCellsPerPixel, width / this.canvas.width)
 
     gl.drawArrays(gl.TRIANGLES, 0, 3)

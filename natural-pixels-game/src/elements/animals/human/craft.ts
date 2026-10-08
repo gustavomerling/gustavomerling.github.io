@@ -11,11 +11,13 @@ import type { Mind } from './mind.ts'
  *   3 planks               → bucket           (carries water for saplings)
  *   1 plank + 1 stone      → lamp             (placed when building the house)
  *   5 planks               → boat             (made at the shore, when it has to cross water)
+ *   2 planks               → wooden sword     (for zombies)
+ *   2 stone + 1 plank      → stone sword
+ *   1 gunpowder + 3 planks + 2 stone → musket
  */
 
-/** What a house costs (see build.ts). */
-export const HOUSE_COST = { plank: 19, stone: 7 }
-export const LAMP_COST = { plank: 1, stone: 1 }
+/** What a first house costs (see house.ts and build.ts): walls, roof, bed and lamp; stone foundation. */
+export const HOUSE_COST = { plank: 24, stone: 8 }
 export const BOAT_COST = { plank: 5 }
 
 /** Planks a log turns into. */
@@ -49,6 +51,21 @@ export function craft(mind: Mind) {
     inv.stone -= 3
     inv.plank -= 2
     tools.axe = 2
+  }
+  // Weapons once the house is up (zombies come at night).
+  if (mind.home && tools.sword === 0 && inv.plank >= 2) {
+    inv.plank -= 2
+    tools.sword = 1
+  }
+  if (mind.home && tools.sword === 1 && inv.stone >= 2 && inv.plank >= 1) {
+    inv.stone -= 2
+    inv.plank -= 1
+    tools.sword = 2
+  }
+  if (!tools.gun && inv.gunpowder > 0 && inv.plank >= 3 && inv.stone >= 2) {
+    inv.plank -= 3
+    inv.stone -= 2
+    tools.gun = true
   }
   // A bucket once there's something to water (and the house is covered).
   if (!tools.bucket && (mind.home || mind.saplings.length > 0) && inv.plank >= 3) {

@@ -26,7 +26,7 @@ export const plant: Task = {
   start(body) {
     const { mind } = body
     if (mind.inv.seed <= 0 || mind.saplings.length >= MAX_SAPLINGS) return false
-    const centre = mind.home ? mind.home.x + 3 : body.x
+    const centre = mind.home ? mind.home.x : body.x
     for (let tries = 0; tries < 12; tries++) {
       const side = body.random() < 0.5 ? -1 : 1
       const x = centre + side * (PLANT_MIN + Math.floor(body.random() * (PLANT_MAX - PLANT_MIN)))

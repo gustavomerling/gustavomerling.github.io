@@ -15,7 +15,9 @@ export function updateMoisture(sim: Simulation, x: number, y: number, i: number,
   if (absorbs > 0 && water[i] + WATER_CELL_UNITS <= capacity) {
     const j = neighbor(sim, x, y, sim.random() * 4)
     if (j >= 0 && type[j] === absorbs) {
-      sim.grid.place(j, EMPTY)
+      // The water soaks in; grass it was flowing over shows again.
+      if (sim.grid.under.type[j] !== EMPTY) sim.grid.reveal(j)
+      else sim.grid.place(j, EMPTY)
       stamp[j] = sim.tick
       water[i] += WATER_CELL_UNITS
     }

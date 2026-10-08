@@ -16,21 +16,57 @@ const LEAF_LITTER = 0.35
 
 const TREE_PARTS: ReadonlySet<string | null> = new Set(['wood', 'leaf', 'plant', 'fruit'])
 
+/** Trees with a trunk at least this tall are grown-up: settled humans leave younger ones be. */
+const MATURE_HEIGHT = 10
+
 function isTrunk(body: Body, x: number, y: number) {
   return body.get(x, y) === 'wood' && (body.data(x, y) & WOOD_TREE) !== 0
 }
 
-/** Find the nearest tree (anywhere in the world), chop at its base, and the whole tree comes down. Replants if it has seeds. */
+/** Base of the trunk that `p` is part of. */
+function baseOf(body: Body, p: Point): Point {
+  const base = { ...p }
+  while (isTrunk(body, base.x, base.y + 1)) base.y++
+  return base
+}
+
+/** Trunk height above its base (following a trunk that leans a little). */
+function trunkHeight(body: Body, base: Point): number {
+  let { x, y } = base
+  let height = 1
+  while (height < MATURE_HEIGHT) {
+    const next = [0, -1, 1].map((dx) => x + dx).find((nx) => isTrunk(body, nx, y - 1))
+    if (next === undefined) break
+    x = next
+    y--
+    height++
+  }
+  return height
+}
+
+/** Gets ready to fell the tree whose trunk includes `p`. */
+export function chopAt(body: Body, p: Point): boolean {
+  if (!isTrunk(body, p.x, p.y)) return false
+  const base = baseOf(body, p)
+  body.mind.target = base
+  body.mind.patience = patienceFor(body, base)
+  body.mind.timer = 0
+  return true
+}
+
+/**
+ * Find the nearest tree (anywhere in the world), chop at its base, and the whole tree comes
+ * down. Replants if it has seeds. Once it has a home, it only fells grown-up trees.
+ */
 export const chop: Task = {
   start(body) {
-    const trunk = findNearest(body, ANYWHERE, (x, y) => isTrunk(body, x, y))
-    if (!trunk) return false
-    // Work at the base of the trunk.
-    while (isTrunk(body, trunk.x, trunk.y + 1)) trunk.y++
-    body.mind.target = trunk
-    body.mind.patience = patienceFor(body, trunk)
-    body.mind.timer = 0
-    return true
+    const grownOnly = body.mind.home !== null
+    const trunk = findNearest(
+      body,
+      ANYWHERE,
+      (x, y) => isTrunk(body, x, y) && !isTrunk(body, x, y + 1) && (!grownOnly || trunkHeight(body, { x, y }) >= MATURE_HEIGHT),
+    )
+    return trunk !== null && chopAt(body, trunk)
   },
   run(body) {
     const { mind } = body

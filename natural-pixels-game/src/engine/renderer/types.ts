@@ -9,6 +9,12 @@ export interface FrameInfo {
   light: number
   /** Sun (by day) or moon (by night) position in 0..1 screen coordinates, y down. */
   sun: { x: number; y: number }
+  /** Rain clouds darkening the sky and the world, 0..1. */
+  overcast: number
+  /** Lightning flash 0..1. */
+  flash: number
+  /** Rainbow after the rain, 0..1. */
+  rainbow: number
 }
 
 export interface Renderer {

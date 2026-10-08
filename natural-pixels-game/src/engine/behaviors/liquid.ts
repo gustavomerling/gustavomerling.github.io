@@ -24,12 +24,12 @@ function flow(sim: Simulation, x: number, y: number, i: number, t: number, dir: 
     const nx = x + dir * k
     if (nx < 0 || nx >= width) break
     const j = y * width + nx
-    if (!sim.canEnter(t, j, 0)) break
+    if (!sim.canEnter(t, j, 0) && !sim.seeps(t, j)) break
     target = j
-    if (y + 1 < height && sim.canEnter(t, j + width, 1)) break
+    if (y + 1 < height && (sim.canEnter(t, j + width, 1) || sim.seeps(t, j + width))) break
   }
 
   if (target < 0) return false
-  sim.swap(i, target)
+  sim.relocate(i, target)
   return true
 }

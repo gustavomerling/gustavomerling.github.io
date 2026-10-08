@@ -32,14 +32,14 @@ export class Canvas2DRenderer implements Renderer {
     this.cellColors = new CellColors(grid)
   }
 
-  render({ light }: FrameInfo) {
+  render({ light, overcast, flash }: FrameInfo) {
     const { width, height, type } = this.grid
     const { pixels, colors, emissive } = this
     this.cellColors.fill(colors)
-    const ambient = ambientLight(light)
+    const ambient = ambientLight(light, overcast, flash)
 
     for (let y = 0; y < height; y++) {
-      const [sr, sg, sb] = skyColor(y / (height - 1), light)
+      const [sr, sg, sb] = skyColor(y / (height - 1), light, overcast, flash)
       const row = y * width
       for (let x = 0; x < width; x++) {
         const i = row + x

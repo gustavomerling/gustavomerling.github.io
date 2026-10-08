@@ -1,3 +1,6 @@
+import type { Status } from '../../types.ts'
+import type { House } from './house.ts'
+
 /*
  * A human's mind: what it's doing, what it carries and what it has built.
  * Lives in the feet cell's memory (CellContext.memory), so it must stay JSON-friendly.
@@ -15,6 +18,12 @@ export type TaskName =
   | 'build'
   | 'plant'
   | 'water'
+  | 'relax'
+  | 'farm'
+  | 'fight'
+  | 'hide'
+  | 'scavenge'
+  | 'level'
 
 /** Something it needs but can't find on its own (shown in its thought bubble so the player can help). */
 export type Want = 'wood' | 'stone' | 'food'
@@ -35,6 +44,12 @@ export interface Inventory {
   seed: number
   /** 1 when the bucket is full of water. */
   water: number
+  /** Wheat seeds, from cutting grass and harvesting wheat. */
+  grain: number
+  /** For the musket: found lying around, or dropped by zombies. */
+  gunpowder: number
+  /** Earth dug out while levelling the yard, to fill dips with. */
+  earth: number
 }
 
 /** 0 = none, 1 = wooden, 2 = stone. */
@@ -44,6 +59,10 @@ export interface Tools {
   pickaxe: ToolTier
   axe: ToolTier
   bucket: boolean
+  /** 0 = fists, 1 = wooden sword, 2 = stone sword. */
+  sword: ToolTier
+  /** A musket (needs gunpowder to fire). */
+  gun: boolean
   /** Has built a boat at least once (boats stay moored in the world, see materials/boat.ts). */
   boat?: boolean
 }
@@ -72,10 +91,29 @@ export interface Mind {
   afloat: 'swim' | 'boat' | null
   inv: Inventory
   tools: Tools
-  /** Finished house: left x and ground row. */
-  home: { x: number; ground: number } | null
-  /** House under construction. */
-  site: { x: number; ground: number; step: number } | null
+  /** Data version (see upgradeMind). */
+  v: number
+  name: string
+  /** Its house as it stands (see house.ts). */
+  home: House | null
+  /** House (or next house stage) under construction, and how far along it is. */
+  site: (House & { step: number }) | null
+  /** Its wheat field next to the house: columns x0..x1, soil at row `ground`. */
+  farm: { x0: number; x1: number; ground: number; fenced: boolean } | null
+  /** Something it's saying out loud (a greeting), for `ttl` more actions. */
+  say: { text: string; ttl: number } | null
+  /** Actions until it feels like greeting someone again. */
+  greetIn: number
+  /** Family members who have moved in. */
+  family: number
+  /** 0..100; zombies hurt it, rest heals it. At 0 it wakes up back in bed. */
+  health: number
+  /** Actions left showing that it got hit. */
+  hurt: number
+  /** 0..1: how likely it is to face a zombie rather than hide (rolled once). */
+  courage: number
+  /** Already slept tonight (it doesn't sleep the whole night through). */
+  slept: boolean
   /** Planted spots to keep watered until they become trees. */
   saplings: Point[]
   /** Cells dug straight down looking for stone. */
@@ -104,10 +142,20 @@ export function createMind(): Mind {
     hunger: 20,
     asleep: false,
     afloat: null,
-    inv: { log: 0, plank: 0, stone: 0, food: 1, seed: 0, water: 0 },
-    tools: { pickaxe: 0, axe: 0, bucket: false },
+    inv: { log: 0, plank: 0, stone: 0, food: 1, seed: 0, water: 0, grain: 0, gunpowder: 0, earth: 0 },
+    tools: { pickaxe: 0, axe: 0, bucket: false, sword: 0, gun: false },
+    v: MIND_VERSION,
+    name: '',
     home: null,
     site: null,
+    farm: null,
+    say: null,
+    greetIn: 0,
+    family: 0,
+    health: 100,
+    hurt: 0,
+    courage: -1,
+    slept: false,
     saplings: [],
     dug: 0,
     noStone: false,
@@ -117,10 +165,25 @@ export function createMind(): Mind {
   }
 }
 
-/** Minds saved by older versions miss newer fields: fill them in. */
+const MIND_VERSION = 4
+
+/** Minds saved by older versions miss newer fields: fill them in (and convert old houses). */
 export function upgradeMind(mind: Mind): Mind {
-  if (!('avoid' in mind)) Object.assign(mind, { ...createMind(), ...(mind as object) })
+  if (mind.v === MIND_VERSION) return mind
+  const fresh = createMind()
+  const old = mind as unknown as { home: { x: number; ground: number; stage?: number } | null }
+  Object.assign(mind, { ...fresh, ...(mind as object), v: MIND_VERSION, site: null })
+  mind.inv = { ...fresh.inv, ...mind.inv }
+  mind.tools = { ...fresh.tools, ...mind.tools }
+  // Version 1 houses were stored by their left edge, and were all stage 1.
+  if (old.home && old.home.stage === undefined) mind.home = { x: old.home.x + 3, ground: old.home.ground, stage: 1 }
   return mind
+}
+
+const NAMES = ['Ana', 'Bento', 'Caio', 'Dani', 'Eli', 'Flor', 'Gabi', 'Hugo', 'Iara', 'Juca', 'Kai', 'Lia', 'Malu', 'Nico', 'Otto', 'Pia', 'Rui', 'Sol', 'Teo', 'Vivi', 'Zeca']
+
+export function randomName(random: () => number): string {
+  return NAMES[Math.floor(random() * NAMES.length)]
 }
 
 const ACTIVITY: Record<TaskName, string> = {
@@ -135,9 +198,16 @@ const ACTIVITY: Record<TaskName, string> = {
   build: 'Building a house',
   plant: 'Planting a tree',
   water: 'Watering a sapling',
+  relax: 'At home',
+  farm: 'Farming',
+  fight: 'Fighting a zombie',
+  hide: 'Hiding from a zombie',
+  scavenge: 'Picking up gunpowder',
+  level: 'Levelling the yard',
 }
 
 const TIER = ['', 'wooden', 'stone'] as const
+const ITEM = { log: 'log', plank: 'plank', stone: 'stone', food: 'food', seed: 'tree seed', grain: 'wheat seed', gunpowder: 'gunpowder', earth: 'earth' } as const
 
 /** How the player can help with each want. */
 export const WANT_HINT: Record<Want, string> = {
@@ -146,25 +216,72 @@ export const WANT_HINT: Record<Want, string> = {
   food: 'paint Fruit near it',
 }
 
-/** Hover text: activity, hunger, inventory and tools. */
-export function describeMind(mind: Mind): string {
-  const { inv, tools } = mind
-  const items = (['log', 'plank', 'stone', 'food', 'seed'] as const)
+/** Inventory as words: "3 planks", "1 wheat seed"... */
+function itemList(mind: Mind): string[] {
+  const { inv } = mind
+  return (['log', 'plank', 'stone', 'food', 'seed', 'grain', 'gunpowder'] as const)
     .filter((k) => inv[k] > 0)
-    .map((k) => `${inv[k]} ${k}${inv[k] === 1 ? '' : 's'}`)
-  const gear = [
+    .map((k) => `${inv[k]} ${ITEM[k]}${inv[k] === 1 ? '' : 's'}`)
+}
+
+function gearList(mind: Mind): string[] {
+  const { inv, tools } = mind
+  return [
     tools.axe ? `${TIER[tools.axe]} axe` : '',
     tools.pickaxe ? `${TIER[tools.pickaxe]} pickaxe` : '',
     tools.bucket ? (inv.water ? 'full bucket' : 'bucket') : '',
+    tools.sword ? `${TIER[tools.sword]} sword` : '',
+    tools.gun ? 'musket' : '',
   ].filter(Boolean)
+}
+
+/** Status card for the top bar. */
+export function statusOf(mind: Mind): Status {
+  const { inv, tools } = mind
+  const items = (['log', 'plank', 'stone', 'food', 'seed', 'grain', 'gunpowder', 'earth'] as const)
+    .filter((k) => inv[k] > 0)
+    .map((k) => ({ id: k, label: ITEM[k], count: inv[k] }))
+  const held: Status['tools'] = []
+  if (tools.axe) held.push({ id: 'axe', label: `${TIER[tools.axe]} axe`, tier: tools.axe })
+  if (tools.pickaxe) held.push({ id: 'pickaxe', label: `${TIER[tools.pickaxe]} pickaxe`, tier: tools.pickaxe })
+  if (tools.sword) held.push({ id: 'sword', label: `${TIER[tools.sword]} sword`, tier: tools.sword })
+  if (tools.gun) held.push({ id: 'gun', label: 'musket' })
+  if (tools.bucket) held.push({ id: inv.water ? 'bucket-full' : 'bucket', label: inv.water ? 'bucket of water' : 'bucket' })
+  if (tools.boat) held.push({ id: 'boat', label: 'boat builder' })
+  const facts: Status['facts'] = [
+    { label: 'Home', value: mind.home ? `house, stage ${mind.home.stage} of 4` : mind.site ? 'building one' : 'none yet' },
+  ]
+  if (mind.family && mind.family < 4) facts.push({ label: 'Family', value: `${mind.family + 1} people` })
+  if (mind.farm) facts.push({ label: 'Farm', value: `${mind.farm.x1 - mind.farm.x0 + 1} columns of wheat${mind.farm.fenced ? ', fenced' : ''}` })
+  if (mind.want) facts.push({ label: 'Needs', value: `${mind.want} (${WANT_HINT[mind.want]})` })
+  return {
+    name: mind.name || 'Human',
+    activity: mind.asleep ? 'Sleeping' : mind.afloat ? (mind.afloat === 'boat' ? 'Rowing a boat' : 'Swimming') : ACTIVITY[mind.task],
+    meters: [
+      { label: 'Health', value: Math.max(0, Math.round(mind.health)), good: true },
+      { label: 'Hunger', value: Math.round(mind.hunger), good: false },
+    ],
+    items,
+    tools: held,
+    facts,
+  }
+}
+
+/** Hover text: activity, hunger, inventory and tools. */
+export function describeMind(mind: Mind): string {
+  const items = itemList(mind)
+  const gear = gearList(mind)
   const parts = [
+    ...(mind.name ? [mind.name] : []),
     mind.asleep ? 'Sleeping' : ACTIVITY[mind.task],
     ...(mind.afloat ? [mind.afloat === 'boat' ? 'rowing' : 'swimming'] : []),
+    `health ${Math.max(0, Math.round(mind.health))}%`,
     `hunger ${Math.round(mind.hunger)}%`,
     items.length ? items.join(', ') : 'empty-handed',
   ]
   if (gear.length) parts.push(gear.join(', '))
-  if (mind.home) parts.push('has a home')
+  if (mind.home) parts.push(`house stage ${mind.home.stage}`)
+  if (mind.family && mind.family < 4) parts.push(`family of ${mind.family + 1}`)
   if (mind.want) parts.push(`needs ${mind.want}: ${WANT_HINT[mind.want]}`)
   return parts.join(' · ')
 }

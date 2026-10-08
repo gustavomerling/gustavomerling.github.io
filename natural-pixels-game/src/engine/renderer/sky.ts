@@ -12,10 +12,13 @@ export const SKY = {
   dusk: [0.9, 0.4, 0.15] as RGB,
 }
 
-/** How much light the world gets: never fully black at night. */
-export function ambientLight(light: number): number {
-  return 0.28 + 0.72 * light
+/** How much light the world gets: never fully black at night, dimmer under rain clouds, bright in a flash. */
+export function ambientLight(light: number, overcast = 0, flash = 0): number {
+  return (0.28 + 0.72 * light) * (1 - 0.45 * overcast) + flash * 0.6
 }
+
+/** Grey storm sky the colors fade towards as it rains. */
+const STORM: RGB = [0.32, 0.35, 0.4]
 
 /** Orange horizon glow around sunrise/sunset (light ≈ 0.2..0.6). */
 export function duskAmount(light: number): number {
@@ -23,12 +26,13 @@ export function duskAmount(light: number): number {
 }
 
 /** Sky color at vertical position `v` (0 top .. 1 bottom), as 0..255 RGB. */
-export function skyColor(v: number, light: number): RGB {
-  const dusk = duskAmount(light) * v * v * 0.6
+export function skyColor(v: number, light: number, overcast = 0, flash = 0): RGB {
+  const dusk = duskAmount(light) * v * v * 0.6 * (1 - overcast)
   return [0, 1, 2].map((c) => {
     const top = SKY.nightTop[c] + (SKY.dayTop[c] - SKY.nightTop[c]) * light
     const bottom = SKY.nightBottom[c] + (SKY.dayBottom[c] - SKY.nightBottom[c]) * light
-    const value = top + (bottom - top) * v + SKY.dusk[c] * dusk
+    let value = top + (bottom - top) * v + SKY.dusk[c] * dusk
+    value += (STORM[c] * (0.25 + 0.75 * light) - value) * overcast + flash * 0.5
     return Math.min(255, Math.round(value * 255))
   }) as RGB
 }

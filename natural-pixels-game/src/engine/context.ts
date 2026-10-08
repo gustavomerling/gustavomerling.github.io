@@ -20,6 +20,8 @@ export interface CellContext {
   random(): number
   /** World daylight 0 (night) .. 1 (day). */
   light(): number
+  /** How hard it's raining right now, 0 (dry) .. 1 (downpour). */
+  rain(): number
   /** Element id at the offset, or `null` outside the world. */
   get(dx: number, dy: number): string | null
   /** Replaces the cell at the offset (fresh water/data unless given). */
@@ -35,6 +37,12 @@ export interface CellContext {
   cover(dx: number, dy: number, id: string, init?: CellInit): void
   /** Removes the cell at the offset, bringing back what it was hiding (or air). */
   reveal(dx: number, dy: number): void
+  /** Swaps two cells (by offset) with all their state; what they hide stays where it is. */
+  swapCells(aDx: number, aDy: number, bDx: number, bDy: number): void
+  /** Changes the element of the cell at the offset, keeping all its state (and what it hides). */
+  retype(dx: number, dy: number, id: string): void
+  /** Replaces what's hidden underneath the cell at the offset (a wall behind a human standing there). */
+  setBehind(dx: number, dy: number, id: string): void
   /** Id of what's hidden underneath the cell at the offset, or `null` if nothing is. */
   under(dx: number, dy: number): string | null
   water(dx: number, dy: number): number
@@ -58,6 +66,8 @@ export interface CellContext {
    * with scenes, so keep it JSON-friendly. Uses the cell's `life` as the key.
    */
   memory<T>(create: () => T): T
+  /** Memory of another cell (e.g. a neighbour's mind), created with `create` if it has none. */
+  memoryAt<T>(dx: number, dy: number, create: () => T): T | null
 }
 
 /** Single reusable context the simulation re-binds to each cell (no per-cell allocation). */
@@ -81,6 +91,10 @@ export class SimulationContext implements CellContext {
 
   light(): number {
     return this.sim.daylight
+  }
+
+  rain(): number {
+    return this.sim.weather.rain
   }
 
   get(dx: number, dy: number): string | null {
@@ -120,6 +134,29 @@ export class SimulationContext implements CellContext {
   reveal(dx: number, dy: number) {
     const i = this.index(dx, dy)
     if (i >= 0) this.sim.grid.reveal(i)
+  }
+
+  swapCells(aDx: number, aDy: number, bDx: number, bDy: number) {
+    const a = this.index(aDx, aDy)
+    const b = this.index(bDx, bDy)
+    if (a >= 0 && b >= 0) this.sim.swap(a, b)
+  }
+
+  retype(dx: number, dy: number, id: string) {
+    const i = this.index(dx, dy)
+    if (i >= 0) this.sim.grid.type[i] = elementIndex(id)
+  }
+
+  setBehind(dx: number, dy: number, id: string) {
+    const i = this.index(dx, dy)
+    if (i < 0) return
+    const { under } = this.sim.grid
+    const t = elementIndex(id)
+    under.type[i] = t
+    under.temp[i] = this.sim.initialTemp[t]
+    under.water[i] = 0
+    under.data[i] = 0
+    under.life[i] = 0
   }
 
   under(dx: number, dy: number): string | null {
@@ -175,7 +212,12 @@ export class SimulationContext implements CellContext {
   }
 
   memory<T>(create: () => T): T {
-    const i = this.index(0, 0)
+    return this.memoryAt(0, 0, create)!
+  }
+
+  memoryAt<T>(dx: number, dy: number, create: () => T): T | null {
+    const i = this.index(dx, dy)
+    if (i < 0) return null
     const { life } = this.sim.grid
     if (life[i] === 0) life[i] = this.sim.newMemoryKey()
     let memory = this.sim.memory.get(life[i])

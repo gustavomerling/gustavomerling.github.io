@@ -56,6 +56,17 @@ export function SettingsPanel({ onClose, inGame = false }: SettingsPanelProps) {
         </div>
 
         <div className="settings__row">
+          <span className="settings__label">Weather</span>
+          <Segmented
+            label="Weather"
+            value={settings.weather ? 'on' : 'off'}
+            options={ON_OFF}
+            onChange={(v) => update({ weather: v === 'on' })}
+          />
+          <span className="settings__hint">It rains for a while every day, sometimes with lightning.</span>
+        </div>
+
+        <div className="settings__row">
           <span className="settings__label">Thought bubbles</span>
           <Segmented
             label="Thought bubbles"

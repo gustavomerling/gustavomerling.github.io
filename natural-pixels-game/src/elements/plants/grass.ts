@@ -17,6 +17,10 @@ const SPREAD_CHANCE = 0.004
 /** Spreads up to this many times faster on the most fertile soil (on top of 1×). */
 const FERTILE_SPREAD_BOOST = 3
 const TIP_CHANCE = 0.002
+/** Now and then a flower blooms on sunny grass, and fireflies come out of it at night. */
+const FLOWER_CHANCE = 0.00002
+const FIREFLY_CHANCE = 0.00002
+const FIREFLY_NIGHT = 0.25
 const WILT_CHANCE = 0.0005
 /** Water taken from the soil each time it spreads. */
 const SPREAD_COST = 4
@@ -54,7 +58,14 @@ export const grass: ElementDefinition = {
       return
     }
 
-    if (above === 'air' && ctx.random() < TIP_CHANCE) ctx.set(0, -1, 'grass', { data: TIP })
+    if (above === 'air') {
+      const r = ctx.random()
+      if (r < TIP_CHANCE) ctx.set(0, -1, 'grass', { data: TIP })
+      else if (r < TIP_CHANCE + FLOWER_CHANCE * sunlight(ctx)) ctx.set(0, -1, 'flower')
+      else if (r < TIP_CHANCE + FLOWER_CHANCE + FIREFLY_CHANCE && ctx.light() < FIREFLY_NIGHT && ctx.rain() < 0.1) {
+        ctx.set(0, -1, 'firefly')
+      }
+    }
 
     const chance = SPREAD_CHANCE * fertilityBoost(fertilityAt(ctx, 0, 1), FERTILE_SPREAD_BOOST) * sunlight(ctx)
     if (moisture < SPREAD_MOISTURE || ctx.random() >= chance) return

@@ -78,6 +78,8 @@ Atalhos: `1–9`, `0` elementos (na ordem da sidebar) · `E` / botão direito = 
 | Graphics | Smooth (WebGL2) · Pixel (Canvas 2D nítido) |
 | Grain size | Coarse (40k células) · Normal (72k) · Fine (120k) — vale para o próximo mundo |
 | Day/night cycle | On · Off (dia eterno) |
+| Weather | On · Off (chuva diária, tempestades) |
+| Thought bubbles | On · Off |
 | Sound | On · Off + volume |
 
 ---
@@ -256,6 +258,20 @@ sobre pedra, topos de morro de pedra pura, lagos em bacias forradas de areia (a 
 vivo com topo que continua crescendo, às vezes um galho, copa com frutas), grama nas campinas e
 minhocas na terra. Simulado: água, árvores e minhocas estáveis após 60 s, ~3 ms/tick.
 
+### 4.8c Tempo (`engine/weather.ts`)
+
+Chove **10% de cada dia** (dia + noite = 13.500 ticks) num horário sorteado no começo do dia; 30%
+das chuvas são **tempestades**. A chuva entra e sai em rampa (`rain` 0..1, exposta aos elementos
+por `ctx.rain()`) e vem de nuvens criadas no topo do céu (cada célula de nuvem vira 1 gota). Na
+tempestade caem **raios** (`fire/lightning.ts`): um traço em zigue-zague até o primeiro sólido, que
+esquenta a 900 °C (árvores, grama e casas pegam fogo) e um clarão (`flash`). Os renderers recebem
+`overcast` (céu cinza, mundo mais escuro, sol apagado), `flash` e `rainbow` (arco-íris por ~30 s
+depois de uma chuva sem tempestade, de dia).
+
+Efeitos: água parada evapora no sol (vapor → nuvem → chuva, fecha o ciclo); a água **corre por
+cima da grama e das flores** sem apagá-las (ficam embaixo, `Simulation.seeps/relocate`); minhocas
+sobem à superfície na chuva; pássaros e abelhas se abrigam; humanos vão para casa e não regam.
+
 ### 4.9 Som (`audio/SoundEngine.ts`)
 
 WebAudio procedural, liberado no primeiro clique/tecla. Camadas guiadas pelas contagens de
@@ -282,11 +298,17 @@ zumbido ∝ abelhas, grilos à noite se houver grama. Silencia com o jogo pausad
 | | Plant | static | ❌ | caule crescendo |
 | | Leaf | static | ❌ | copa; dá fruta (15× se polinizada); envelhece e cai |
 | | Dry Leaf | powder leve | ❌ | folha caída; apodrece e aduba; muito inflamável |
-| Animals | Bird | static (move-se) | ✅ | voa através das árvores, come fruta, solta a semente longe, pousa e dorme |
+| | Wheat | static (2 células) | ✅ | cresce em terra úmida de dia, amadurece dourado (Ripe Wheat); o humano cultiva |
+| | Flower | static | ✅ | nasce na grama ao sol; abelhas visitam e se multiplicam perto delas |
+| | Mushroom | static | ✅ | nasce em terra úmida à sombra das árvores; o humano come |
+| Creatures | Bird | static (move-se) | ✅ | voa através das árvores, come fruta, solta a semente longe, pousa e dorme |
 | | Bee | static (move-se) | ✅ | voa pelas copas polinizando folhas; descansa; para à noite |
 | | Fish | static (move-se) | ✅ | nada só na água; fora dela morre; água quente cozinha |
 | | Worm | static (move-se) | ✅ | cava a terra adubando; come folha seca/cinza → terra fértil |
 | | Human | static (3 células) | ✅ | vive sozinho estilo Minecraft (seção 5.2) |
+| | Zombie | static (3 células) | ✅ | nasce à noite longe das casas, persegue humanos, queima no sol; às vezes deixa pólvora |
+| | Rabbit | static (move-se) | ✅ | pula pelo chão, come grama e trigo, tem filhotes (até 4 por região); cerca barra |
+| | Firefly | static, brilha | ✅ | sai da grama à noite, voa baixo, some de dia ou na chuva |
 | Terrain | Stone | powder sem deslizar | ✅ | rocha em blocos: cai reto e empilha (gravidade); minerada com picareta; derrete a 1100 °C |
 | Water | Ice | powder sem deslizar | ✅ | cai e empilha como bloco, flutua na água; −60 °C, derrete devagar; água vira gelo abaixo de 0 °C |
 | Fire | Fire | energy | ✅ | sobe, vida curta, 800 °C, aquece o que toca; água apaga |
@@ -299,6 +321,13 @@ zumbido ∝ abelhas, grilos à noite se houver grama. Silencia com o jogo pausad
 | | Glass | static transparente | ✅ | areia derretida; à prova de ácido |
 | | Plank | static | ✅ | tábua (o humano fabrica); queima em cinza |
 | | Lamp | static, brilha | ✅ | ilumina a noite sem calor |
+| | Back Wall | static | ✅ | parede de fundo da casa: humanos passam na frente; chuva e areia não |
+| | Door | static | ✅ | humanos atravessam; zumbis, água e areia não |
+| | Ladder | static | ✅ | humanos sobem e descem por ela |
+| | Fence | static | ✅ | barra coelhos (2 de altura); humanos atravessam |
+| | Bed | static | ❌ | cama da casa; o humano dorme nela |
+| Fire | Lightning | static, brilha | ❌ | raio de tempestade, 3000 °C por um instante |
+| | Shot | static, brilha | ❌ | rastro do tiro do mosquete |
 | | Boat | static | ❌ | barco do humano (5 células + proa/popa); cobre a água; fica ancorado quando ele desce |
 
 ### 5.1 Ciclos
@@ -331,10 +360,15 @@ misturam na terra (fertilidade); minhocas aceleram isso.
 
 ### 5.2 Humano (`elements/animals/human/`)
 
-Coluna de 3 células: pés (`human`, que pensa), tronco (`human_body`) e cabeça (`human_head`),
-movidas juntas com `moveCell`. Atravessa ar, grama, folhas, troncos, frutas e água (ficam
-guardados embaixo); sobe degraus de 1, escala paredes, cai, e cava quando fica preso (terra à mão,
-pedra com picareta; nunca quebra tábua/vidro/metal). Age ~12×/s.
+Coluna de 3 células: pés (`human`, que pensa), tronco (`human_body`, ou `human_torch` com a tocha
+acesa) e cabeça (`human_head`), movidas juntas com `moveCell`. O `Body` (`body.ts`) serve a
+humanos e zumbis via `BodyKind` (o que atravessa, o que é plataforma, se escala). Humanos
+atravessam ar, grama, folhas, troncos, frutas, água e as partes da casa (fundo, porta, escada,
+cama, cerca); **paredes e janelas** (tábua, vidro) eles atravessam de lado mas pisam em cima como
+piso e telhado, então **só sobem andares pela escada** e nunca escalam a casa. Sobem degraus de 1,
+escalam paredes naturais, caem, e cavam quando ficam presos (terra à mão, pedra com picareta).
+Dois humanos que se encontram **trocam de lugar** (não colidem). Poça pequena no caminho (≤ 40
+células) ele tira com as mãos e joga para trás (`bail`). Age ~12×/s.
 
 **Água**: não anda pelo fundo. Na água ele **nada** com a cabeça para fora (sobe se a cabeça
 afunda, desce até o tronco molhar). Na margem, com água à frente (no nível dos pés ou até 5
@@ -352,17 +386,53 @@ balde), casa, obra em andamento, mudas plantadas. O hover mostra tudo isso.
 
 **Crafting** (`craft.ts`, automático): 1 tora → 4 tábuas · 3 tábuas → picareta de madeira
 (necessária para pedra) · 3 tábuas → machado · 3 pedras + 2 tábuas → picareta/machado de pedra ·
-3 tábuas → balde · 1 tábua + 1 pedra → lâmpada · 5 tábuas → barco (na margem).
+3 tábuas → balde · 1 tábua + 1 pedra → lâmpada · 5 tábuas → barco (na margem) · 2 tábuas →
+espada de madeira · 2 pedras + 1 tábua → espada de pedra · 1 pólvora + 3 tábuas + 2 pedras →
+mosquete.
 
 **Cérebro** (`brain.ts`), em ordem de prioridade:
-1. Noite → vai para casa e dorme (sem casa, dorme onde está).
-2. Fome ≥ 50 come do inventário; ≥ 60 sem comida → colhe fruta ou pesca.
-3. Sem casa → derruba árvores (a árvore inteira cai: toras, folhas viram folha seca, frutas caem,
-   sementes) → fabrica ferramentas → minera pedra (sem pedra à vista, cava uma **escada** para baixo,
-   nunca um poço) → constrói a casa (19 tábuas + 7 pedras: alicerce de pedra, paredes e telhado de
-   tábua, porta à direita, lâmpada no teto) num terreno plano sem árvores.
-4. Com casa → rega as mudas com o balde (busca água, despeja ao lado), planta sementes em volta,
-   mantém estoques (tábuas, pedra, comida) e passeia perto de casa. Replanta onde derrubou.
+1. **Zumbi a 14 células** → luta (se corajoso — `courage` sorteada —, com ≥ 50% de vida e armado,
+   ou sem casa) ou corre para casa e espera atrás da porta até sumirem (`tasks/combat.ts`).
+2. Noite → vai para a cama e dorme **parte da noite** (220–420 ações); acordado, fica em casa ou
+   passeia com **tocha** (tronco brilhante que ilumina em volta).
+3. Fome ≥ 50 come do inventário; ≥ 60 sem comida → colhe trigo, fruta/cogumelo ou pesca.
+4. Sem casa → derruba árvores → fabrica ferramentas → minera pedra (sem pedra à vista, cava uma
+   escada) → constrói a casa (estágio 1) num terreno plano sem árvores.
+5. Com casa → chuva forte ou fim de tarde: vai para casa. **Cresce a casa** quando dá (se uma
+   árvore atrapalha, derruba); senão junta material para o próximo estágio. Pega pólvora, cuida da
+   **lavoura**, rega mudas, planta árvores, mantém estoques; às vezes só **passa tempo em casa**
+   (`tasks/relax.ts`, em qualquer andar); senão passeia. Só derruba árvores adultas (tronco ≥ 10).
+
+**Casa** (`house.ts` + `tasks/build.ts`): 4 estágios, cada um construído **por cima** do
+anterior (blocos já certos são pulados; tábuas reaproveitadas são devolvidas):
+
+| Estágio | Largura | Andares | Novidades |
+|---|---|---|---|
+| 1 | 7 | 1 | porta à direita, cama, lâmpada |
+| 2 | 11 | 2 | escada de mão entre andares, portas dos dois lados |
+| 3 | 15 | 2 | janelas de vidro no andar de cima; chega um morador novo |
+| 4 | 19 | 3 | mais um andar; chega outro morador |
+
+Cada andar tem 4 linhas + laje; dentro, **parede de fundo** (preenchida), lâmpada no teto de cada
+andar; alicerce de pedra (de tábua se faltar pedra); telhado em degraus. `planHouse` calcula custo
+e bloqueios (árvore no caminho → derruba). Moradores novos chegam com nome, a mesma casa e
+ferramentas iguais; só o fundador recebe família.
+
+**Lavoura** (`tasks/field.ts`): faixa plana de terra (5–8 colunas) além de onde a casa máxima
+chega, cercada (2 postes, 4 tábuas). Sementes de trigo vêm de **cortar grama** (35%) e de cada
+colheita (2); colheita = 1 comida + 2 sementes e replanta na hora; rega com balde se seca (não na
+chuva).
+
+**Noite e zumbis**: zumbis (`animals/zombie.ts`, 3 células, mais lentos) nascem raramente na
+grama/terra escura à noite, longe de casas (até 2 por região); queimam ao sol sem nada por cima
+(árvores protegem); portas, paredes e cercas os barram. Batem 12 de dano a cada 4 ações. O
+humano: punhos (10), espada de madeira/pedra (25/40), **mosquete** (70 de dano a até 16 células,
+gasta 1 pólvora; precisa de linha livre). Pólvora: zumbis mortos deixam (50%) e o jogador pode
+pintar; o humano recolhe (`scavenge`). Vida 0–100, regenera sem fome (mais rápido dormindo). Com
+vida 0, **acorda na cama** com vida cheia (sem casa, morre).
+
+**Social**: nome sorteado (aparece no balão e no hover); cumprimenta humanos próximos ("Hi,
+Ana!", a cada ~75 s); balões de humanos próximos se empilham em vez de se sobrepor.
 
 Morre com calor (fogo, lava → cinza) e com ácido.
 
@@ -405,6 +475,7 @@ semente (flores, cactos), estações do ano, colmeia (abelhas se reproduzem), p�
 | ✅ **5 — Polimento** | settings, sons procedurais, salvar/carregar cenas, sidebar por famílias |
 | ✅ **6 — Química e humano** | pedra, lava, gelo, óleo, ácido, nitrogênio, pólvora, vidro, tábua, lâmpada; reações declarativas; humano estilo Minecraft |
 | ✅ **6c — Mundo e água** | mundo aleatório, pedra/gelo com gravidade, humano nada e rema (barco ancorado) |
+| ✅ **7 — Vida na vila** | chuva diária e tempestades (raios, céu escuro, arco-íris, evaporação), casa em 4 estágios com fundo/escada/cama/portas, lavoura de trigo com cerca, tempo em casa, zumbis à noite (lutar ou se esconder, espada, mosquete com pólvora), tocha, sono parcial, família, nomes e cumprimentos, coelhos, flores, cogumelos, vagalumes, água sobre a grama |
 | ✅ **6b — Balões** | balão de pensamento do humano, vontades com dica, presentes do jogador, memória de lugares inalcançáveis |
 
 ---

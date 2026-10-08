@@ -1,4 +1,5 @@
 import { isGround, isPassable, type Body } from './body.ts'
+import { contains, MAX_STAGE } from './house.ts'
 import type { Mind, Point } from './mind.ts'
 
 /** Cells around a place it couldn't reach that are skipped too. */
@@ -11,8 +12,9 @@ export function avoided(mind: Mind, x: number, y: number): boolean {
 
 /** Part of its own house (or the one going up): never mined or taken apart. */
 export function isHome(mind: Mind, x: number, y: number): boolean {
+  // The whole footprint the house will ever take (it only grows, maybe built by family).
   const house = mind.home ?? mind.site
-  return house !== null && x >= house.x - 1 && x <= house.x + 7 && y >= house.ground - 6 && y <= house.ground
+  return house !== null && contains({ ...house, stage: MAX_STAGE }, x, y)
 }
 
 /** Search radius that covers the whole world (rings stop once they leave it). */

@@ -7,7 +7,7 @@ import type { Random } from './random.ts'
 
 /*
  * Semi-random worlds: rolling soil over bedrock, stone hills and boulders, sandy lakes,
- * grassy meadows, grown trees with fruit, and worms in the earth. Every call rolls a new
+ * grassy meadows with flowers and rabbits, grown trees with fruit, and worms in the earth. Every call rolls a new
  * "style" (flat, hilly, mountainous; dry or wet) so worlds differ in character, not just
  * in detail.
  */
@@ -21,6 +21,8 @@ const WOOD = elementIndex('wood')
 const LEAF = elementIndex('leaf')
 const FRUIT = elementIndex('fruit')
 const WORM = elementIndex('worm')
+const FLOWER = elementIndex('flower')
+const RABBIT = elementIndex('rabbit')
 
 /** Moisture of freshly generated soil and trees (soil holds 200, wood 220). */
 const SOIL_WATER = 90
@@ -162,7 +164,18 @@ export function generateWorld(grid: Grid, random: Random) {
   for (let x = 0; x < W; x++) {
     if (typeAt(x, top[x]) === SOIL && typeAt(x, top[x] - 1) === EMPTY && random() < 0.75) {
       put(x, top[x] - 1, GRASS, 0, GRASS_BASE)
+      if (random() < 0.04 && typeAt(x, top[x] - 2) === EMPTY) put(x, top[x] - 2, FLOWER)
     }
+  }
+
+  // ---------- A few pairs of rabbits in the meadows ----------
+  const pairs = Math.floor(random() * 3)
+  for (let n = 0, tries = 0; n < pairs && tries < 40; tries++) {
+    const x = 2 + Math.floor(random() * (W - 4))
+    if (nearLake(x, 2) || typeAt(x, top[x] - 1) !== GRASS || typeAt(x, top[x] - 2) !== EMPTY || typeAt(x + 1, top[x + 1] - 2) !== EMPTY) continue
+    put(x, top[x] - 2, RABBIT)
+    put(x + 1, top[x + 1] - 2, RABBIT, 0, 1)
+    n++
   }
 
   // ---------- Worms in the topsoil ----------

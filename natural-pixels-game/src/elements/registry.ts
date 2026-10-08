@@ -1,9 +1,9 @@
-import { bee, bird, fish, human, humanBody, humanHead, worm } from './animals/index.ts'
+import { bee, bird, firefly, fish, human, humanBody, humanHead, humanTorch, rabbit, worm, zombie, zombieBody, zombieHead } from './animals/index.ts'
 import { air } from './core/index.ts'
 import { acid, gunpowder, nitrogen, oil } from './chemistry/index.ts'
-import { fire, lava } from './fire/index.ts'
-import { boat, glass, lamp, metal, plank } from './materials/index.ts'
-import { fruit, grass, leaf, litter, plant, seed, wood } from './plants/index.ts'
+import { fire, lava, lightning, shot } from './fire/index.ts'
+import { backwall, bed, boat, door, fence, glass, ladder, lamp, metal, plank } from './materials/index.ts'
+import { flower, fruit, grass, leaf, litter, mushroom, plant, seed, wheat, wheatRipe, wood } from './plants/index.ts'
 import { ash, mud, sand, soil, stone } from './terrain/index.ts'
 import type { ElementDefinition } from './types.ts'
 import { cloud, ice, steam, water } from './water/index.ts'
@@ -36,17 +36,29 @@ export const ELEMENTS: readonly ElementDefinition[] = [
   plant,
   leaf,
   litter,
+  wheat,
+  wheatRipe,
+  flower,
+  mushroom,
   // Animals
   bird,
   bee,
   fish,
   worm,
+  rabbit,
+  firefly,
   human,
   humanBody,
+  humanTorch,
   humanHead,
+  zombie,
+  zombieBody,
+  zombieHead,
   // Fire
   fire,
   lava,
+  lightning,
+  shot,
   // Chemistry
   oil,
   acid,
@@ -56,7 +68,12 @@ export const ELEMENTS: readonly ElementDefinition[] = [
   metal,
   glass,
   plank,
+  backwall,
+  door,
+  ladder,
+  fence,
   lamp,
+  bed,
   boat,
 ]
 

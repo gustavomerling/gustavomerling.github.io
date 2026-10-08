@@ -31,6 +31,9 @@ uniform float uTime;
 uniform float uLight;
 uniform vec2 uSun;
 uniform float uCellsPerPixel;
+uniform float uOvercast;
+uniform float uFlash;
+uniform float uRainbow;
 
 const float KIND_STATIC = 1.0;
 const float KIND_POWDER = 2.0;
@@ -48,7 +51,7 @@ vec3 sky(vec2 uv) {
   vec3 c = mix(top, bottom, uv.y);
 
   float dusk = smoothstep(0.0, 0.35, uLight) * (1.0 - smoothstep(0.35, 0.8, uLight));
-  c += vec3(0.9, 0.4, 0.15) * dusk * uv.y * uv.y * 0.6;
+  c += vec3(0.9, 0.4, 0.15) * dusk * uv.y * uv.y * 0.6 * (1.0 - uOvercast);
 
   // Stars, fading in as the light goes.
   if (uLight < 0.5) {
@@ -62,8 +65,22 @@ vec3 sky(vec2 uv) {
   vec2 d = (uv - uSun) * vec2(uGrid.x / uGrid.y, 1.0);
   float r = length(d);
   vec3 disc = mix(vec3(0.85, 0.88, 1.0), vec3(1.0, 0.93, 0.65), uLight);
-  c += disc * smoothstep(0.042, 0.034, r);
-  c += disc * 0.22 * exp(-r * 12.0) * (0.35 + uLight);
+  c += disc * smoothstep(0.042, 0.034, r) * (1.0 - uOvercast * 0.9);
+  c += disc * 0.22 * exp(-r * 12.0) * (0.35 + uLight) * (1.0 - uOvercast);
+
+  // Rain clouds: the sky turns grey and dark; lightning lights it up.
+  c = mix(c, vec3(0.32, 0.35, 0.4) * (0.25 + 0.75 * uLight), uOvercast);
+  c += vec3(0.75, 0.8, 1.0) * uFlash * 0.5;
+
+  // Rainbow after the rain: a faint arc centred below the bottom of the screen.
+  if (uRainbow > 0.0) {
+    vec2 rp = (uv - vec2(0.5, 1.25)) * vec2(uGrid.x / uGrid.y, 1.0);
+    float band = (length(rp) - 0.9) / 0.09;
+    if (band > 0.0 && band < 1.0) {
+      vec3 bow = clamp(abs(fract(band * 0.85 + vec3(0.0, 0.67, 0.33)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+      c = mix(c, bow, uRainbow * 0.3 * sin(band * 3.14159));
+    }
+  }
   return c;
 }
 
@@ -131,7 +148,7 @@ void main() {
   vec3 col = sky(vUv);
 
   // World lighting: dimmer at night, warmed up by nearby fire and hot material.
-  vec3 light = vec3(0.28 + 0.72 * uLight);
+  vec3 light = vec3((0.28 + 0.72 * uLight) * (1.0 - 0.45 * uOvercast) + uFlash * 0.6);
   light += vec3(1.0, 0.55, 0.2) * (fireW * 0.22 + glowW * 0.18) * (1.15 - uLight);
 
   // Liquids: a smooth coverage field gives one continuous surface instead of squares.

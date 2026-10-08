@@ -1,7 +1,7 @@
 import { Bird } from 'lucide-react'
 import type { CellContext } from '../../engine/context.ts'
 import type { ElementDefinition } from '../types.ts'
-import { NIGHT, between, findNearest, type Range } from './shared.ts'
+import { between, findNearest, shelterTime, type Range } from './shared.ts'
 
 /*
  * Bird `data` layout:
@@ -72,7 +72,7 @@ function fly(ctx: CellContext, data: number) {
     }
   } else {
     if (adjacentFruit(ctx)) return setState(ctx, data, EAT, EAT_TICKS)
-    const night = ctx.light() < NIGHT
+    const night = shelterTime(ctx)
     if (isPerch(ctx.get(0, 1)) && ctx.random() < (night ? NIGHT_PERCH_CHANCE : PERCH_CHANCE)) {
       return setState(ctx, data, PERCH, between(ctx, PERCH_TICKS))
     }
@@ -113,7 +113,7 @@ function rest(ctx: CellContext, data: number) {
   if (!isPerch(ctx.get(0, 1))) return setState(ctx, data, FLY, 0)
 
   // At night, perched birds fall asleep and stay asleep until it gets light.
-  const night = ctx.light() < NIGHT
+  const night = shelterTime(ctx)
   if (night && (data & STATE_MASK) !== SLEEP) return setState(ctx, data, SLEEP, between(ctx, SLEEP_TICKS))
 
   const life = ctx.life(0, 0)

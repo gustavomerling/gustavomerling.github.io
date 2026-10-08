@@ -1,4 +1,5 @@
 import { Shovel } from 'lucide-react'
+import type { CellContext } from '../../engine/context.ts'
 import type { ElementDefinition } from '../types.ts'
 
 const CAPACITY = 200
@@ -14,6 +15,37 @@ const MUD_SIDES = [
   [-1, 0],
   [1, 0],
 ] as const
+
+/** Mushrooms sprout on damp soil under trees. */
+const MUSHROOM_CHANCE = 0.00002
+const MUSHROOM_MOISTURE = 60
+const SHADE_HEIGHT = 12
+
+/** Leaves somewhere overhead. */
+function shaded(ctx: CellContext): boolean {
+  for (let k = 2; k <= SHADE_HEIGHT; k++) if (ctx.get(0, -k) === 'leaf') return true
+  return false
+}
+
+/** Now and then a zombie claws its way out of dark soil at night, away from houses. */
+const ZOMBIE_CHANCE = 0.00001
+const ZOMBIE_DARK = 0.15
+const SAFE_RADIUS = 14
+const MAX_ZOMBIES = 2
+const SETTLED: ReadonlySet<string | null> = new Set(['backwall', 'lamp', 'door', 'plank', 'fence', 'human_torch'])
+
+function zombieCanRise(ctx: CellContext): boolean {
+  if (ctx.get(0, -2) !== 'air' || ctx.get(0, -3) !== 'air') return false
+  let zombies = 0
+  for (let dy = -SAFE_RADIUS; dy <= SAFE_RADIUS; dy++) {
+    for (let dx = -SAFE_RADIUS * 2; dx <= SAFE_RADIUS * 2; dx++) {
+      const id = ctx.get(dx, dy)
+      if (SETTLED.has(id)) return false
+      if (id === 'zombie' && ++zombies >= MAX_ZOMBIES) return false
+    }
+  }
+  return true
+}
 
 /** Soil `data` = fertility (see fertility.ts). */
 export const soil: ElementDefinition = {
@@ -42,8 +74,18 @@ export const soil: ElementDefinition = {
       }
     }
 
-    if (ctx.random() < WILD_GRASS_CHANCE && water >= WILD_GRASS_MOISTURE && ctx.get(0, -1) === 'air') {
+    const above = ctx.get(0, -1)
+    if (above === 'grass' && ctx.light() < ZOMBIE_DARK && ctx.random() < ZOMBIE_CHANCE && zombieCanRise(ctx)) {
+      ctx.set(0, -1, 'zombie')
+      return
+    }
+    if (above !== 'air') return
+    if (ctx.random() < WILD_GRASS_CHANCE && water >= WILD_GRASS_MOISTURE) {
       ctx.set(0, -1, 'grass', { data: 1 })
+    } else if (water >= MUSHROOM_MOISTURE && ctx.random() < MUSHROOM_CHANCE && shaded(ctx)) {
+      ctx.set(0, -1, 'mushroom')
+    } else if (ctx.light() < ZOMBIE_DARK && ctx.random() < ZOMBIE_CHANCE && zombieCanRise(ctx)) {
+      ctx.set(0, -1, 'zombie')
     }
   },
 }

@@ -2,11 +2,28 @@ import type { LucideIcon } from 'lucide-react'
 import type { CellContext } from '../engine/context.ts'
 
 /** Default movement behaviour the engine applies to a cell every tick. */
+/** A creature's status card (shown when the player picks it from the top bar). */
+export interface Status {
+  name: string
+  /** What it's doing right now. */
+  activity: string
+  /** 0..100 meters, e.g. health. `good` = higher is better. */
+  meters: { label: string; value: number; good: boolean }[]
+  /** Inventory slots: an item id (the UI picks its icon), a name and how many. */
+  items: { id: string; label: string; count: number }[]
+  /** Tools held; `tier` 1 = wooden, 2 = stone. */
+  tools: { id: string; label: string; tier?: number }[]
+  /** Labelled lines: house, family, farm, needs... */
+  facts: { label: string; value: string }[]
+}
+
 /** A thought bubble: an icon and a few words, plus how the player can help (if they can). */
 export interface Thought {
   icon: LucideIcon
   text: string
   hint?: string
+  /** Who's thinking (a human's name). */
+  name?: string
 }
 
 export type Matter = 'empty' | 'static' | 'powder' | 'liquid' | 'gas' | 'energy'
@@ -138,6 +155,8 @@ export interface ElementDefinition {
   reactions?: Reaction[]
   /** Extra hover text (e.g. what a human is doing). */
   describe?: (ctx: CellContext) => string | undefined
+  /** Status card for the top bar's people buttons (humans). */
+  status?: (ctx: CellContext) => Status
   /** What the cell is thinking, shown in a bubble over it (humans). */
   thought?: (ctx: CellContext) => Thought
   /** Brush places a single cell per click instead of a spray (humans). */

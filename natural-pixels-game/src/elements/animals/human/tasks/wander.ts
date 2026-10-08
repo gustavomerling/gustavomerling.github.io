@@ -9,7 +9,7 @@ export const wander: Task = {
     const { mind } = body
     if (body.random() < 0.3) mind.dir = mind.dir === 1 ? -1 : 1
     // Settled humans don't stray far from home.
-    if (mind.home && Math.abs(mind.home.x + 3 - body.x) > HOME_RANGE) mind.dir = mind.home.x + 3 > body.x ? 1 : -1
+    if (mind.home && Math.abs(mind.home.x - body.x) > HOME_RANGE) mind.dir = mind.home.x > body.x ? 1 : -1
     mind.target = { x: body.x + mind.dir * (5 + Math.floor(body.random() * 12)), y: body.y }
     mind.patience = 40
     return true
