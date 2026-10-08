@@ -1,11 +1,9 @@
 import { WOOD_TREE } from '../../../plants/wood.ts'
 import type { Body } from '../body.ts'
 import type { Point } from '../mind.ts'
-import { findNearest, reachableFromGround } from '../senses.ts'
-import { approach, type Task } from './types.ts'
+import { ANYWHERE, findNearest, reachableFromGround } from '../senses.ts'
+import { approach, patienceFor, type Task } from './types.ts'
 
-/** How far it notices wood the player painted for it. */
-const SEARCH = 50
 /** Actions to pick up one cell of wood. */
 const TAKE_ACTIONS = 2
 /** Planks one painted wood cell is worth. */
@@ -41,10 +39,10 @@ function nextPiece(body: Body, from: Point): Point | null {
 /** The player's gift: walk to painted wood and take it, piece by piece, as planks. */
 export const gather: Task = {
   start(body) {
-    const wood = findNearest(body, SEARCH, (x, y) => looseWood(body, x, y))
+    const wood = findNearest(body, ANYWHERE, (x, y) => looseWood(body, x, y))
     if (!wood) return false
     body.mind.target = wood
-    body.mind.patience = 200
+    body.mind.patience = patienceFor(body, wood)
     body.mind.timer = 0
     return true
   },

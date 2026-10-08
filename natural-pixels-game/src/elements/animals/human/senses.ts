@@ -15,6 +15,9 @@ export function isHome(mind: Mind, x: number, y: number): boolean {
   return house !== null && x >= house.x - 1 && x <= house.x + 7 && y >= house.ground - 6 && y <= house.ground
 }
 
+/** Search radius that covers the whole world (rings stop once they leave it). */
+export const ANYWHERE = 4096
+
 /**
  * Nearest cell around the human's chest (by rings, closest first) within `radius`
  * that matches, skipping places it recently failed to reach. Coordinates are absolute.
@@ -25,11 +28,17 @@ export function findNearest(body: Body, radius: number, match: (x: number, y: nu
   const { mind } = body
   const test = mind.avoid.length ? (x: number, y: number) => !avoided(mind, x, y) && match(x, y) : match
   for (let r = 1; r <= radius; r++) {
+    // Sides of the ring that are outside the world are skipped; all four out = searched it all.
+    const top = body.get(cx, cy - r) !== null
+    const bottom = body.get(cx, cy + r) !== null
+    const left = body.get(cx - r, cy) !== null
+    const right = body.get(cx + r, cy) !== null
+    if (!top && !bottom && !left && !right) return null
     for (let d = -r; d <= r; d++) {
-      if (test(cx + d, cy - r)) return { x: cx + d, y: cy - r }
-      if (test(cx + d, cy + r)) return { x: cx + d, y: cy + r }
-      if (test(cx - r, cy + d)) return { x: cx - r, y: cy + d }
-      if (test(cx + r, cy + d)) return { x: cx + r, y: cy + d }
+      if (top && test(cx + d, cy - r)) return { x: cx + d, y: cy - r }
+      if (bottom && test(cx + d, cy + r)) return { x: cx + d, y: cy + r }
+      if (left && test(cx - r, cy + d)) return { x: cx - r, y: cy + d }
+      if (right && test(cx + r, cy + d)) return { x: cx + r, y: cy + d }
     }
   }
   return null

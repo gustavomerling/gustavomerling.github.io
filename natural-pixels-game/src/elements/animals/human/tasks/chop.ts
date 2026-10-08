@@ -2,8 +2,8 @@ import { FRUIT_ATTACHED } from '../../../plants/fruit.ts'
 import { WOOD_TREE } from '../../../plants/wood.ts'
 import type { Body } from '../body.ts'
 import type { Point } from '../mind.ts'
-import { findNearest } from '../senses.ts'
-import { approach, type Task } from './types.ts'
+import { ANYWHERE, findNearest } from '../senses.ts'
+import { approach, patienceFor, type Task } from './types.ts'
 
 /** Actions to fell a tree by hand; each axe tier divides it. */
 const CHOP_ACTIONS = 30
@@ -20,15 +20,15 @@ function isTrunk(body: Body, x: number, y: number) {
   return body.get(x, y) === 'wood' && (body.data(x, y) & WOOD_TREE) !== 0
 }
 
-/** Find a tree, chop at its base, and the whole tree comes down. Replants if it has seeds. */
+/** Find the nearest tree (anywhere in the world), chop at its base, and the whole tree comes down. Replants if it has seeds. */
 export const chop: Task = {
   start(body) {
-    const trunk = findNearest(body, 35, (x, y) => isTrunk(body, x, y))
+    const trunk = findNearest(body, ANYWHERE, (x, y) => isTrunk(body, x, y))
     if (!trunk) return false
     // Work at the base of the trunk.
     while (isTrunk(body, trunk.x, trunk.y + 1)) trunk.y++
     body.mind.target = trunk
-    body.mind.patience = 200
+    body.mind.patience = patienceFor(body, trunk)
     body.mind.timer = 0
     return true
   },

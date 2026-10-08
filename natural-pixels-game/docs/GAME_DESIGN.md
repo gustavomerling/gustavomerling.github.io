@@ -278,8 +278,8 @@ zumbido ∝ abelhas, grilos à noite se houver grama. Silencia com o jogo pausad
 | | Fish | static (move-se) | ✅ | nada só na água; fora dela morre; água quente cozinha |
 | | Worm | static (move-se) | ✅ | cava a terra adubando; come folha seca/cinza → terra fértil |
 | | Human | static (3 células) | ✅ | vive sozinho estilo Minecraft (seção 5.2) |
-| Terrain | Stone | static | ✅ | rocha; minerada com picareta; derrete a 1100 °C |
-| Water | Ice | static | ✅ | −60 °C, derrete devagar (calor latente); água vira gelo abaixo de 0 °C |
+| Terrain | Stone | powder sem deslizar | ✅ | rocha em blocos: cai reto e empilha (gravidade); minerada com picareta; derrete a 1100 °C |
+| Water | Ice | powder sem deslizar | ✅ | cai e empilha como bloco, flutua na água; −60 °C, derrete devagar; água vira gelo abaixo de 0 °C |
 | Fire | Fire | energy | ✅ | sobe, vida curta, 800 °C, aquece o que toca; água apaga |
 | | Lava | liquid viscoso, brilha | ✅ | 1200 °C; endurece em pedra; + água → pedra + vapor; derrete areia em vidro |
 | Chemistry | Oil | liquid (flutua) | ✅ | pega fogo a 120 °C; a chama corre pela poça |
@@ -358,6 +358,9 @@ balão fica laranja com a dica de como ajudar. O jogador ajuda **pintando** pert
 - **Wood** pintada (sem `WOOD_TREE`) → tarefa `gather`: pega peça por peça, 1 tábua por célula; a
   pilha desce quando ele tira de baixo. Tem prioridade sobre derrubar árvores.
 - **Stone** → minerada normalmente. **Fruit** → colhida. **Fish** na água → pescado.
+
+**Alcance**: árvores, pedra e madeira pintada são procuradas no **mapa inteiro** (anéis a partir
+dele até sair do mundo); a paciência da viagem cresce com a distância (`patienceFor`).
 
 **Não travar**: se uma ida falha (não alcançou árvore, pedra, fruta...), o lugar entra em
 `mind.avoid` por ~50 s e as buscas o ignoram, em vez de tentar o mesmo alvo para sempre. A

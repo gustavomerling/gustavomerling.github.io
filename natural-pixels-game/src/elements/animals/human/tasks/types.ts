@@ -11,6 +11,11 @@ export interface Task {
   run(body: Body): TaskStatus
 }
 
+/** Patience for a trip to `p`: a base amount plus enough for the distance (it may go far). */
+export function patienceFor(body: Body, p: { x: number; y: number }, base = 200): number {
+  return base + 3 * (Math.abs(p.x - body.x) + Math.abs(p.y - body.y))
+}
+
 /** Walk towards the mind's target; while stuck, burn patience. Returns 'arrived' or a status. */
 export function approach(body: Body): 'arrived' | TaskStatus {
   const { mind } = body

@@ -1,7 +1,7 @@
 import { isPassable, type Body } from '../body.ts'
 import type { Point } from '../mind.ts'
-import { exposed, findNearest, isHome } from '../senses.ts'
-import { approach, type Task } from './types.ts'
+import { ANYWHERE, exposed, findNearest, isHome } from '../senses.ts'
+import { approach, patienceFor, type Task } from './types.ts'
 
 /** Actions to break one stone; each pickaxe tier divides it. */
 const STONE_ACTIONS = 16
@@ -28,18 +28,19 @@ function nextInVein(body: Body, from: Point): Point | null {
 }
 
 /**
- * Mine stone with a pickaxe. If no stone is in sight, dig a staircase down looking for some
+ * Mine stone with a pickaxe, going wherever the nearest exposed stone is. If there's none at all, dig a staircase down looking for some
  * (never straight down: loose soil would cave in on top) and remember if there's none.
  */
 export const mine: Task = {
   start(body) {
     const { mind } = body
     if (mind.tools.pickaxe === 0) return false
-    const stone = findNearest(body, 30, (x, y) => exposedStone(body, x, y))
+    const stone = findNearest(body, ANYWHERE, (x, y) => exposedStone(body, x, y))
     mind.timer = 0
     mind.patience = 200
     if (stone) {
       mind.target = stone
+      mind.patience = patienceFor(body, stone)
       mind.phase = MINE_STONE
       return true
     }
