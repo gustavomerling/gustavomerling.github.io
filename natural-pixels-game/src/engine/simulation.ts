@@ -1,5 +1,5 @@
 import { ELEMENTS, EMPTY, elementIndex } from '../elements/registry.ts'
-import type { ElementDefinition, Matter } from '../elements/types.ts'
+import type { ElementDefinition, Matter, Thought } from '../elements/types.ts'
 import { BEHAVIORS, type Behavior } from './behaviors/index.ts'
 import { AMBIENT_TEMP } from './constants.ts'
 import { SimulationContext } from './context.ts'
@@ -114,6 +114,14 @@ export class Simulation {
     if (!describe) return undefined
     this.ctx.bind(x, y)
     return describe(this.ctx)
+  }
+
+  /** Thought bubble for the element at (x, y), via its `thought` hook. */
+  thoughtAt(x: number, y: number): Thought | undefined {
+    const thought = ELEMENTS[this.grid.type[y * this.grid.width + x]].thought
+    if (!thought) return undefined
+    this.ctx.bind(x, y)
+    return thought(this.ctx)
   }
 
   /** Jumps to a time of day (0..1), e.g. when loading a scene. */

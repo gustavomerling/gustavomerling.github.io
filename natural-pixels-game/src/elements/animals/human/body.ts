@@ -213,8 +213,14 @@ export class Body {
     return Math.abs(p.x - this.x) <= 1 && p.y >= this.y - HEIGHT && p.y <= this.y + 1
   }
 
-  /** Walks one step towards `p`. */
+  /** Walks one step towards `p`, counting how long it's been stuck (Mind.stuck). */
   walkTo(p: Point): 'arrived' | 'moving' | 'stuck' {
+    const result = this.walkStep(p)
+    this.mind.stuck = result === 'stuck' ? this.mind.stuck + 1 : 0
+    return result
+  }
+
+  private walkStep(p: Point): 'arrived' | 'moving' | 'stuck' {
     if (this.reaches(p)) return 'arrived'
     const dir = Math.sign(p.x - this.x)
     if (dir === 0) {

@@ -177,6 +177,7 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
           dayCycle={settings.dayCycle}
           cellTarget={GRAIN_CELLS[settings.grain]}
           renderMode={settings.graphics}
+          showThoughts={settings.thoughts}
           onStats={handleStats}
         />
       </div>

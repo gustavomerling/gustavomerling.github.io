@@ -687,3 +687,99 @@ body {
     animation: none;
   }
 }
+
+/* ---------- Thought bubbles (humans) ---------- */
+
+.thoughts {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.thought {
+  --along: 0.5;
+  position: absolute;
+  transform: translate(calc(var(--along) * -100%), calc(-100% - 12px));
+  transition:
+    left 120ms linear,
+    top 120ms linear;
+}
+
+.thought__cloud {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #1f2a3a;
+  font: 600 11px/1.25 var(--font-body);
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+/* The little dots leading down to the head. */
+.thought::before,
+.thought::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--along) * 100%);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  transform: translateX(-50%);
+}
+
+.thought::before {
+  bottom: -6px;
+  width: 6px;
+  height: 6px;
+}
+
+.thought::after {
+  bottom: -11px;
+  width: 3px;
+  height: 3px;
+}
+
+.thought__icon {
+  flex: none;
+  color: #3c5a8a;
+}
+
+.thought__hint {
+  display: block;
+  font-weight: 500;
+  font-size: 10px;
+  color: #b4610f;
+}
+
+.thought--need .thought__cloud {
+  box-shadow:
+    0 0 0 2px #ffb547,
+    0 4px 14px rgba(0, 0, 0, 0.3);
+  animation: thought-nudge 1.6s ease-in-out infinite;
+}
+
+.thought--need .thought__icon {
+  color: #d9822b;
+}
+
+@keyframes thought-nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thought {
+    transition: none;
+  }
+
+  .thought--need .thought__cloud {
+    animation: none;
+  }
+}

@@ -31,6 +31,9 @@ const BLUEPRINT: readonly Block[] = [
   { dx: 3, dy: -4, id: 'lamp' },
 ]
 
+/** Blocks in a whole house (for progress). */
+export const HOUSE_STEPS = BLUEPRINT.length
+
 function range(from: number, to: number): number[] {
   return Array.from({ length: to - from + 1 }, (_, i) => from + i)
 }

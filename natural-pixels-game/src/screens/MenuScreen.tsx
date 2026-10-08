@@ -54,6 +54,7 @@ export function MenuScreen({ onNavigate }: { onNavigate: Navigate }) {
           <ul className="tips">
             <li>Place a human (Animals) and it lives on its own, Minecraft-style: chops trees into logs and planks, crafts a pickaxe, mines stone, and builds a house before night.</li>
             <li>It eats fruit and fish, sleeps at home, replants trees and waters saplings with a bucket. Hover it to see its inventory and what it's doing.</li>
+            <li>A bubble shows what it's thinking. When it glows orange it needs something: paint Wood, Stone or Fruit near it and it will happily take your gift.</li>
           </ul>
           <h3 className="tips__heading">Chemistry</h3>
           <ul className="tips">

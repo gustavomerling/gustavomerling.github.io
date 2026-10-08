@@ -1,6 +1,6 @@
 import { isPassable, type Body } from '../body.ts'
 import type { Point } from '../mind.ts'
-import { exposed, findNearest } from '../senses.ts'
+import { exposed, findNearest, isHome } from '../senses.ts'
 import { approach, type Task } from './types.ts'
 
 /** Actions to break one stone; each pickaxe tier divides it. */
@@ -14,7 +14,7 @@ const MINE_STONE = 0
 const DIG_STAIRS = 1
 
 function exposedStone(body: Body, x: number, y: number) {
-  return body.get(x, y) === 'stone' && exposed(body, { x, y })
+  return body.get(x, y) === 'stone' && exposed(body, { x, y }) && !isHome(body.mind, x, y)
 }
 
 /** Next stone right next to the last one, to keep a vein going. */

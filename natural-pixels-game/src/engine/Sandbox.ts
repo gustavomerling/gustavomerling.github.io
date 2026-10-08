@@ -1,4 +1,5 @@
 import { ELEMENTS, EMPTY } from '../elements/registry.ts'
+import type { Thought } from '../elements/types.ts'
 import { paintStroke } from './brush.ts'
 import { Grid } from './grid.ts'
 import { createRenderer, type RenderMode, type Renderer } from './renderer/index.ts'
@@ -10,6 +11,9 @@ const STEP_MS = 1000 / TICKS_PER_SECOND
 /** Cap on ticks per frame so a slow frame can't snowball into a freeze. */
 const MAX_STEPS_PER_FRAME = 8
 const STATS_INTERVAL_MS = 250
+const THOUGHTS_INTERVAL_MS = 100
+/** Elements that think out loud (have a `thought` hook). */
+const THINKERS = Uint8Array.from(ELEMENTS, (el) => (el.thought ? 1 : 0))
 
 export interface SandboxSettings {
   /** Element index painted by the primary button (EMPTY = eraser). */
@@ -33,6 +37,14 @@ export interface SandboxStats {
   counts: Uint32Array
 }
 
+/** A thought bubble anchored at a cell (grid coordinates of the thinking cell). */
+export interface ThoughtBubble extends Thought {
+  /** Stable while the thinker lives (its memory key). */
+  key: number
+  x: number
+  y: number
+}
+
 /**
  * Facade the UI talks to: owns the grid, simulation, renderer and the frame loop.
  * React only pushes settings and pointer events in; it never runs per frame.
@@ -41,6 +53,7 @@ export class Sandbox {
   readonly grid: Grid
   readonly sim: Simulation
   onStats?: (stats: SandboxStats) => void
+  onThoughts?: (bubbles: ThoughtBubble[]) => void
 
   private renderer: Renderer | null = null
   private settings: SandboxSettings = { tool: EMPTY, brushRadius: 3, paused: false, speed: 1, dayCycle: true }
@@ -52,6 +65,7 @@ export class Sandbox {
   private accumulator = 0
   private statsFrames = 0
   private statsTime = 0
+  private thoughtsTime = 0
   private readonly counts = new Uint32Array(ELEMENTS.length)
 
   constructor(width: number, height: number) {
@@ -156,6 +170,7 @@ export class Sandbox {
 
     this.render(now)
     this.reportStats(now)
+    this.reportThoughts(now)
     this.frameId = requestAnimationFrame(this.frame)
   }
 
@@ -203,6 +218,21 @@ export class Sandbox {
     })
     this.statsFrames = 0
     this.statsTime = now
+  }
+
+  private reportThoughts(now: number) {
+    if (!this.onThoughts || now - this.thoughtsTime < THOUGHTS_INTERVAL_MS) return
+    this.thoughtsTime = now
+    const { type, life, width, size } = this.grid
+    const bubbles: ThoughtBubble[] = []
+    for (let i = 0; i < size; i++) {
+      if (!THINKERS[type[i]]) continue
+      const x = i % width
+      const y = (i - x) / width
+      const thought = this.sim.thoughtAt(x, y)
+      if (thought) bubbles.push({ ...thought, key: life[i], x, y })
+    }
+    this.onThoughts(bubbles)
   }
 
   private probe(): SandboxStats['hover'] {

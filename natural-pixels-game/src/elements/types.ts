@@ -2,6 +2,13 @@ import type { LucideIcon } from 'lucide-react'
 import type { CellContext } from '../engine/context.ts'
 
 /** Default movement behaviour the engine applies to a cell every tick. */
+/** A thought bubble: an icon and a few words, plus how the player can help (if they can). */
+export interface Thought {
+  icon: LucideIcon
+  text: string
+  hint?: string
+}
+
 export type Matter = 'empty' | 'static' | 'powder' | 'liquid' | 'gas' | 'energy'
 
 /** Element family. Each one is a folder in `src/elements/`. */
@@ -131,6 +138,8 @@ export interface ElementDefinition {
   reactions?: Reaction[]
   /** Extra hover text (e.g. what a human is doing). */
   describe?: (ctx: CellContext) => string | undefined
+  /** What the cell is thinking, shown in a bubble over it (humans). */
+  thought?: (ctx: CellContext) => Thought
   /** Brush places a single cell per click instead of a spray (humans). */
   brushSingle?: boolean
   /** Part of a multi-cell body whose main cell sits this many cells below (hover shows the main cell). */

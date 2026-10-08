@@ -1,6 +1,7 @@
 import { useEffect, useImperativeHandle, useRef, useState, type PointerEvent, type Ref } from 'react'
 import type { RenderMode } from '../engine/renderer/index.ts'
-import { Sandbox, type SandboxSettings, type SandboxStats } from '../engine/Sandbox.ts'
+import { Sandbox, type SandboxSettings, type SandboxStats, type ThoughtBubble } from '../engine/Sandbox.ts'
+import { ThoughtBubbles } from './ThoughtBubbles.tsx'
 
 export interface SandboxHandle {
   step: () => void
@@ -13,6 +14,8 @@ interface SandboxViewProps extends SandboxSettings {
   /** Roughly how many cells the grid has (the "grain size"). Fixed at mount. */
   cellTarget: number
   renderMode: RenderMode
+  /** Show what humans are thinking. */
+  showThoughts: boolean
   onStats: (stats: SandboxStats) => void
   ref?: Ref<SandboxHandle>
 }
@@ -33,7 +36,7 @@ function gridSizeFor(width: number, height: number, cellTarget: number) {
 }
 
 /** Mounts the engine on a canvas and bridges React props and pointer events into it. */
-export function SandboxView({ tool, brushRadius, paused, speed, dayCycle, cellTarget, renderMode, onStats, ref }: SandboxViewProps) {
+export function SandboxView({ tool, brushRadius, paused, speed, dayCycle, cellTarget, renderMode, showThoughts, onStats, ref }: SandboxViewProps) {
   const stageRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -43,6 +46,8 @@ export function SandboxView({ tool, brushRadius, paused, speed, dayCycle, cellTa
   // Smooth graphics may be unsupported (or its shader may fail): stick to pixel mode then.
   const [smoothFailed, setSmoothFailed] = useState(!SMOOTH_SUPPORTED)
   const mode: RenderMode = smoothFailed ? 'pixel' : renderMode
+  const [bubbles, setBubbles] = useState<readonly ThoughtBubble[]>([])
+  const [grid, setGrid] = useState({ width: 1, height: 1 })
 
   useEffect(() => {
     onStatsRef.current = onStats
@@ -58,6 +63,9 @@ export function SandboxView({ tool, brushRadius, paused, speed, dayCycle, cellTa
     const sandbox = new Sandbox(size.width, size.height)
     sandbox.onStats = (stats) => onStatsRef.current(stats)
     sandboxRef.current = sandbox
+    // The grid size is only known once the stage is measured, right here.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setGrid(size)
 
     // Fit the canvas inside the stage, keeping the grid's aspect ratio.
     const fit = () => {
@@ -95,6 +103,12 @@ export function SandboxView({ tool, brushRadius, paused, speed, dayCycle, cellTa
       setSmoothFailed(true)
     }
   }, [mode])
+
+  useEffect(() => {
+    const sandbox = sandboxRef.current
+    if (!sandbox) return
+    sandbox.onThoughts = showThoughts ? setBubbles : undefined
+  }, [showThoughts])
 
   useEffect(() => {
     sandboxRef.current?.configure({ tool, brushRadius, paused, speed, dayCycle })
@@ -140,6 +154,9 @@ export function SandboxView({ tool, brushRadius, paused, speed, dayCycle, cellTa
           onPointerLeave={() => sandboxRef.current?.pointerLeave()}
           onPointerCancel={() => sandboxRef.current?.pointerUp()}
         />
+        {showThoughts && bubbles.length > 0 && (
+          <ThoughtBubbles bubbles={bubbles} gridWidth={grid.width} gridHeight={grid.height} />
+        )}
       </div>
     </div>
   )

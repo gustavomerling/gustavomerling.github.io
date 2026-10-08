@@ -55,6 +55,11 @@ export function craft(mind: Mind) {
   }
 }
 
+/** Planks to collect before building: the house, plus the wooden tools it still has to craft. */
+export function planksToBuild(mind: Mind): number {
+  return HOUSE_COST.plank + (mind.tools.pickaxe ? 0 : 3) + (mind.tools.axe ? 0 : 3)
+}
+
 /** Total planks available counting unprocessed logs. */
 export function plankWorth(mind: Mind): number {
   return mind.inv.plank + mind.inv.log * PLANKS_PER_LOG

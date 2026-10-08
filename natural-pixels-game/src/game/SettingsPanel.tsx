@@ -56,6 +56,17 @@ export function SettingsPanel({ onClose, inGame = false }: SettingsPanelProps) {
         </div>
 
         <div className="settings__row">
+          <span className="settings__label">Thought bubbles</span>
+          <Segmented
+            label="Thought bubbles"
+            value={settings.thoughts ? 'on' : 'off'}
+            options={ON_OFF}
+            onChange={(v) => update({ thoughts: v === 'on' })}
+          />
+          <span className="settings__hint">Shows what humans are thinking and what they need.</span>
+        </div>
+
+        <div className="settings__row">
           <span className="settings__label">Sound</span>
           <Segmented label="Sound" value={settings.sound ? 'on' : 'off'} options={ON_OFF} onChange={(v) => update({ sound: v === 'on' })} />
           <input

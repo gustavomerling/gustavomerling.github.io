@@ -2,7 +2,8 @@ import { PersonStanding } from 'lucide-react'
 import type { ElementDefinition, ElementThermal } from '../../types.ts'
 import { Body } from './body.ts'
 import { think } from './brain.ts'
-import { createMind, describeMind } from './mind.ts'
+import { createMind, describeMind, upgradeMind } from './mind.ts'
+import { thoughtOf } from './thought.ts'
 
 /** Humans act this often (ticks): ~12 actions per second. */
 const ACTION_TICKS = 5
@@ -29,7 +30,7 @@ export const human: ElementDefinition = {
   brushSingle: true,
   thermal: MORTAL,
   update(ctx) {
-    const mind = ctx.memory(createMind)
+    const mind = upgradeMind(ctx.memory(createMind))
     const body = new Body(ctx, mind)
     body.ensureParts()
     mind.hunger = Math.min(100, mind.hunger + (mind.asleep ? HUNGER_ASLEEP : HUNGER_AWAKE))
@@ -47,7 +48,10 @@ export const human: ElementDefinition = {
     return true
   },
   describe(ctx) {
-    return describeMind(ctx.memory(createMind))
+    return describeMind(upgradeMind(ctx.memory(createMind)))
+  },
+  thought(ctx) {
+    return thoughtOf(upgradeMind(ctx.memory(createMind)))
   },
 }
 

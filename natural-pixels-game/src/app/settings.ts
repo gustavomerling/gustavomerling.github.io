@@ -8,6 +8,8 @@ export interface Settings {
   /** Cell size: fine = more, smaller cells (heavier); coarse = fewer, bigger cells. */
   grain: Grain
   dayCycle: boolean
+  /** Thought bubbles over humans. */
+  thoughts: boolean
   sound: boolean
   /** 0..1 */
   volume: number
@@ -17,6 +19,7 @@ export const DEFAULT_SETTINGS: Settings = {
   graphics: 'smooth',
   grain: 'normal',
   dayCycle: true,
+  thoughts: true,
   sound: true,
   volume: 0.6,
 }

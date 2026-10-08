@@ -1,19 +1,35 @@
 import { isGround, isPassable, type Body } from './body.ts'
-import type { Point } from './mind.ts'
+import type { Mind, Point } from './mind.ts'
+
+/** Cells around a place it couldn't reach that are skipped too. */
+const AVOID_RADIUS = 3
+
+/** Recently failed to get here (see Mind.avoid). */
+export function avoided(mind: Mind, x: number, y: number): boolean {
+  return mind.avoid.some((p) => Math.abs(p.x - x) <= AVOID_RADIUS && Math.abs(p.y - y) <= AVOID_RADIUS)
+}
+
+/** Part of its own house (or the one going up): never mined or taken apart. */
+export function isHome(mind: Mind, x: number, y: number): boolean {
+  const house = mind.home ?? mind.site
+  return house !== null && x >= house.x - 1 && x <= house.x + 7 && y >= house.ground - 6 && y <= house.ground
+}
 
 /**
  * Nearest cell around the human's chest (by rings, closest first) within `radius`
- * that matches. Coordinates are absolute.
+ * that matches, skipping places it recently failed to reach. Coordinates are absolute.
  */
 export function findNearest(body: Body, radius: number, match: (x: number, y: number) => boolean): Point | null {
   const cx = body.x
   const cy = body.y - 1
+  const { mind } = body
+  const test = mind.avoid.length ? (x: number, y: number) => !avoided(mind, x, y) && match(x, y) : match
   for (let r = 1; r <= radius; r++) {
     for (let d = -r; d <= r; d++) {
-      if (match(cx + d, cy - r)) return { x: cx + d, y: cy - r }
-      if (match(cx + d, cy + r)) return { x: cx + d, y: cy + r }
-      if (match(cx - r, cy + d)) return { x: cx - r, y: cy + d }
-      if (match(cx + r, cy + d)) return { x: cx + r, y: cy + d }
+      if (test(cx + d, cy - r)) return { x: cx + d, y: cy - r }
+      if (test(cx + d, cy + r)) return { x: cx + d, y: cy + r }
+      if (test(cx - r, cy + d)) return { x: cx - r, y: cy + d }
+      if (test(cx + r, cy + d)) return { x: cx + r, y: cy + d }
     }
   }
   return null

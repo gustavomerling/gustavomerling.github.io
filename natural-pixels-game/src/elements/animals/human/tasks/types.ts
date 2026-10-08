@@ -18,7 +18,9 @@ export function approach(body: Body): 'arrived' | TaskStatus {
   const result = body.walkTo(mind.target)
   if (result === 'arrived') return 'arrived'
   // Stuck: dig through (collapsed soil, a hill, a cave ceiling) before losing patience.
-  if (result === 'stuck' && body.tunnel(mind.target)) mind.patience -= 1
-  else mind.patience -= result === 'stuck' ? 5 : 1
+  if (result === 'stuck' && body.tunnel(mind.target)) {
+    mind.patience -= 1
+    mind.stuck = 0
+  } else mind.patience -= result === 'stuck' ? 5 : 1
   return mind.patience <= 0 ? 'failed' : 'running'
 }

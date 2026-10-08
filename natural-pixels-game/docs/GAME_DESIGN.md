@@ -164,6 +164,7 @@ interface ElementDefinition {
   reactions?: { with, chance, self?, other?, selfChance? }[]  // lava + água → pedra + vapor
   update?: (ctx: CellContext) => boolean | void
   describe?: (ctx) => string       // texto extra no hover (o que o humano está fazendo)
+  thought?: (ctx) => Thought       // balão de pensamento { icon, text, hint? } (humano)
   brushFill?: number
   brushSingle?: boolean            // 1 por clique (humano)
   partOf?: { below }               // parte de um corpo multi-célula (cabeça/tronco do humano)
@@ -345,6 +346,23 @@ balde), casa, obra em andamento, mudas plantadas. O hover mostra tudo isso.
 
 Morre com calor (fogo, lava → cinza) e com ácido.
 
+**Balão de pensamento** (`thought.ts`): o `Sandbox` varre a grade 10×/s atrás de elementos com
+`thought` e emite `ThoughtBubble[]` (posição em células + ícone Lucide + texto); o
+`game/ThoughtBubbles.tsx` desenha os balões em HTML por cima do canvas (desligável em Settings).
+Mostra, nesta ordem: dormindo (Zzz) → preso há ~1 s ("Can't get there…") → uma **vontade** →
+a tarefa atual (com % da obra da casa).
+
+**Vontades** (`mind.want`, recalculada a cada escolha de tarefa): `wood` (sem árvore alcançável e
+faltam tábuas), `stone` (tem picareta mas não acha pedra), `food` (com fome e sem fruta/peixe). O
+balão fica laranja com a dica de como ajudar. O jogador ajuda **pintando** perto dele:
+- **Wood** pintada (sem `WOOD_TREE`) → tarefa `gather`: pega peça por peça, 1 tábua por célula; a
+  pilha desce quando ele tira de baixo. Tem prioridade sobre derrubar árvores.
+- **Stone** → minerada normalmente. **Fruit** → colhida. **Fish** na água → pescado.
+
+**Não travar**: se uma ida falha (não alcançou árvore, pedra, fruta...), o lugar entra em
+`mind.avoid` por ~50 s e as buscas o ignoram, em vez de tentar o mesmo alvo para sempre. A
+mineração nunca mexe na própria casa.
+
 ### 5.3 Ideias para depois
 Lava e pedra, gelo (água < 0 °C), óleo (inflamável, flutua), vento/ventilador, ácido, tipos de
 semente (flores, cactos), estações do ano, colmeia (abelhas se reproduzem), pássaros fazendo ninho.
@@ -363,6 +381,7 @@ semente (flores, cactos), estações do ano, colmeia (abelhas se reproduzem), p�
 | ✅ **4 — Visual** | renderer WebGL2, céu, ciclo dia/noite |
 | ✅ **5 — Polimento** | settings, sons procedurais, salvar/carregar cenas, sidebar por famílias |
 | ✅ **6 — Química e humano** | pedra, lava, gelo, óleo, ácido, nitrogênio, pólvora, vidro, tábua, lâmpada; reações declarativas; humano estilo Minecraft |
+| ✅ **6b — Balões** | balão de pensamento do humano, vontades com dica, presentes do jogador, memória de lugares inalcançáveis |
 
 ---
 

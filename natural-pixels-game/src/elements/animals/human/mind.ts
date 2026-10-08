@@ -3,7 +3,21 @@
  * Lives in the feet cell's memory (CellContext.memory), so it must stay JSON-friendly.
  */
 
-export type TaskName = 'idle' | 'wander' | 'sleep' | 'forage' | 'fish' | 'chop' | 'mine' | 'build' | 'plant' | 'water'
+export type TaskName =
+  | 'idle'
+  | 'wander'
+  | 'sleep'
+  | 'forage'
+  | 'fish'
+  | 'chop'
+  | 'gather'
+  | 'mine'
+  | 'build'
+  | 'plant'
+  | 'water'
+
+/** Something it needs but can't find on its own (shown in its thought bubble so the player can help). */
+export type Want = 'wood' | 'stone' | 'food'
 
 export interface Point {
   x: number
@@ -64,6 +78,12 @@ export interface Mind {
   dug: number
   /** Searched and found no stone: build without a stone foundation. */
   noStone: boolean
+  /** What it's missing right now (refreshed each time it picks a task). */
+  want: Want | null
+  /** Actions in a row it couldn't get any closer to where it's going. */
+  stuck: number
+  /** Places it recently failed to reach: ignored until `ttl` (actions) runs out. */
+  avoid: (Point & { ttl: number })[]
 }
 
 export function createMind(): Mind {
@@ -86,7 +106,16 @@ export function createMind(): Mind {
     saplings: [],
     dug: 0,
     noStone: false,
+    want: null,
+    stuck: 0,
+    avoid: [],
   }
+}
+
+/** Minds saved by older versions miss newer fields: fill them in. */
+export function upgradeMind(mind: Mind): Mind {
+  if (!('avoid' in mind)) Object.assign(mind, { ...createMind(), ...(mind as object) })
+  return mind
 }
 
 const ACTIVITY: Record<TaskName, string> = {
@@ -96,6 +125,7 @@ const ACTIVITY: Record<TaskName, string> = {
   forage: 'Picking fruit',
   fish: 'Fishing',
   chop: 'Chopping a tree',
+  gather: 'Collecting wood',
   mine: 'Mining',
   build: 'Building a house',
   plant: 'Planting a tree',
@@ -103,6 +133,13 @@ const ACTIVITY: Record<TaskName, string> = {
 }
 
 const TIER = ['', 'wooden', 'stone'] as const
+
+/** How the player can help with each want. */
+export const WANT_HINT: Record<Want, string> = {
+  wood: 'paint Wood near it',
+  stone: 'paint Stone near it',
+  food: 'paint Fruit near it',
+}
 
 /** Hover text: activity, hunger, inventory and tools. */
 export function describeMind(mind: Mind): string {
@@ -122,5 +159,6 @@ export function describeMind(mind: Mind): string {
   ]
   if (gear.length) parts.push(gear.join(', '))
   if (mind.home) parts.push('has a home')
+  if (mind.want) parts.push(`needs ${mind.want}: ${WANT_HINT[mind.want]}`)
   return parts.join(' · ')
 }
