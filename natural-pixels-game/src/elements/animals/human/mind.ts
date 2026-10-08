@@ -44,6 +44,8 @@ export interface Tools {
   pickaxe: ToolTier
   axe: ToolTier
   bucket: boolean
+  /** Rowing boat (5 planks), made at the shore the first time it has to cross water. */
+  boat?: boolean
 }
 
 export interface Mind {
@@ -66,6 +68,8 @@ export interface Mind {
   /** 0 = full, 100 = starving. */
   hunger: number
   asleep: boolean
+  /** In the water: swimming, or rowing its boat (set by the body every tick). */
+  afloat: 'swim' | 'boat' | null
   inv: Inventory
   tools: Tools
   /** Finished house: left x and ground row. */
@@ -99,6 +103,7 @@ export function createMind(): Mind {
     cooldown: 0,
     hunger: 20,
     asleep: false,
+    afloat: null,
     inv: { log: 0, plank: 0, stone: 0, food: 1, seed: 0, water: 0 },
     tools: { pickaxe: 0, axe: 0, bucket: false },
     home: null,
@@ -151,9 +156,11 @@ export function describeMind(mind: Mind): string {
     tools.axe ? `${TIER[tools.axe]} axe` : '',
     tools.pickaxe ? `${TIER[tools.pickaxe]} pickaxe` : '',
     tools.bucket ? (inv.water ? 'full bucket' : 'bucket') : '',
+    tools.boat ? 'boat' : '',
   ].filter(Boolean)
   const parts = [
     mind.asleep ? 'Sleeping' : ACTIVITY[mind.task],
+    ...(mind.afloat ? [mind.afloat === 'boat' ? 'rowing' : 'swimming'] : []),
     `hunger ${Math.round(mind.hunger)}%`,
     items.length ? items.join(', ') : 'empty-handed',
   ]

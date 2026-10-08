@@ -1,4 +1,5 @@
 import type { CellContext, CellInit } from '../../../engine/context.ts'
+import { BOAT_COST } from './craft.ts'
 import type { Mind, Point } from './mind.ts'
 
 /** A human is a column of cells: feet (the 'human' cell that thinks), torso, head. */
@@ -35,6 +36,9 @@ const SOFT: ReadonlySet<string | null> = new Set(['soil', 'sand', 'mud', 'ash', 
 const HARD: ReadonlySet<string | null> = new Set(['stone', 'ice'])
 const SOFT_ACTIONS = 2
 const HARD_ACTIONS = 16
+
+/** How far below its feet the water may be for it to launch its boat from the bank. */
+const LAUNCH_DROP = 5
 
 /** Ticks of wall grip after each climbing step: lasts until the next action (humans act every 5 ticks). */
 const CLIMB_GRIP = 8
@@ -94,6 +98,22 @@ export class Body {
     return this.ctx.water(x - this.ctx.x, y - this.ctx.y)
   }
 
+  /** What's at (x, y), looking through its own body to the cell it hides (water it swims in). */
+  private behind(x: number, y: number) {
+    const id = this.get(x, y)
+    return PARTS.includes(id as (typeof PARTS)[number]) ? this.ctx.under(x - this.ctx.x, y - this.ctx.y) : id
+  }
+
+  /** Whether the body part `k` cells above the feet is in water. */
+  wet(k: number): boolean {
+    return this.behind(this.x, this.y - k) === 'water'
+  }
+
+  /** Standing on its boat. */
+  riding(): boolean {
+    return this.get(this.x, this.y + 1) === 'boat'
+  }
+
   // ---------- Body parts ----------
 
   /** How many parts stand on the feet (0 = just feet, 2 = torso and head). */
@@ -141,11 +161,21 @@ export class Body {
     return true
   }
 
-  /** Falls one cell if nothing is underfoot (unless gripping a wall). Returns true if it fell. */
+  /**
+   * Gravity and water, once per tick. Falls if nothing is underfoot (unless gripping a wall).
+   * In water it can't walk the bottom: it floats with its head out, rising when the head goes
+   * under and sinking until the torso is in. Returns true if it moved.
+   */
   fall(): boolean {
-    if (this.mind.climb > 0) {
-      this.mind.climb--
+    const { mind } = this
+    mind.afloat = this.riding() ? 'boat' : this.wet(0) || this.wet(1) ? 'swim' : null
+    if (mind.climb > 0) {
+      mind.climb--
       return false
+    }
+    if (mind.afloat === 'swim') {
+      if (this.wet(this.partCount())) return this.move(0, -1)
+      if (this.wet(1)) return false
     }
     if (isGround(this.get(this.x, this.y + 1))) return false
     return this.move(0, 1)
@@ -155,8 +185,11 @@ export class Body {
     return isGround(this.get(this.x, this.y + 1))
   }
 
-  /** One step sideways: walk, step up a ledge, or climb a wall. */
+  /** One step sideways: row the boat, launch it at the shore, walk, step up a ledge, or climb a wall. */
   step(dir: number): boolean {
+    if (this.riding() && this.row(dir)) return true
+    if (!this.mind.afloat && this.launch(dir)) return true
+    if (this.mind.afloat === 'swim' && this.board()) return true
     if (this.move(dir, 0)) return true
     if (isPassable(this.get(this.x, this.y - HEIGHT)) && this.move(dir, -1)) return true
     // A wall: climb it (Minecraft-style ladders, without the ladder).
@@ -167,6 +200,57 @@ export class Body {
       }
     }
     return false
+  }
+
+  /** Rows one cell along the water's surface, boat and all. False at the shore (it steps off). */
+  private row(dir: number): boolean {
+    if (this.get(this.x + dir, this.y + 1) !== 'water' || !this.move(dir, 0)) return false
+    // The boat stayed behind under where the feet were: bring it along.
+    this.ctx.moveCell(this.ox - dir, this.oy + 1, this.ox, this.oy + 1)
+    return true
+  }
+
+  /** Spends planks on a boat if it doesn't have one yet. False if it can't afford it. */
+  private haveBoat(): boolean {
+    const { tools, inv } = this.mind
+    if (tools.boat) return true
+    if (inv.plank < BOAT_COST.plank) return false
+    inv.plank -= BOAT_COST.plank
+    tools.boat = true
+    return true
+  }
+
+  /**
+   * At the shore with water ahead (level with its feet, or lower down the bank): puts its
+   * boat on the surface and steps over it, dropping in if the water is lower. Without a
+   * boat (or the planks for one) it just wades in and swims.
+   */
+  private launch(dir: number): boolean {
+    const x = this.x + dir
+    let surface: number | null = null
+    for (let y = this.y; y <= this.y + LAUNCH_DROP; y++) {
+      const id = this.get(x, y)
+      if (id === 'water') {
+        if (this.get(x, y - 1) !== 'water') surface = y
+        break
+      }
+      if (y > this.y && !isPassable(id)) break
+    }
+    if (surface === null) return false
+    const dy = surface === this.y ? -1 : 0
+    if (!this.canMove(dir, dy) || !this.haveBoat()) return false
+    this.set(x, surface, 'boat')
+    this.move(dir, dy)
+    return true
+  }
+
+  /** Swimming with its head out: climbs into its boat right here, on the surface. */
+  private board(): boolean {
+    if (!this.wet(1) || this.wet(2) || !this.canMove(0, -2) || !this.haveBoat()) return false
+    this.move(0, -2)
+    // The torso was at the surface: that water cell becomes the boat.
+    this.set(this.x, this.y + 1, 'boat')
+    return true
   }
 
   /**

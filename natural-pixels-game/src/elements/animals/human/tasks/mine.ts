@@ -13,8 +13,19 @@ const MAX_STEPS = 14
 const MINE_STONE = 0
 const DIG_STAIRS = 1
 
+/** Open to the air (not just to water: it can't mine underwater). */
+function dry(body: Body, x: number, y: number) {
+  const id = body.get(x, y)
+  return id !== 'water' && isPassable(id)
+}
+
 function exposedStone(body: Body, x: number, y: number) {
-  return body.get(x, y) === 'stone' && exposed(body, { x, y }) && !isHome(body.mind, x, y)
+  return (
+    body.get(x, y) === 'stone' &&
+    exposed(body, { x, y }) &&
+    (dry(body, x - 1, y) || dry(body, x + 1, y) || dry(body, x, y - 1)) &&
+    !isHome(body.mind, x, y)
+  )
 }
 
 /** Next stone right next to the last one, to keep a vein going. */

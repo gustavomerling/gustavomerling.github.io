@@ -2,7 +2,7 @@ import { bee, bird, fish, human, humanBody, humanHead, worm } from './animals/in
 import { air } from './core/index.ts'
 import { acid, gunpowder, nitrogen, oil } from './chemistry/index.ts'
 import { fire, lava } from './fire/index.ts'
-import { glass, lamp, metal, plank } from './materials/index.ts'
+import { boat, glass, lamp, metal, plank } from './materials/index.ts'
 import { fruit, grass, leaf, litter, plant, seed, wood } from './plants/index.ts'
 import { ash, mud, sand, soil, stone } from './terrain/index.ts'
 import type { ElementDefinition } from './types.ts'
@@ -57,6 +57,7 @@ export const ELEMENTS: readonly ElementDefinition[] = [
   glass,
   plank,
   lamp,
+  boat,
 ]
 
 export const EMPTY = 0

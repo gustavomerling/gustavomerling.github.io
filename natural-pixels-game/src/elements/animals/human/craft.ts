@@ -10,11 +10,13 @@ import type { Mind } from './mind.ts'
  *   3 stone + 2 planks     → stone pickaxe / stone axe
  *   3 planks               → bucket           (carries water for saplings)
  *   1 plank + 1 stone      → lamp             (placed when building the house)
+ *   5 planks               → boat             (made at the shore, when it has to cross water)
  */
 
 /** What a house costs (see build.ts). */
 export const HOUSE_COST = { plank: 19, stone: 7 }
 export const LAMP_COST = { plank: 1, stone: 1 }
+export const BOAT_COST = { plank: 5 }
 
 /** Planks a log turns into. */
 export const PLANKS_PER_LOG = 4

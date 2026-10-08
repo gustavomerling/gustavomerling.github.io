@@ -290,6 +290,7 @@ zumbido ∝ abelhas, grilos à noite se houver grama. Silencia com o jogo pausad
 | | Glass | static transparente | ✅ | areia derretida; à prova de ácido |
 | | Plank | static | ✅ | tábua (o humano fabrica); queima em cinza |
 | | Lamp | static, brilha | ✅ | ilumina a noite sem calor |
+| | Boat | static | ❌ | barco do humano; anda com ele sobre a água, some quando ele desce |
 
 ### 5.1 Ciclos
 
@@ -326,13 +327,20 @@ movidas juntas com `moveCell`. Atravessa ar, grama, folhas, troncos, frutas e á
 guardados embaixo); sobe degraus de 1, escala paredes, cai, e cava quando fica preso (terra à mão,
 pedra com picareta; nunca quebra tábua/vidro/metal). Age ~12×/s.
 
+**Água**: não anda pelo fundo. Na água ele **nada** com a cabeça para fora (sobe se a cabeça
+afunda, desce até o tronco molhar). Na margem, com água à frente (no nível dos pés ou até 5
+células abaixo), põe o **barco** (5 tábuas, fabricado na primeira travessia) na superfície e
+**rema**: o barco (`materials/boat.ts`, 1 célula oculta da paleta) vai junto embaixo dos pés. Ao
+chegar na outra margem desce e o barco é guardado (a célula volta a ser água). Nadando, se tiver
+barco ou tábuas, sobe nele ali mesmo. Não minera pedra debaixo d'água.
+
 **Mente** (`mind.ts`, na memória da célula): tarefa atual, fome (0–100), inventário (toras,
 tábuas, pedra, comida, sementes, balde cheio), ferramentas (picareta/machado de madeira ou pedra,
 balde), casa, obra em andamento, mudas plantadas. O hover mostra tudo isso.
 
 **Crafting** (`craft.ts`, automático): 1 tora → 4 tábuas · 3 tábuas → picareta de madeira
 (necessária para pedra) · 3 tábuas → machado · 3 pedras + 2 tábuas → picareta/machado de pedra ·
-3 tábuas → balde · 1 tábua + 1 pedra → lâmpada.
+3 tábuas → balde · 1 tábua + 1 pedra → lâmpada · 5 tábuas → barco (na margem).
 
 **Cérebro** (`brain.ts`), em ordem de prioridade:
 1. Noite → vai para casa e dorme (sem casa, dorme onde está).
