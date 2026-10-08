@@ -1,10 +1,11 @@
 import { Shovel } from 'lucide-react'
 import type { ElementDefinition } from '../types.ts'
 
+/** Soil `data` = fertility (see fertility.ts). */
 export const soil: ElementDefinition = {
   id: 'soil',
   name: 'Soil',
-  description: 'Heavy earth that soaks up water. Seeds sprout in wet soil.',
+  description: 'Heavy earth that soaks up water. Seeds sprout in wet soil; ash makes it fertile.',
   category: 'terrain',
   matter: 'powder',
   density: 15,

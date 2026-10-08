@@ -1,5 +1,6 @@
 import { WATER_CELL_UNITS } from '../../engine/constants.ts'
 import type { CellContext } from '../../engine/context.ts'
+import { consumeFertility, fertilityAt, fertilityBoost } from '../terrain/fertility.ts'
 
 /**
  * Shared rules for living plant tissue (plant stem, wood, leaf).
@@ -8,16 +9,21 @@ import type { CellContext } from '../../engine/context.ts'
 
 export const TISSUE_GROUP = 'plant'
 
+/** Roots drink up to this many times faster from the most fertile soil. */
+const FERTILE_DRINK_BOOST = 1.5
+
 /** Pulls water from wet soil touching the cell from below (the plant's roots). */
 export function drinkFromSoil(ctx: CellContext, rate: number, capacity: number) {
   for (let dx = -1; dx <= 1; dx++) {
     const room = capacity - ctx.water(0, 0)
     if (room <= 0) return
     if (ctx.get(dx, 1) !== 'soil') continue
-    const take = Math.min(rate, ctx.water(dx, 1), room)
+    const boosted = Math.round(rate * fertilityBoost(fertilityAt(ctx, dx, 1), FERTILE_DRINK_BOOST))
+    const take = Math.min(boosted, ctx.water(dx, 1), room)
     if (take <= 0) continue
     ctx.setWater(dx, 1, ctx.water(dx, 1) - take)
     ctx.setWater(0, 0, ctx.water(0, 0) + take)
+    consumeFertility(ctx, dx, 1, 0.05)
   }
 }
 

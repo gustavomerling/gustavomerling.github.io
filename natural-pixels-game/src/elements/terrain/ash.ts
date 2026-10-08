@@ -1,10 +1,11 @@
 import { Haze } from 'lucide-react'
 import type { ElementDefinition } from '../types.ts'
+import { compost } from './fertility.ts'
 
 export const ash: ElementDefinition = {
   id: 'ash',
   name: 'Ash',
-  description: 'What is left after wood burns. Light and powdery; floats on water.',
+  description: 'What is left after fire. Mixes into soil and fertilizes it; floats on water.',
   category: 'terrain',
   matter: 'powder',
   density: 6,
@@ -12,5 +13,7 @@ export const ash: ElementDefinition = {
   icon: Haze,
   movement: { slide: 0.7 },
   thermal: { conductivity: 0.05 },
-  hidden: true,
+  update(ctx) {
+    compost(ctx, 0.01, 60)
+  },
 }

@@ -1,4 +1,5 @@
 import { Bean } from 'lucide-react'
+import { fertilityBoost } from '../terrain/fertility.ts'
 import { GROW_TIP } from './plant.ts'
 import type { ElementDefinition } from '../types.ts'
 
@@ -7,6 +8,8 @@ const SPROUT_MOISTURE = 60
 /** Water the seed takes from the soil to become a sprout. */
 const SPROUT_COST = 30
 const SPROUT_CHANCE = 0.02
+/** Seeds in the most fertile soil sprout this many times faster (on top of 1×). */
+const FERTILE_SPROUT_BOOST = 4
 /** Seeds landing on soil work their way this many cells down into it. */
 const BURROW_DEPTH = 2
 const BURROW_CHANCE = 0.08
@@ -38,14 +41,18 @@ export const seed: ElementDefinition = {
     // Any touching soil counts, so buried seeds sprout when water seeps down to them.
     let best = -1
     let moisture = 0
+    let fertility = 0
     for (let n = 0; n < NEIGHBORS.length; n++) {
       const [dx, dy] = NEIGHBORS[n]
-      if (ctx.get(dx, dy) === 'soil' && ctx.water(dx, dy) > moisture) {
+      if (ctx.get(dx, dy) !== 'soil') continue
+      fertility = Math.max(fertility, ctx.data(dx, dy))
+      if (ctx.water(dx, dy) > moisture) {
         best = n
         moisture = ctx.water(dx, dy)
       }
     }
-    if (best < 0 || moisture < SPROUT_MOISTURE || ctx.random() >= SPROUT_CHANCE) return
+    const chance = SPROUT_CHANCE * fertilityBoost(fertility, FERTILE_SPROUT_BOOST)
+    if (best < 0 || moisture < SPROUT_MOISTURE || ctx.random() >= chance) return
 
     const [dx, dy] = NEIGHBORS[best]
     ctx.setWater(dx, dy, moisture - SPROUT_COST)
