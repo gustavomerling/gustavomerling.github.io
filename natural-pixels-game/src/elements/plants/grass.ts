@@ -1,0 +1,68 @@
+import { Clover } from 'lucide-react'
+import { fertilityAt, fertilityBoost } from '../terrain/fertility.ts'
+import type { ElementDefinition } from '../types.ts'
+
+/*
+ * Grass is a thin carpet on top of soil. `data` = blade part: 1 = base (sits on soil),
+ * 2 = tip (sits on a base). Only bases spread and grow tips.
+ */
+const BASE = 1
+const TIP = 2
+
+/** Soil moisture grass needs to spread; below DRY it slowly dies back. */
+const SPREAD_MOISTURE = 40
+const DRY = 10
+const SPREAD_CHANCE = 0.004
+/** Spreads up to this many times faster on the most fertile soil (on top of 1×). */
+const FERTILE_SPREAD_BOOST = 3
+const TIP_CHANCE = 0.002
+const WILT_CHANCE = 0.0005
+/** Water taken from the soil each time it spreads. */
+const SPREAD_COST = 4
+
+export const grass: ElementDefinition = {
+  id: 'grass',
+  name: 'Grass',
+  description: 'Carpets wet soil and spreads by itself, faster on fertile soil. Burns quickly.',
+  category: 'plants',
+  matter: 'static',
+  density: 20,
+  color: { base: '#6cc24a', variation: 0.2 },
+  icon: Clover,
+  brushFill: 0.4,
+  thermal: { conductivity: 0.05, burn: { at: 180, temp: 450, rate: 0.08 } },
+  update(ctx) {
+    const below = ctx.get(0, 1)
+    const above = ctx.get(0, -1)
+
+    if (ctx.data(0, 0) === TIP) {
+      if (below !== 'grass') ctx.set(0, 0, 'air')
+      return
+    }
+
+    // Lost its soil, or buried under falling powder: it dies.
+    if (below !== 'soil' || above === 'soil' || above === 'sand') {
+      ctx.set(0, 0, 'air')
+      return
+    }
+    if (ctx.data(0, 0) !== BASE) ctx.setData(0, 0, BASE)
+
+    const moisture = ctx.water(0, 1)
+    if (moisture < DRY) {
+      if (ctx.random() < WILT_CHANCE) ctx.set(0, 0, 'air')
+      return
+    }
+
+    if (above === 'air' && ctx.random() < TIP_CHANCE) ctx.set(0, -1, 'grass', { data: TIP })
+
+    const chance = SPREAD_CHANCE * fertilityBoost(fertilityAt(ctx, 0, 1), FERTILE_SPREAD_BOOST)
+    if (moisture < SPREAD_MOISTURE || ctx.random() >= chance) return
+
+    // Spread to a nearby patch of exposed soil (same level, a step up or a step down).
+    const dx = ctx.random() < 0.5 ? -1 : 1
+    const dy = Math.floor(ctx.random() * 3) - 1
+    if (ctx.get(dx, dy) !== 'air' || ctx.get(dx, dy + 1) !== 'soil') return
+    ctx.set(dx, dy, 'grass', { data: BASE })
+    ctx.setWater(0, 1, moisture - SPREAD_COST)
+  },
+}

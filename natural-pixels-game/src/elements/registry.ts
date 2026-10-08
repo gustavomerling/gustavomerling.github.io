@@ -2,35 +2,43 @@ import { bird } from './animals/index.ts'
 import { air } from './core/index.ts'
 import { fire } from './fire/index.ts'
 import { metal } from './materials/index.ts'
-import { fruit, leaf, plant, seed, wood } from './plants/index.ts'
-import { ash, sand, soil } from './terrain/index.ts'
+import { fruit, grass, leaf, litter, plant, seed, wood } from './plants/index.ts'
+import { ash, mud, sand, soil } from './terrain/index.ts'
 import type { ElementDefinition } from './types.ts'
 import { cloud, steam, water } from './water/index.ts'
 
 /**
  * Every element in the game. The array position is the numeric id stored in the grid,
  * so `air` must stay first and the list must stay under 256 entries.
+ * Grouped by family in sidebar order, so hotkeys 1–9, 0 follow what's on screen.
  * To add an element: create `elements/<family>/<id>.ts`, export it from that folder's
  * `index.ts` and add it here.
  */
 export const ELEMENTS: readonly ElementDefinition[] = [
   air,
-  // Toolbar order (hotkeys 1–9, 0):
+  // Terrain
   sand,
   soil,
+  mud,
+  ash,
+  // Water
   water,
+  steam,
+  cloud,
+  // Plants
   seed,
+  grass,
   wood,
   fruit,
-  bird,
-  metal,
-  fire,
-  steam,
-  // Only appear through reactions:
   plant,
   leaf,
-  cloud,
-  ash,
+  litter,
+  // Animals
+  bird,
+  // Fire
+  fire,
+  // Materials
+  metal,
 ]
 
 export const EMPTY = 0

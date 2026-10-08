@@ -1,5 +1,7 @@
 export { fruit } from './fruit.ts'
+export { grass } from './grass.ts'
 export { leaf } from './leaf.ts'
+export { litter } from './litter.ts'
 export { plant } from './plant.ts'
 export { seed } from './seed.ts'
 export { wood } from './wood.ts'

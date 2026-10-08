@@ -3,6 +3,7 @@ import type { Behavior } from './types.ts'
 
 /** Falls, slides diagonally, then flows sideways up to `spread` cells to level out. */
 export const liquid: Behavior = (sim, x, y, i, t) => {
+  if (sim.random() < sim.viscosity[t]) return
   if (sim.tryMove(i, t, x, y + 1, 1)) return
 
   const dir = sim.random() < 0.5 ? -1 : 1

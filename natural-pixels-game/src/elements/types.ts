@@ -23,6 +23,8 @@ export interface ElementMovement {
   slide?: number
   /** Liquid: how many cells it can flow sideways in a single tick. */
   spread?: number
+  /** Liquid: chance per tick to stay put instead of flowing (0 = water, 0.85 = mud). */
+  viscosity?: number
   /** Gas: chance per tick to rise (steam shoots up, clouds barely climb). */
   rise?: number
   /** Gas: chance per tick to drift one cell sideways. */

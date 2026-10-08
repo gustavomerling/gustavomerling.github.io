@@ -1,6 +1,6 @@
 import { Axe } from 'lucide-react'
 import type { CellContext } from '../../engine/context.ts'
-import { CROWN_LEAF } from './leaf.ts'
+import { CROWN_LEAF, POLLINATED } from './leaf.ts'
 import { TISSUE_GROUP, absorbWater, drinkFromSoil } from './tissue.ts'
 import type { ElementDefinition } from '../types.ts'
 
@@ -59,14 +59,21 @@ export const wood: ElementDefinition = {
 function growTrunk(ctx: CellContext, data: number) {
   const water = ctx.water(0, 0)
   const height = data >> HEIGHT_SHIFT
-  if (height >= MAX_HEIGHT || water < TRUNK_COST || ctx.random() >= TRUNK_CHANCE) return
+  if (water < TRUNK_COST || ctx.random() >= TRUNK_CHANCE) return
 
   const isBranch = (data & BRANCH) !== 0
   const r = ctx.random()
   // Branches lean outwards more than the main trunk.
   const straight = isBranch ? 0.5 : 0.8
   const dx = r < straight ? 0 : r < (1 + straight) / 2 ? -1 : 1
-  if (!canGrowInto(ctx.get(dx, -1))) return
+
+  // Fully grown (or blocked): spend the water keeping the crown full instead,
+  // replacing old leaves as they fall.
+  if (height >= MAX_HEIGHT || !canGrowInto(ctx.get(dx, -1))) {
+    renewCrown(ctx, 0, -1)
+    ctx.setWater(0, 0, water - (TRUNK_COST >> 1))
+    return
+  }
 
   ctx.set(dx, -1, 'wood', { water: TRUNK_COST >> 1, data: trunkTop(height + 1, isBranch) })
   ctx.setData(0, 0, data & ~WOOD_TOP)
@@ -90,5 +97,5 @@ function canGrowInto(id: string | null): boolean {
 function renewCrown(ctx: CellContext, dx: number, dy: number) {
   const id = ctx.get(dx, dy)
   if (id === 'air') ctx.set(dx, dy, 'leaf', { water: 20, data: CROWN_LEAF })
-  else if (id === 'leaf') ctx.setData(dx, dy, CROWN_LEAF)
+  else if (id === 'leaf') ctx.setData(dx, dy, CROWN_LEAF | (ctx.data(dx, dy) & POLLINATED))
 }

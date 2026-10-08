@@ -1,4 +1,5 @@
 export { ash } from './ash.ts'
+export { mud } from './mud.ts'
 export { sand } from './sand.ts'
 export { soil } from './soil.ts'
 export * from './fertility.ts'

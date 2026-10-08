@@ -38,6 +38,7 @@ export class Simulation {
   readonly fluid = Uint8Array.from(ELEMENTS, (el) => (FLUID_MATTER.has(el.matter) ? 1 : 0))
   readonly slide = Float32Array.from(ELEMENTS, (el) => el.movement?.slide ?? 1)
   readonly spread = Uint8Array.from(ELEMENTS, (el) => el.movement?.spread ?? 4)
+  readonly viscosity = Float32Array.from(ELEMENTS, (el) => el.movement?.viscosity ?? 0)
   readonly sink = Float32Array.from(ELEMENTS, (el) => el.movement?.sink ?? 1)
   readonly rise = Float32Array.from(ELEMENTS, (el) => el.movement?.rise ?? 1)
   readonly drift = Float32Array.from(ELEMENTS, (el) => el.movement?.drift ?? 0.3)
