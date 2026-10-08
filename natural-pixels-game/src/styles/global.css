@@ -1,0 +1,569 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@400;500&display=swap');
+
+:root {
+  --bg-top: #16233a;
+  --bg-bottom: #0d1420;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-strong: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.12);
+  --text: #eef3f8;
+  --text-muted: #93a3b8;
+  --accent: #7ad67f;
+  --accent-strong: #4fbf5a;
+  --water: #4aa8ff;
+  --radius: 14px;
+
+  --font-display: 'Fredoka', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  user-select: none;
+}
+
+.app {
+  height: 100%;
+  animation: screen-in 400ms ease-out;
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.screen {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+/* ---------- Title ---------- */
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.8rem, 10vw, 6rem);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-align: center;
+}
+
+.title--small {
+  font-size: clamp(2.2rem, 7vw, 3.6rem);
+}
+
+.title__accent {
+  background: linear-gradient(90deg, var(--accent), var(--water));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.subtitle {
+  margin: 12px 0 0;
+  font-size: clamp(1rem, 3vw, 1.25rem);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ---------- Backdrop ---------- */
+
+.falling-particles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ---------- Splash ---------- */
+
+.splash {
+  cursor: pointer;
+}
+
+.splash__content {
+  position: relative;
+  padding: 0 16px;
+}
+
+.splash__icon {
+  display: block;
+  margin: 0 auto 16px;
+  color: var(--accent);
+  filter: drop-shadow(0 0 18px rgba(122, 214, 127, 0.45));
+}
+
+.splash__hint {
+  margin-top: 48px;
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: 600 1.1rem var(--font-display);
+  color: var(--text);
+  padding: 12px 28px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.btn--sm {
+  padding: 7px 14px;
+  font-size: 0.95rem;
+}
+
+.btn--icon {
+  padding: 9px;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--water);
+  outline-offset: 3px;
+}
+
+.btn--primary {
+  background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+  border-color: transparent;
+  color: #0d1a10;
+}
+
+.btn--ghost {
+  background: var(--surface);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: var(--surface-strong);
+}
+
+/* ---------- Menu ---------- */
+
+.menu__content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  padding: 0 16px;
+}
+
+.menu__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(260px, 100%);
+}
+
+.menu__list .btn {
+  width: 100%;
+}
+
+/* ---------- Panel ---------- */
+
+.panel-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(5, 9, 15, 0.6);
+  backdrop-filter: blur(4px);
+  animation: screen-in 200ms ease-out;
+}
+
+.panel {
+  width: min(460px, 100%);
+  padding: 24px;
+  border-radius: var(--radius);
+  background: #1a2639;
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.panel__title {
+  margin: 0 0 12px;
+  font: 600 1.5rem var(--font-display);
+}
+
+.panel__body {
+  margin-bottom: 20px;
+  line-height: 1.55;
+}
+
+.tips {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.tips li + li {
+  margin-top: 6px;
+}
+
+/* ---------- Game ---------- */
+
+.game {
+  justify-content: stretch;
+  align-items: stretch;
+}
+
+.game__bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.game__title {
+  flex: 1;
+  font: 600 1.15rem var(--font-display);
+}
+
+.game__stats {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.game__probe {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text);
+}
+
+.sandbox {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  margin: 12px 16px;
+  overflow: hidden;
+}
+
+.sandbox__frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(122, 190, 255, 0.16), transparent 60%),
+    linear-gradient(180deg, #1d3150, #101a2b);
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+.sandbox__canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.game__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* ---------- Sidebar ---------- */
+
+.sidebar {
+  flex: 0 0 30%;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 14px 16px 20px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.sidebar__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar__label {
+  margin: 0;
+  color: var(--text-muted);
+  font: 600 0.72rem var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.control-row,
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.control-group {
+  gap: 4px;
+}
+
+.control-row__spacer {
+  flex: 1;
+}
+
+.control-value {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  color: var(--text-muted);
+}
+
+.btn--active {
+  border-color: var(--text);
+  background: var(--surface-strong);
+  box-shadow: 0 0 0 1px var(--text) inset;
+}
+
+/* ---------- Element palette (accordions) ---------- */
+
+.palette {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.accordion {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.accordion__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font: 600 0.95rem var(--font-display);
+  text-align: left;
+  cursor: pointer;
+}
+
+.accordion__header:hover {
+  background: var(--surface);
+}
+
+.accordion__header:focus-visible {
+  outline: 2px solid var(--water);
+  outline-offset: 2px;
+}
+
+.accordion__label {
+  flex: 1;
+}
+
+/* Marks the family holding the selected element, even when collapsed. */
+.accordion__header--active .accordion__label::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.accordion__count {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font: 500 0.72rem var(--font-body);
+  text-align: center;
+}
+
+.accordion__chevron {
+  color: var(--text-muted);
+  transform: rotate(-90deg);
+  transition: transform 150ms ease;
+}
+
+.accordion--open .accordion__chevron {
+  transform: none;
+}
+
+.element-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 6px;
+  padding: 0 8px 10px;
+}
+
+.element-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: 500 0.9rem var(--font-body);
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.element-chip:hover {
+  background: var(--surface-strong);
+}
+
+.element-chip:focus-visible {
+  outline: 2px solid var(--water);
+  outline-offset: 2px;
+}
+
+.element-chip__icon {
+  flex-shrink: 0;
+  color: var(--chip-color);
+  filter: drop-shadow(0 0 6px var(--chip-color));
+}
+
+.element-chip__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.element-chip__key {
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-muted);
+  font: 500 0.7rem var(--font-body);
+  text-align: center;
+}
+
+.element-chip--active {
+  border-color: var(--chip-color);
+  background: color-mix(in srgb, var(--chip-color) 16%, transparent);
+  box-shadow: 0 0 0 1px var(--chip-color) inset;
+}
+
+/* Narrow screens: sidebar drops below the canvas. */
+@media (max-width: 760px) {
+  .game__body {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    order: 1;
+    flex: 0 0 auto;
+    min-width: 0;
+    max-height: 42vh;
+    border-right: 0;
+    border-top: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 640px) {
+  .game__title {
+    display: none;
+  }
+
+  .game__bar {
+    justify-content: space-between;
+  }
+
+  .sandbox {
+    margin: 8px;
+  }
+
+  .element-chip__key {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app,
+  .panel-backdrop,
+  .splash__hint {
+    animation: none;
+  }
+}

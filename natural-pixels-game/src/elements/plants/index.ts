@@ -1,0 +1,5 @@
+export { fruit } from './fruit.ts'
+export { leaf } from './leaf.ts'
+export { plant } from './plant.ts'
+export { seed } from './seed.ts'
+export { wood } from './wood.ts'
