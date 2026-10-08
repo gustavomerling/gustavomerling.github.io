@@ -1,4 +1,5 @@
 import type { CellContext, CellInit } from '../../../engine/context.ts'
+import { BOAT_LENGTH, boatPart, isBoatMiddle } from '../../materials/boat.ts'
 import { BOAT_COST } from './craft.ts'
 import type { Mind, Point } from './mind.ts'
 
@@ -50,6 +51,8 @@ const CLIMB_GRIP = 8
 export class Body {
   readonly ctx: CellContext
   readonly mind: Mind
+  /** Where `walkTo` is heading this action (boats are only for getting across to it). */
+  private goal: Point | null = null
   /** How far the feet have moved this tick, relative to the context origin. */
   private ox = 0
   private oy = 0
@@ -109,9 +112,9 @@ export class Body {
     return this.behind(this.x, this.y - k) === 'water'
   }
 
-  /** Standing on its boat. */
+  /** Standing in the middle of its boat. */
   riding(): boolean {
-    return this.get(this.x, this.y + 1) === 'boat'
+    return this.get(this.x, this.y + 1) === 'boat' && isBoatMiddle(this.data(this.x, this.y + 1))
   }
 
   // ---------- Body parts ----------
@@ -187,9 +190,9 @@ export class Body {
 
   /** One step sideways: row the boat, launch it at the shore, walk, step up a ledge, or climb a wall. */
   step(dir: number): boolean {
-    if (this.riding() && this.row(dir)) return true
-    if (!this.mind.afloat && this.launch(dir)) return true
-    if (this.mind.afloat === 'swim' && this.board()) return true
+    if (this.riding()) return this.row(dir) || this.disembark(dir)
+    if (!this.mind.afloat && this.crossing() && (this.boardMoored(dir) || this.launch(dir))) return true
+    if (this.mind.afloat === 'swim' && this.crossing() && this.board()) return true
     if (this.move(dir, 0)) return true
     if (isPassable(this.get(this.x, this.y - HEIGHT)) && this.move(dir, -1)) return true
     // A wall: climb it (Minecraft-style ladders, without the ladder).
@@ -202,54 +205,127 @@ export class Body {
     return false
   }
 
-  /** Rows one cell along the water's surface, boat and all. False at the shore (it steps off). */
+  /**
+   * Heading somewhere across the water: a boat is worth it. Not when strolling, or when the
+   * water itself is the goal (filling the bucket, fishing).
+   */
+  private crossing(): boolean {
+    const { goal } = this
+    if (!goal || this.get(goal.x, goal.y) === 'water') return false
+    return Math.abs(goal.x - this.x) > BOAT_LENGTH + 1
+  }
+
+  /** Moves a cell between absolute positions (boat parts). */
+  private shift(x1: number, y1: number, x2: number, y2: number) {
+    const { ctx } = this
+    ctx.moveCell(x1 - ctx.x, y1 - ctx.y, x2 - ctx.x, y2 - ctx.y)
+  }
+
+  /** Open water surface at (x, y): water with no water above it. */
+  private surfaceAt(x: number, y: number): boolean {
+    return this.get(x, y) === 'water' && this.get(x, y - 1) !== 'water'
+  }
+
+  /** Room for a raised end of the boat (open air, not water). */
+  private airAt(x: number, y: number): boolean {
+    const id = this.get(x, y)
+    return id !== 'water' && isPassable(id)
+  }
+
+  /** Builds the boat centred under feet that will stand at (cx, surface - 1). */
+  private placeBoat(cx: number, surface: number) {
+    const reach = BOAT_LENGTH >> 1
+    for (let k = -reach; k <= reach; k++) {
+      this.ctx.cover(cx + k - this.ctx.x, surface - this.ctx.y, 'boat', { data: boatPart(k) })
+    }
+    for (const k of [-reach, reach]) {
+      this.ctx.cover(cx + k - this.ctx.x, surface - 1 - this.ctx.y, 'boat', { data: boatPart(k, true) })
+    }
+  }
+
+  /** Rows one cell along the water's surface, boat and all. False when the bow hits the shore. */
   private row(dir: number): boolean {
-    if (this.get(this.x + dir, this.y + 1) !== 'water' || !this.move(dir, 0)) return false
-    // The boat stayed behind under where the feet were: bring it along.
-    this.ctx.moveCell(this.ox - dir, this.oy + 1, this.ox, this.oy + 1)
+    const { x, y } = this
+    const reach = BOAT_LENGTH >> 1
+    const bow = x + dir * (reach + 1)
+    if (!this.surfaceAt(bow, y + 1) || !this.airAt(bow, y) || !this.canMove(dir, 0)) return false
+    // Front to back, so each part moves into the space the one ahead just left.
+    this.shift(x + dir * reach, y, bow, y)
+    for (let k = reach; k >= -reach; k--) this.shift(x + dir * k, y + 1, x + dir * (k + 1), y + 1)
+    this.move(dir, 0)
+    this.shift(x - dir * reach, y, x - dir * (reach - 1), y)
     return true
   }
 
-  /** Spends planks on a boat if it doesn't have one yet. False if it can't afford it. */
-  private haveBoat(): boolean {
+  /** The bow touched the shore: hop over it onto dry land. The boat stays moored on the water. */
+  private disembark(dir: number): boolean {
+    const hop = dir * ((BOAT_LENGTH >> 1) + 1)
+    const x = this.x + hop
+    for (const dy of [0, -1, 1, -2, 2]) {
+      if (isGround(this.get(x, this.y + dy + 1)) && this.canMove(hop, dy)) return this.move(hop, dy)
+    }
+    return false
+  }
+
+  /** Spends the planks for a new boat. False if it can't afford one. */
+  private buildBoat(): boolean {
     const { tools, inv } = this.mind
-    if (tools.boat) return true
     if (inv.plank < BOAT_COST.plank) return false
     inv.plank -= BOAT_COST.plank
     tools.boat = true
     return true
   }
 
+  /** A moored boat just ahead (its middle within a few cells, by the bank): hop in. */
+  private boardMoored(dir: number): boolean {
+    const reach = BOAT_LENGTH >> 1
+    for (let n = 1; n <= reach + 2; n++) {
+      const x = this.x + dir * n
+      for (let y = this.y; y <= this.y + LAUNCH_DROP; y++) {
+        if (this.get(x, y) !== 'boat' || !isBoatMiddle(this.data(x, y))) continue
+        const dy = y - 1 - this.y
+        return this.canMove(x - this.x, dy) && this.move(x - this.x, dy)
+      }
+    }
+    return false
+  }
+
   /**
-   * At the shore with water ahead (level with its feet, or lower down the bank): puts its
-   * boat on the surface and steps over it, dropping in if the water is lower. Without a
-   * boat (or the planks for one) it just wades in and swims.
+   * At the shore with open water ahead (level with its feet, or lower down the bank) and
+   * room for the whole boat: puts the boat on the water and hops into the middle of it.
+   * Without a boat (or the planks for one) it just wades in and swims.
    */
   private launch(dir: number): boolean {
-    const x = this.x + dir
     let surface: number | null = null
     for (let y = this.y; y <= this.y + LAUNCH_DROP; y++) {
-      const id = this.get(x, y)
+      const id = this.get(this.x + dir, y)
       if (id === 'water') {
-        if (this.get(x, y - 1) !== 'water') surface = y
+        if (this.surfaceAt(this.x + dir, y)) surface = y
         break
       }
       if (y > this.y && !isPassable(id)) break
     }
     if (surface === null) return false
-    const dy = surface === this.y ? -1 : 0
-    if (!this.canMove(dir, dy) || !this.haveBoat()) return false
-    this.set(x, surface, 'boat')
-    this.move(dir, dy)
-    return true
+    const reach = BOAT_LENGTH >> 1
+    const cx = this.x + dir * (reach + 1)
+    for (let k = -reach; k <= reach; k++) if (!this.surfaceAt(cx + k, surface)) return false
+    if (!this.airAt(cx - reach, surface - 1) || !this.airAt(cx + reach, surface - 1)) return false
+    const dy = surface - 1 - this.y
+    if (!this.canMove(cx - this.x, dy) || !this.buildBoat()) return false
+    this.placeBoat(cx, surface)
+    return this.move(cx - this.x, dy)
   }
 
   /** Swimming with its head out: climbs into its boat right here, on the surface. */
   private board(): boolean {
-    if (!this.wet(1) || this.wet(2) || !this.canMove(0, -2) || !this.haveBoat()) return false
+    const { x } = this
+    const surface = this.y - 1
+    const reach = BOAT_LENGTH >> 1
+    if (!this.wet(1) || this.wet(2) || !this.canMove(0, -2)) return false
+    for (let k = -reach; k <= reach; k++) if (k !== 0 && !this.surfaceAt(x + k, surface)) return false
+    if (!this.airAt(x - reach, surface - 1) || !this.airAt(x + reach, surface - 1) || !this.buildBoat()) return false
     this.move(0, -2)
-    // The torso was at the surface: that water cell becomes the boat.
-    this.set(this.x, this.y + 1, 'boat')
+    this.placeBoat(x, surface)
     return true
   }
 
@@ -299,7 +375,9 @@ export class Body {
 
   /** Walks one step towards `p`, counting how long it's been stuck (Mind.stuck). */
   walkTo(p: Point): 'arrived' | 'moving' | 'stuck' {
+    this.goal = p
     const result = this.walkStep(p)
+    this.goal = null
     this.mind.stuck = result === 'stuck' ? this.mind.stuck + 1 : 0
     return result
   }

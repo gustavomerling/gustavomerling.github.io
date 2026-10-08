@@ -41,7 +41,7 @@ export function MenuScreen({ onNavigate }: { onNavigate: Navigate }) {
           <ul className="tips">
             <li>Pick an element in the sidebar (or press 1–9, 0) and draw on the canvas. Hold to keep pouring.</li>
             <li>Right-click or E erases. Space pauses, N steps, [ and ] resize the brush.</li>
-            <li>Hover the canvas to see what's there and how hot it is. Save your world in the Scene section.</li>
+            <li>Hover the canvas to see what's there and how hot it is. In the Scene section, roll a Random world or save yours.</li>
           </ul>
           <h3 className="tips__heading">Life</h3>
           <ul className="tips">
@@ -54,7 +54,7 @@ export function MenuScreen({ onNavigate }: { onNavigate: Navigate }) {
           <ul className="tips">
             <li>Place a human (Animals) and it lives on its own, Minecraft-style: chops trees into logs and planks, crafts a pickaxe, mines stone, and builds a house before night.</li>
             <li>It eats fruit and fish, sleeps at home, replants trees and waters saplings with a bucket. Hover it to see its inventory and what it's doing.</li>
-            <li>It can't walk underwater: it swims, or with 5 planks it makes a boat and rows across.</li>
+            <li>It can't walk underwater: it swims, or with 5 planks it builds a boat and rows across. The boat stays moored at the shore for the trip back.</li>
             <li>A bubble shows what it's thinking. When it glows orange it needs something: paint Wood, Stone or Fruit near it and it will happily take your gift.</li>
           </ul>
           <h3 className="tips__heading">Chemistry</h3>

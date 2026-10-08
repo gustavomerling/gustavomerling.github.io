@@ -5,6 +5,7 @@ import { Grid } from './grid.ts'
 import { createRenderer, type RenderMode, type Renderer } from './renderer/index.ts'
 import { decodeScene, encodeScene } from './scene.ts'
 import { Simulation } from './simulation.ts'
+import { generateWorld } from './worldgen.ts'
 
 const TICKS_PER_SECOND = 60
 const STEP_MS = 1000 / TICKS_PER_SECOND
@@ -115,6 +116,13 @@ export class Sandbox {
 
   clear() {
     this.grid.clear()
+    this.sim.resetMemory()
+    this.render(performance.now())
+  }
+
+  /** Replaces the world with a new semi-random landscape (see worldgen.ts). */
+  generate() {
+    generateWorld(this.grid, this.sim.random)
     this.sim.resetMemory()
     this.render(performance.now())
   }

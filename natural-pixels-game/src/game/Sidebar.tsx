@@ -22,7 +22,7 @@ interface SidebarProps {
   getSandbox: () => Sandbox | null
 }
 
-/** Left-hand panel: simulation controls, brush, element families and scene save/load. */
+/** Left-hand panel: simulation controls, brush, element families and scenes (random world, save/load). */
 export function Sidebar({ tool, onTool, brush, onBrush, dayCycle, onDayCycle, getSandbox, ...playback }: SidebarProps) {
   return (
     <aside className="sidebar" aria-label="Tools and elements">

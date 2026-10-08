@@ -11,7 +11,7 @@ import type { ElementDefinition } from '../types.ts'
  *   bits 0-5  how many more generations of leaves it can still spawn
  * Leaf `life` = age in ticks (counts up). Old leaves fall as litter.
  */
-const CROWN = 0x80
+export const CROWN = 0x80
 export const POLLINATED = 0x40
 const BUDGET_MASK = 0x3f
 const CROWN_SIZE = 5

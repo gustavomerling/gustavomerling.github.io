@@ -31,6 +31,10 @@ export interface CellContext {
    * is kept underneath and comes back when the mover leaves (birds flying through leaves).
    */
   moveOver(dx: number, dy: number): void
+  /** Puts a new cell over the one at the offset, keeping that one hidden underneath (a boat on water). */
+  cover(dx: number, dy: number, id: string, init?: CellInit): void
+  /** Removes the cell at the offset, bringing back what it was hiding (or air). */
+  reveal(dx: number, dy: number): void
   /** Id of what's hidden underneath the cell at the offset, or `null` if nothing is. */
   under(dx: number, dy: number): string | null
   water(dx: number, dy: number): number
@@ -102,6 +106,20 @@ export class SimulationContext implements CellContext {
   moveOver(dx: number, dy: number) {
     const j = this.index(dx, dy)
     if (j >= 0) this.sim.moveOver(this.index(0, 0), j)
+  }
+
+  cover(dx: number, dy: number, id: string, init: CellInit = {}) {
+    const i = this.index(dx, dy)
+    if (i < 0) return
+    const { grid } = this.sim
+    const t = elementIndex(id)
+    grid.cover(i, t, clampByte(init.water ?? 0), clampByte(init.data ?? 0), init.temp ?? this.sim.initialTemp[t])
+    grid.stamp[i] = this.sim.tick
+  }
+
+  reveal(dx: number, dy: number) {
+    const i = this.index(dx, dy)
+    if (i >= 0) this.sim.grid.reveal(i)
   }
 
   under(dx: number, dy: number): string | null {

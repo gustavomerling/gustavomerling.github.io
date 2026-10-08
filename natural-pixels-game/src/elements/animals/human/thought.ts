@@ -49,7 +49,7 @@ export function thoughtOf(mind: Mind): Thought {
   if (mind.asleep) return { icon: Moon, text: 'Zzz…' }
   if (mind.stuck >= STUCK_SHOWN) return { icon: CircleQuestionMark, text: "Can't get there…" }
   if (mind.afloat === 'boat') return { icon: Sailboat, text: 'Rowing my boat' }
-  if (mind.afloat === 'swim') return { icon: WavesHorizontal, text: mind.tools.boat ? 'Swimming…' : 'Swimming… (a boat needs 5 planks)' }
+  if (mind.afloat === 'swim') return { icon: WavesHorizontal, text: mind.inv.plank >= 5 ? 'Swimming…' : 'Swimming… (a boat needs 5 planks)' }
   // Needs show while it has nothing better to do (or when it's hungry: that's urgent).
   const idle = mind.task === 'wander' || mind.task === 'idle'
   if (mind.want && (idle || mind.want === 'food')) return WANTS[mind.want](mind)

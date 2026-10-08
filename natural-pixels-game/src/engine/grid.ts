@@ -117,6 +117,38 @@ export class Grid {
     under.shade[to] = s
   }
 
+  /**
+   * Puts `type` over the cell at `i`, keeping what was there hidden underneath (a boat on
+   * the water). Use `reveal` to take it away again. Does nothing if `i` already hides something.
+   */
+  cover(i: number, type: number, water = 0, data = 0, temp = AMBIENT_TEMP) {
+    const { under } = this
+    if (under.type[i] !== 0) return
+    under.type[i] = this.type[i]
+    under.temp[i] = this.temp[i]
+    under.water[i] = this.water[i]
+    under.data[i] = this.data[i]
+    under.life[i] = this.life[i]
+    under.shade[i] = this.shade[i]
+    this.type[i] = type
+    this.temp[i] = temp
+    this.water[i] = water
+    this.data[i] = data
+    this.life[i] = 0
+  }
+
+  /** Removes the cell at `i`, bringing back whatever it was hiding (or air). */
+  reveal(i: number) {
+    const { under } = this
+    this.type[i] = under.type[i]
+    this.temp[i] = under.type[i] === 0 ? AMBIENT_TEMP : under.temp[i]
+    this.water[i] = under.water[i]
+    this.data[i] = under.data[i]
+    this.life[i] = under.life[i]
+    this.shade[i] = under.shade[i]
+    under.type[i] = 0
+  }
+
   countParticles(): number {
     let count = 0
     for (let i = 0; i < this.size; i++) if (this.type[i] !== 0) count++

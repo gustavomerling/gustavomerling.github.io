@@ -1,4 +1,4 @@
-import { Download, FolderOpen, RotateCcw, Save } from 'lucide-react'
+import { Dices, Download, FolderOpen, RotateCcw, Save } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { Sandbox } from '../engine/Sandbox.ts'
 import { hasQuicksave, readQuicksave, writeQuicksave } from '../engine/scene.ts'
@@ -33,6 +33,12 @@ export function SceneControls({ getSandbox }: SceneControlsProps) {
       setNotice('Something went wrong')
     }
   }
+
+  const randomWorld = () =>
+    run(async (sandbox) => {
+      sandbox.generate()
+      return 'A new world'
+    })
 
   const quickSave = () =>
     run(async (sandbox) => {
@@ -72,6 +78,15 @@ export function SceneControls({ getSandbox }: SceneControlsProps) {
 
   return (
     <>
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={Dices}
+        title="Replace this world with a new landscape: hills, lakes, sand, stone, trees and worms"
+        onClick={randomWorld}
+      >
+        Random world
+      </Button>
       <div className="control-row">
         <Button variant="ghost" size="sm" icon={Save} title="Save this world in the browser" onClick={quickSave}>
           Save

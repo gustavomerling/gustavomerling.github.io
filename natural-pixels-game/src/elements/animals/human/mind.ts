@@ -44,7 +44,7 @@ export interface Tools {
   pickaxe: ToolTier
   axe: ToolTier
   bucket: boolean
-  /** Rowing boat (5 planks), made at the shore the first time it has to cross water. */
+  /** Has built a boat at least once (boats stay moored in the world, see materials/boat.ts). */
   boat?: boolean
 }
 
@@ -156,7 +156,6 @@ export function describeMind(mind: Mind): string {
     tools.axe ? `${TIER[tools.axe]} axe` : '',
     tools.pickaxe ? `${TIER[tools.pickaxe]} pickaxe` : '',
     tools.bucket ? (inv.water ? 'full bucket' : 'bucket') : '',
-    tools.boat ? 'boat' : '',
   ].filter(Boolean)
   const parts = [
     mind.asleep ? 'Sleeping' : ACTIVITY[mind.task],

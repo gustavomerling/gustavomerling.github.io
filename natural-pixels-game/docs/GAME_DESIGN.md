@@ -247,6 +247,15 @@ comprimidos com gzip (`CompressionStream`). Os ids permitem carregar cenas depoi
 reordenar elementos. Cena de outro tamanho é colocada alinhada embaixo e centralizada. Save rápido
 fica no `localStorage` (base64); arquivos usam a extensão `.npscene`.
 
+### 4.8b Mundo aleatório (`engine/worldgen.ts`)
+
+Botão **Random world** (seção Scene). Sorteia um estilo (plano, ondulado ou montanhoso; 0–3
+lagos; mais ou menos árvores) e gera: relevo com value noise 1D, terra grossa (10–28% da altura)
+sobre pedra, topos de morro de pedra pura, lagos em bacias forradas de areia (a terra não bebe a
+água) cheios até a borda mais baixa, manchas de areia, pedregulhos, árvores já crescidas (tronco
+vivo com topo que continua crescendo, às vezes um galho, copa com frutas), grama nas campinas e
+minhocas na terra. Simulado: água, árvores e minhocas estáveis após 60 s, ~3 ms/tick.
+
 ### 4.9 Som (`audio/SoundEngine.ts`)
 
 WebAudio procedural, liberado no primeiro clique/tecla. Camadas guiadas pelas contagens de
@@ -290,7 +299,7 @@ zumbido ∝ abelhas, grilos à noite se houver grama. Silencia com o jogo pausad
 | | Glass | static transparente | ✅ | areia derretida; à prova de ácido |
 | | Plank | static | ✅ | tábua (o humano fabrica); queima em cinza |
 | | Lamp | static, brilha | ✅ | ilumina a noite sem calor |
-| | Boat | static | ❌ | barco do humano; anda com ele sobre a água, some quando ele desce |
+| | Boat | static | ❌ | barco do humano (5 células + proa/popa); cobre a água; fica ancorado quando ele desce |
 
 ### 5.1 Ciclos
 
@@ -329,10 +338,13 @@ pedra com picareta; nunca quebra tábua/vidro/metal). Age ~12×/s.
 
 **Água**: não anda pelo fundo. Na água ele **nada** com a cabeça para fora (sobe se a cabeça
 afunda, desce até o tronco molhar). Na margem, com água à frente (no nível dos pés ou até 5
-células abaixo), põe o **barco** (5 tábuas, fabricado na primeira travessia) na superfície e
-**rema**: o barco (`materials/boat.ts`, 1 célula oculta da paleta) vai junto embaixo dos pés. Ao
-chegar na outra margem desce e o barco é guardado (a célula volta a ser água). Nadando, se tiver
-barco ou tábuas, sobe nele ali mesmo. Não minera pedra debaixo d'água.
+células abaixo), constrói um **barco** (5 tábuas), põe na água e pula no meio dele para **remar**.
+O barco (`materials/boat.ts`, oculto da paleta) tem 5 células de casco (150% da altura do humano)
+e proa/popa levantadas; cada célula **cobre** a água sem destruí-la (`Grid.cover`/`reveal`). Ao
+remar, o barco inteiro anda junto. Quando a proa encosta na margem ele pula para a terra e o barco
+**fica ancorado** na água; qualquer humano que for atravessar dali pula nele de novo (sem gastar
+tábuas). Só usa barco para atravessar até um destino do outro lado (não para encher o balde ou
+pescar). Nadando, se tiver tábuas, constrói um barco ali mesmo. Não minera pedra debaixo d'água.
 
 **Mente** (`mind.ts`, na memória da célula): tarefa atual, fome (0–100), inventário (toras,
 tábuas, pedra, comida, sementes, balde cheio), ferramentas (picareta/machado de madeira ou pedra,
@@ -392,6 +404,7 @@ semente (flores, cactos), estações do ano, colmeia (abelhas se reproduzem), p�
 | ✅ **4 — Visual** | renderer WebGL2, céu, ciclo dia/noite |
 | ✅ **5 — Polimento** | settings, sons procedurais, salvar/carregar cenas, sidebar por famílias |
 | ✅ **6 — Química e humano** | pedra, lava, gelo, óleo, ácido, nitrogênio, pólvora, vidro, tábua, lâmpada; reações declarativas; humano estilo Minecraft |
+| ✅ **6c — Mundo e água** | mundo aleatório, pedra/gelo com gravidade, humano nada e rema (barco ancorado) |
 | ✅ **6b — Balões** | balão de pensamento do humano, vontades com dica, presentes do jogador, memória de lugares inalcançáveis |
 
 ---
