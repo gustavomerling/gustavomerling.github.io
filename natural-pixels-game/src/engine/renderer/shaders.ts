@@ -61,42 +61,6 @@ float hash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
 
-// ---------- The landscape behind the world (mirrors renderer/horizon.ts) ----------
-
-float vnoise(float x, float seed) {
-  float i = floor(x);
-  float f = fract(x);
-  return mix(hash(vec2(i, seed)), hash(vec2(i + 1.0, seed)), f * f * (3.0 - 2.0 * f));
-}
-
-float ridgeNoise(float u, float scale, float seed) {
-  float x = u * scale;
-  return vnoise(x + seed, 3.1) * 0.6 + vnoise(x * 2.3 + seed * 1.7, 3.1) * 0.28 + vnoise(x * 5.1 + seed * 2.9, 3.1) * 0.12;
-}
-
-/** One layer of hills over the sky colour c: filled below its ridge, hazed with the sky. */
-vec3 hills(vec3 c, vec2 uv, float base, float rise, float scale, float seed, vec3 tint, float haze, float trees, bool snow) {
-  float n = ridgeNoise(uv.x, scale, seed);
-  float top = base - n * rise - (trees > 0.0 ? vnoise(uv.x * 90.0 + seed, 7.7) * trees : 0.0);
-  float edge = 0.0025;
-  float inside = smoothstep(top - edge, top + edge, uv.y);
-  if (inside <= 0.0) return c;
-  // Snow on the highest peaks, just under the ridge.
-  vec3 ground = tint;
-  if (snow && n > 0.66) ground = mix(ground, vec3(0.96, 0.97, 1.0), (1.0 - smoothstep(top + 0.005, top + 0.025, uv.y)) * smoothstep(0.66, 0.74, n));
-  // Night and dusk come from the sky: hazed with it, and dimmed with the light.
-  ground *= 0.35 + 0.65 * uLight;
-  ground = mix(ground, c, haze);
-  return mix(c, ground, inside);
-}
-
-vec3 horizon(vec3 c, vec2 uv) {
-  c = hills(c, uv, 0.58, 0.16, 3.0, 11.0, vec3(0.68, 0.72, 0.84), 0.0, 0.0, true);
-  c = hills(c, uv, 0.67, 0.1, 5.0, 37.0, vec3(0.56, 0.68, 0.6), 0.0, 0.008, false);
-  c = hills(c, uv, 0.75, 0.07, 8.0, 71.0, vec3(0.45, 0.6, 0.42), 0.0, 0.018, false);
-  return c;
-}
-
 vec3 sky(vec2 uv) {
   vec3 top = mix(vec3(0.02, 0.03, 0.08), vec3(0.36, 0.62, 0.92), uLight);
   vec3 bottom = mix(vec3(0.07, 0.09, 0.18), vec3(0.75, 0.88, 0.98), uLight);
@@ -153,9 +117,6 @@ vec3 sky(vec2 uv) {
     c += vec3(1.0, 0.95, 0.8) * smoothstep(0.06, 0.04, r) * smoothstep(0.03, 0.045, r) * uEclipse * 0.8;
   }
   c += disc * 0.22 * exp(-r * 12.0) * (0.35 + uLight) * (1.0 - uOvercast);
-
-  // The hills in the distance (the sun and moon set behind them).
-  c = horizon(c, uv);
 
   // Rain clouds: the sky turns grey and dark; lightning lights it up.
   c = mix(c, vec3(0.32, 0.35, 0.4) * (0.25 + 0.75 * uLight), uOvercast);
