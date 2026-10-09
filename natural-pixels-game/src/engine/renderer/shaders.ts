@@ -91,9 +91,9 @@ vec3 hills(vec3 c, vec2 uv, float base, float rise, float scale, float seed, vec
 }
 
 vec3 horizon(vec3 c, vec2 uv) {
-  c = hills(c, uv, 0.44, 0.22, 3.0, 11.0, vec3(0.56, 0.6, 0.74), 0.55, 0.0, true);
-  c = hills(c, uv, 0.56, 0.14, 5.0, 37.0, vec3(0.5, 0.62, 0.56), 0.35, 0.008, false);
-  c = hills(c, uv, 0.67, 0.09, 8.0, 71.0, vec3(0.42, 0.58, 0.4), 0.15, 0.02, false);
+  c = hills(c, uv, 0.58, 0.16, 3.0, 11.0, vec3(0.68, 0.72, 0.84), 0.0, 0.0, true);
+  c = hills(c, uv, 0.67, 0.1, 5.0, 37.0, vec3(0.56, 0.68, 0.6), 0.0, 0.008, false);
+  c = hills(c, uv, 0.75, 0.07, 8.0, 71.0, vec3(0.45, 0.6, 0.42), 0.0, 0.018, false);
   return c;
 }
 

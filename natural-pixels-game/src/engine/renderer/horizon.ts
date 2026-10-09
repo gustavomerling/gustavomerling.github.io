@@ -2,9 +2,8 @@
  * The landscape behind the world, drawn in the sky wherever it shows: three layers of hills, far
  * to near — hazy blue mountains with snowy peaks, sage foothills, and green hills with a fringe of
  * trees along the top. Each layer is a ridge line (layered value noise across the world) filled
- * below with its colour, faded into the sky's own colour by distance (so the hills take the
- * light of the hour: golden at dusk, blue and dark at night, grey in the rain). The sun and moon
- * set behind them. Numbers mirror the WebGL shader (shaders.ts, `horizon()`).
+ * below with its own solid colour (lighter and bluer the further away), dimmed at night. The sun
+ * and moon set behind them. Numbers mirror the WebGL shader (shaders.ts, `horizon()`).
  */
 
 export interface HillLayer {
@@ -23,9 +22,9 @@ export interface HillLayer {
 }
 
 export const HILLS: readonly HillLayer[] = [
-  { base: 0.44, rise: 0.22, scale: 3, seed: 11, color: [0.56, 0.6, 0.74], haze: 0.55, trees: 0, snow: true },
-  { base: 0.56, rise: 0.14, scale: 5, seed: 37, color: [0.5, 0.62, 0.56], haze: 0.35, trees: 0.008, snow: false },
-  { base: 0.67, rise: 0.09, scale: 8, seed: 71, color: [0.42, 0.58, 0.4], haze: 0.15, trees: 0.02, snow: false },
+  { base: 0.58, rise: 0.16, scale: 3, seed: 11, color: [0.68, 0.72, 0.84], haze: 0, trees: 0, snow: true },
+  { base: 0.67, rise: 0.1, scale: 5, seed: 37, color: [0.56, 0.68, 0.6], haze: 0, trees: 0.008, snow: false },
+  { base: 0.75, rise: 0.07, scale: 8, seed: 71, color: [0.45, 0.6, 0.42], haze: 0, trees: 0.018, snow: false },
 ]
 
 /** Peaks this high (0..1 of the ridge noise) wear snow, this far down from the top. */
