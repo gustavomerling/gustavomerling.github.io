@@ -16,6 +16,10 @@ const TURN_CHANCE = 0.01
 /** Ticks a fish survives out of water (~5 s). */
 const OUT_OF_WATER = 300
 const FLOP_CHANCE = 0.05
+/** Now and then a fish by the shore (at the surface, touching land) turns into a frog and climbs out, while there are few frogs about. */
+const FROG_CHANCE = 0.00008
+const FROGS = 3
+const FROG_RADIUS = 14
 /** Two fish close together now and then spawn another, up to a school. */
 const SPAWN_CHANCE = 0.0006
 const SCHOOL = 6
@@ -44,6 +48,7 @@ export const fish: ElementDefinition = {
       return true
     }
     ctx.setLife(0, 0, 0)
+    if (ctx.random() < FROG_CHANCE && becomeFrog(ctx)) return true
     if (ctx.random() < SPAWN_CHANCE) spawn(ctx)
     if (ctx.random() < SWIM_CHANCE) swim(ctx)
     return true
@@ -81,6 +86,25 @@ function swimTo(ctx: CellContext, dx: number, dy: number): boolean {
   ctx.moveOver(dx, dy)
   if (!inWeed) ctx.set(0, 0, 'water')
   return true
+}
+
+/** At the surface by the shore: it's a frog now, up on the bank (if there aren't many frogs about). */
+function becomeFrog(ctx: CellContext): boolean {
+  if (ctx.get(0, -1) !== 'air' || ctx.under(0, 0) === 'seaweed') return false
+  const side = ctx.random() < 0.5 ? -1 : 1
+  for (const dx of [side, -side]) {
+    const bank = ctx.get(dx, 0)
+    if (bank === 'water' || bank === 'air' || bank === null || ctx.get(dx, -1) !== 'air') continue
+    let frogs = 0
+    for (let dy = -FROG_RADIUS; dy <= FROG_RADIUS; dy++) {
+      for (let x = -FROG_RADIUS; x <= FROG_RADIUS; x++) if (ctx.get(x, dy) === 'frog' && ++frogs >= FROGS) return false
+    }
+    // Out it climbs; the water it swam in stays.
+    ctx.set(dx, -1, 'frog', { data: dx > 0 ? 1 : 0 })
+    ctx.set(0, 0, 'water')
+    return true
+  }
+  return false
 }
 
 /** With another fish close by and room in the water, a new fish (so lakes don't fish out). */

@@ -11,6 +11,7 @@ import { createRandom } from './random.ts'
 import { updateThermal } from './thermal.ts'
 import { TreeFall } from './treefall.ts'
 import { ECLIPSE_DARK, Events } from './events.ts'
+import { stockFish } from './fishery.ts'
 import { Weather } from './weather.ts'
 
 /** Time of day a new day starts. */
@@ -168,6 +169,8 @@ export class Simulation {
       if (before < SUNRISE && this.clock >= SUNRISE) this.day++
     }
     this.events.tick(this)
+    // Big enough water gets fish (new lakes, rain pools, fished-out lakes).
+    stockFish(this)
     // (An eclipse darkens the day: animals and zombies take it for night.)
     this.daylight = daylightAt(this.timeOfDay) * (1 - ECLIPSE_DARK * this.events.eclipse)
     this.weather.tick(this)

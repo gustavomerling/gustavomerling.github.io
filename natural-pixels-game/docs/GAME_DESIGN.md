@@ -324,6 +324,13 @@ violeta no céu), **chuva de meteoros** (15% das noites: estrelas cadentes a cad
 vezes ouro) e o **mercador ambulante** (30% dos dias, de manto roxo, ver 5.2). Eclipse, aurora e
 chuva de meteoros entram no diário de todo mundo.
 
+**Peixes pela água** (`engine/fishery.ts`): a cada 10 s a água é mapeada em corpos (água, algas e
+peixes ligados lado a lado) e cada corpo com 30+ células ganha peixes até **5 a cada 30 células**
+(30 → 5, 60 → 10...), um de cada vez, embaixo da superfície — lagos novos, baixadas alagadas e
+poças grandes de chuva ganham peixes sozinhos, e lagos pescados se repovoam. **Peixe vira sapo**:
+de vez em quando um peixe na superfície, encostado na margem, sobe para a terra como sapo (se há
+menos de 3 sapos por perto).
+
 **Madeira bebe poças** (`materials/soak.ts`): troncos, tábuas, parede de fundo, portas, cercas e
 escadas somem com a água rasa encostada neles (ou a até 3 células ao lado, no mesmo nível): 2% de
 chance por tick, só poça aberta para o céu e com até 2 de fundo — lagos e a água embaixo do píer
