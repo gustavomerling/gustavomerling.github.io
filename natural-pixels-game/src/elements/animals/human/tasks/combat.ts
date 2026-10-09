@@ -2,7 +2,9 @@ import type { Body } from '../body.ts'
 import { floorFeet, spotInside } from '../house.ts'
 import type { Point } from '../mind.ts'
 import { findNearest, reachableFromGround } from '../senses.ts'
+import { inMine } from './shaft.ts'
 import { approach, type Task } from './types.ts'
+import { firstTime, knack, note, practice } from '../skills.ts'
 
 /*
  * Zombies: face them (sword, musket or bare fists) or run home and wait behind the door.
@@ -22,13 +24,31 @@ const RELOAD = 8
 const SHOT_DAMAGE = 70
 /** Gives up the fight (and runs home) when this hurt. */
 const RETREAT_HEALTH = 30
+/** A fight going nowhere this long (a zombie it can't get at): it gives up and leaves it be a while. */
+const GIVE_UP = 400
+export const LEAVE_BE = 300
 /** Comes out of hiding after this many actions with no zombie around. */
 const ALL_CLEAR = 60
+/**
+ * Hiding this long by day with a zombie still lurking outside (in the shade of a tree, say),
+ * it's had enough: it plucks up some courage and comes out (to fight it, if armed and well).
+ */
+const FED_UP = 250
+const FED_UP_COURAGE = 0.2
+const DAYLIGHT = 0.5
 const GUNPOWDER_SEARCH = 40
 
-/** The nearest zombie (its feet) within `range`. */
+/**
+ * The nearest monster (its feet) within `range`. Skeletons only count while it's down its mine
+ * itself: up top, the ones in the galleries below are none of its business (through the rock).
+ */
 export function nearestZombie(body: Body, range: number): Point | null {
-  return findNearest(body, range, (x, y) => body.get(x, y) === 'zombie')
+  const mine = body.mind.shaft
+  const down = !!mine && inMine(mine, body.x, body.y)
+  return findNearest(body, range, (x, y) => {
+    const id = body.get(x, y)
+    return id === 'zombie' || (id === 'skeleton' && down && !!mine && inMine(mine, x, y))
+  })
 }
 
 /** Clear line of fire from its hands to the zombie: returns the cells in between, or null. */
@@ -46,9 +66,26 @@ function lineOfFire(body: Body, to: Point): Point[] | null {
   return path
 }
 
+/** Bones a beaten skeleton leaves (for bone meal). */
+const SKELETON_BONES = 2
+
 function hit(body: Body, zombie: Point, damage: number) {
-  const foe = body.mindAt(zombie.x, zombie.y, 'zombie')
-  if (foe) foe.health -= damage
+  const { mind } = body
+  const id = body.get(zombie.x, zombie.y) ?? 'zombie'
+  const foe = body.mindAt(zombie.x, zombie.y, id)
+  if (!foe) return
+  const alive = foe.health > 0
+  // A seasoned fighter hits harder.
+  foe.health -= damage * knack(mind, 'fighting')
+  practice(mind, 'fighting', 1)
+  if (!alive || foe.health > 0) return
+  mind.wins = (mind.wins ?? 0) + 1
+  firstTime(mind, id, id === 'skeleton' ? 'Beat my first skeleton, down in the mine!' : 'Beat my first zombie!', 'danger')
+  if (mind.wins % 10 === 0) note(mind, `That's ${mind.wins} monsters beaten.`, 'danger')
+  if (id === 'skeleton') {
+    mind.inv.bone += SKELETON_BONES
+    mind.say = { text: 'Bones!', ttl: 15 }
+  }
 }
 
 /** Go after the nearest zombie: shoot it from afar with a loaded musket, or close in and swing. */
@@ -67,7 +104,11 @@ export const fight: Task = {
     const zombie = nearestZombie(body, CHASE_RANGE)
     if (!zombie) return 'done'
     mind.target = zombie
-    mind.timer++
+    mind.foe = body.get(zombie.x, zombie.y) ?? 'zombie'
+    if (++mind.timer > GIVE_UP) {
+      mind.leaveZombies = LEAVE_BE
+      return 'failed'
+    }
 
     const distance = Math.max(Math.abs(zombie.x - body.x), Math.abs(zombie.y - body.y))
     if (mind.tools.gun && mind.inv.gunpowder > 0 && distance <= GUN_RANGE) {
@@ -81,7 +122,8 @@ export const fight: Task = {
       }
     }
 
-    if (Math.abs(zombie.x - body.x) <= 1 && Math.abs(zombie.y - body.y) <= 2) {
+    // Within arm's reach (as far as `reaches` goes): swing.
+    if (Math.abs(zombie.x - body.x) <= 1 && Math.abs(zombie.y - body.y) <= 3) {
       if (mind.timer % SWING_EVERY === 0) hit(body, zombie, FIST_DAMAGE + SWORD_DAMAGE * mind.tools.sword)
       return 'running'
     }
@@ -109,6 +151,11 @@ export const hide: Task = {
       const status = approach(body)
       if (status !== 'arrived') return status
       mind.phase = 1
+      mind.patience = FED_UP
+    }
+    if (body.light() > DAYLIGHT && --mind.patience <= 0) {
+      mind.courage = Math.min(1, mind.courage + FED_UP_COURAGE)
+      return 'done'
     }
     if (nearestZombie(body, THREAT_RANGE + 6)) mind.timer = 0
     return ++mind.timer >= ALL_CLEAR ? 'done' : 'running'

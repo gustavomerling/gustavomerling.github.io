@@ -15,6 +15,24 @@ export interface Status {
   tools: { id: string; label: string; tier?: number }[]
   /** Labelled lines: house, family, farm, needs... */
   facts: { label: string; value: string }[]
+  /** Its title, from what it's best at ("Seasoned miner"), once it's good at something. */
+  title?: string
+  /** What it gets better at with practice: level 0..MAX, `progress` 0..1 towards the next. */
+  skills: { id: SkillId; label: string; level: number; progress: number; title: string }[]
+  /** The journal: milestones of its life, oldest first (the newest few hundred). */
+  journal: JournalEntry[]
+}
+
+export type SkillId = 'mining' | 'fishing' | 'farming' | 'building' | 'woodcutting' | 'fighting'
+
+/** What a journal entry is about (the UI picks an icon and colour for each). */
+export type JournalKind = 'home' | 'mine' | 'treasure' | 'danger' | 'nature' | 'friend' | 'craft' | 'event' | 'skill'
+
+export interface JournalEntry {
+  /** Day of the world it happened on (1 = the first). */
+  day: number
+  text: string
+  kind: JournalKind
 }
 
 /** A thought bubble: an icon and a few words, plus how the player can help (if they can). */
@@ -46,10 +64,15 @@ export interface ElementColor {
   variation?: number
   /** Opacity 0..1 (liquids and gases look better slightly transparent). */
   alpha?: number
-  /** Color when fully soaked; blends from `base` as moisture rises. */
+  /**
+   * Color when fully soaked; blends from `base` as moisture rises. Elements without moisture
+   * blend by their `data` instead (0..255: algae in water).
+   */
   wet?: string
   /** Glows by itself 0..1 (lava, lamps): not darkened at night and lights up its surroundings. */
   emissive?: number
+  /** Alternating light and dark rows instead of per-cell shading (ladder rungs). */
+  stripes?: boolean
 }
 
 export interface ElementMovement {

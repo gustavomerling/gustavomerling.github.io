@@ -1,5 +1,5 @@
 import { isGround, isPassable, type Body } from './body.ts'
-import { contains, MAX_STAGE } from './house.ts'
+import { contains, halfWidth, MAX_STAGE } from './house.ts'
 import type { Mind, Point } from './mind.ts'
 
 /** Cells around a place it couldn't reach that are skipped too. */
@@ -10,11 +10,21 @@ export function avoided(mind: Mind, x: number, y: number): boolean {
   return mind.avoid.some((p) => Math.abs(p.x - x) <= AVOID_RADIUS && Math.abs(p.y - y) <= AVOID_RADIUS)
 }
 
-/** Part of its own house (or the one going up): never mined or taken apart. */
+/** Rows under a house's foundation that hold it up (where dips under it were filled in). */
+const UNDER_HOUSE = 6
+
+/**
+ * Part of its own house (or the one going up), or the ground right under it: never mined or
+ * taken apart.
+ */
 export function isHome(mind: Mind, x: number, y: number): boolean {
-  // The whole footprint the house will ever take (it only grows, maybe built by family).
-  const house = mind.home ?? mind.site
-  return house !== null && contains({ ...house, stage: MAX_STAGE }, x, y)
+  // The whole footprint the house will ever take (it only grows).
+  for (const house of [mind.home, mind.site]) {
+    if (!house) continue
+    if (contains({ ...house, stage: MAX_STAGE }, x, y)) return true
+    if (y > house.ground && y <= house.ground + UNDER_HOUSE && Math.abs(x - house.x) <= halfWidth(MAX_STAGE) + 1) return true
+  }
+  return false
 }
 
 /** Search radius that covers the whole world (rings stop once they leave it). */
@@ -74,4 +84,22 @@ export function exposed(body: Body, p: Point): boolean {
     isPassable(body.get(p.x, p.y - 1)) ||
     isPassable(body.get(p.x, p.y + 1))
   )
+}
+
+/** Water this close to a boat isn't worth going for: the moored boat is in the way. */
+const BOAT_CLEAR_X = 4
+const BOAT_CLEAR_Y = 2
+
+/**
+ * Water it can go and fill its bucket from (or fish in): at the surface (open above, so it can
+ * reach it from the bank or the shallows), and not right by a moored boat.
+ */
+export function freeWater(body: Body, x: number, y: number): boolean {
+  if (body.get(x, y) !== 'water') return false
+  const above = body.get(x, y - 1)
+  if (above === 'water' || !isPassable(above)) return false
+  for (let dy = -BOAT_CLEAR_Y; dy <= BOAT_CLEAR_Y; dy++) {
+    for (let dx = -BOAT_CLEAR_X; dx <= BOAT_CLEAR_X; dx++) if (body.get(x + dx, y + dy) === 'boat') return false
+  }
+  return true
 }

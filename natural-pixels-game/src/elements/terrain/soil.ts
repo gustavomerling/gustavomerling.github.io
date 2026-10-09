@@ -3,6 +3,8 @@ import type { CellContext } from '../../engine/context.ts'
 import type { ElementDefinition } from '../types.ts'
 
 const CAPACITY = 200
+/** Moisture a cell of soil holds at most (humans watering saplings soak it up to this). */
+export const SOIL_CAPACITY = CAPACITY
 /** Soil this wet, with more water lying on it, turns into mud. */
 export const MUD_WATER = 190
 const MUD_CHANCE = 0.004

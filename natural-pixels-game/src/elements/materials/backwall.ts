@@ -1,5 +1,6 @@
 import { BrickWall } from 'lucide-react'
 import type { ElementDefinition } from '../types.ts'
+import { soakPuddles } from './soak.ts'
 
 /**
  * The inside wall of a house: fills it in so it isn't see-through. Humans walk in front of it
@@ -14,5 +15,9 @@ export const backwall: ElementDefinition = {
   density: 25,
   color: { base: '#6e4b2f', variation: 0.06 },
   icon: BrickWall,
+  // Humans build it; not in the palette.
+  hidden: true,
   thermal: { conductivity: 0.05, burn: { at: 260, temp: 650, rate: 0.006, into: 'ash' } },
+  // Puddles against it soak in (see soak.ts).
+  update: soakPuddles,
 }

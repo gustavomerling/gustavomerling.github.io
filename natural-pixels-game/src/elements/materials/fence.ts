@@ -1,5 +1,6 @@
 import { Fence } from 'lucide-react'
 import type { ElementDefinition } from '../types.ts'
+import { soakPuddles } from './soak.ts'
 
 /** Wooden fence: keeps rabbits out of fields. Humans step right through their own gates. */
 export const fence: ElementDefinition = {
@@ -11,5 +12,9 @@ export const fence: ElementDefinition = {
   density: 25,
   color: { base: '#a8794a', variation: 0.06 },
   icon: Fence,
+  // Humans build it; not in the palette.
+  hidden: true,
   thermal: { conductivity: 0.05, burn: { at: 260, temp: 650, rate: 0.006, into: 'ash' } },
+  // Puddles against it soak in (see soak.ts).
+  update: soakPuddles,
 }

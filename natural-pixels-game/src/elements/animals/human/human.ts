@@ -5,6 +5,9 @@ import { think } from './brain.ts'
 import { bedSpot } from './house.ts'
 import { createMind, describeMind, statusOf, upgradeMind } from './mind.ts'
 import { thoughtOf } from './thought.ts'
+import { inMine } from './tasks/shaft.ts'
+import { note } from './skills.ts'
+import { merchantThink } from './merchant.ts'
 
 /** Humans act this often (ticks): ~12 actions per second. */
 const ACTION_TICKS = 5
@@ -14,6 +17,7 @@ const HUNGER_ASLEEP = 1 / 600
 /** Health regained per tick while not starving (~1 per 3 s; faster asleep). */
 const HEAL_AWAKE = 1 / 180
 const HEAL_ASLEEP = 1 / 40
+const BLANKET_HEAL = 1.5
 /** Out after dark (not under its own roof): it carries a torch. */
 const TORCH_DARK = 0.35
 const INDOORS: ReadonlySet<string | null> = new Set(['backwall', 'ladder', 'bed', 'door'])
@@ -41,14 +45,18 @@ export const human: ElementDefinition = {
     const body = new Body(ctx, mind)
     body.ensureParts()
     mind.hunger = Math.min(100, mind.hunger + (mind.asleep ? HUNGER_ASLEEP : HUNGER_AWAKE))
-    if (mind.hunger < 80) mind.health = Math.min(100, mind.health + (mind.asleep ? HEAL_ASLEEP : HEAL_AWAKE))
+    // (Asleep under a wool blanket it heals better.)
+    const sleepHeal = HEAL_ASLEEP * (mind.blanket ? BLANKET_HEAL : 1)
+    if (mind.hunger < 80) mind.health = Math.min(100, mind.health + (mind.asleep ? sleepHeal : HEAL_AWAKE))
     if (mind.health <= 0) {
       knockedOut(body)
       return true
     }
-    // A torch when out in the dark.
+    // A torch when out in the dark, and always down its mine.
     const outside = !INDOORS.has(ctx.under(0, 0)) && !INDOORS.has(ctx.under(0, -1))
-    body.setTorso(ctx.light() < TORCH_DARK && !mind.asleep && outside ? 'human_torch' : 'human_body')
+    const mining = !!mind.shaft && inMine(mind.shaft, body.x, body.y)
+    if (mind.role === 'merchant') body.setTorso('merchant_body')
+    else body.setTorso((ctx.light() < TORCH_DARK && !mind.asleep && outside) || mining ? 'human_torch' : 'human_body')
 
     if (body.fall()) {
       mind.asleep = false
@@ -59,7 +67,8 @@ export const human: ElementDefinition = {
       return true
     }
     mind.cooldown = ACTION_TICKS
-    think(body)
+    if (mind.role === 'merchant') merchantThink(body)
+    else think(body)
     return true
   },
   describe(ctx) {
@@ -80,6 +89,7 @@ export const human: ElementDefinition = {
  */
 function knockedOut(body: Body) {
   const { mind, ctx } = body
+  note(mind, 'Got knocked out... woke up back in bed.', 'danger')
   const home = mind.home
   const key = ctx.life(0, 0)
   if (home) {
@@ -124,6 +134,14 @@ export const humanTorch: ElementDefinition = {
   color: { base: '#ffb24a', variation: 0.06, emissive: 0.9 },
 }
 
+/** A travelling merchant's purple cloak (see merchant.ts). */
+export const merchantBody: ElementDefinition = {
+  ...humanBody,
+  id: 'merchant_body',
+  description: 'A travelling merchant.',
+  color: { base: '#8a5aa8', variation: 0.08 },
+}
+
 /** Head: sits on the torso; vanishes if it loses it. */
 export const humanHead: ElementDefinition = {
   id: 'human_head',
@@ -139,7 +157,7 @@ export const humanHead: ElementDefinition = {
   thermal: MORTAL,
   update(ctx) {
     const below = ctx.get(0, 1)
-    if (below !== 'human_body' && below !== 'human_torch') ctx.reveal(0, 0)
+    if (below !== 'human_body' && below !== 'human_torch' && below !== 'merchant_body') ctx.reveal(0, 0)
     return true
   },
 }

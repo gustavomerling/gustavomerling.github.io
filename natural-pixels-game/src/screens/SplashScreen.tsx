@@ -1,7 +1,7 @@
-import { Sprout } from 'lucide-react'
 import { useCallback } from 'react'
 import type { Navigate } from '../app/screens.ts'
 import { FallingParticles } from '../ui/FallingParticles.tsx'
+import { LogoMark, Scenery } from '../ui/Logo.tsx'
 import { useKey } from '../ui/useKey.ts'
 
 export function SplashScreen({ onNavigate }: { onNavigate: Navigate }) {
@@ -10,9 +10,10 @@ export function SplashScreen({ onNavigate }: { onNavigate: Navigate }) {
 
   return (
     <main className="screen splash" onClick={start}>
+      <Scenery />
       <FallingParticles />
       <div className="splash__content">
-        <Sprout className="splash__icon" size={56} strokeWidth={1.8} aria-hidden />
+        <LogoMark className="splash__icon" size={96} />
         <h1 className="title">
           Natural <span className="title__accent">Pixels</span>
         </h1>

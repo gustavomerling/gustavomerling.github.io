@@ -14,7 +14,19 @@ import type { Mind } from './mind.ts'
  *   2 planks               → wooden sword     (for zombies)
  *   2 stone + 1 plank      → stone sword
  *   1 gunpowder + 3 planks + 2 stone → musket
+ *   1 coal + 1 plank       → 4 torches        (to light the mine)
+ *   1 coal + 1 sulfur + 1 saltpeter → 3 gunpowder (for the musket)
+ *   3 wool                 → a blanket for its bed (sleeps better)
+ *   3 iron + 2 planks      → iron pickaxe / iron axe
+ *   2 iron + 1 plank       → iron sword
  */
+
+/** Wool for a blanket. */
+const BLANKET_WOOL = 3
+/** Torches it keeps on hand. */
+const TORCH_STOCK = 8
+/** Gunpowder it makes, at most, from what it digs up. */
+const GUNPOWDER_STOCK = 12
 
 /** What a first house costs (see house.ts and build.ts): walls, roof, bed and lamp; stone foundation. */
 export const HOUSE_COST = { plank: 24, stone: 8 }
@@ -22,13 +34,12 @@ export const BOAT_COST = { plank: 5 }
 
 /** Planks a log turns into. */
 export const PLANKS_PER_LOG = 4
-/** Don't hoard more planks than this from logs. */
-const PLANK_STOCK = 40
 
 export function craft(mind: Mind) {
   const { inv, tools } = mind
 
-  while (inv.log > 0 && inv.plank < PLANK_STOCK) {
+  // Logs are only good as planks: all of them get sawn up (a house stage needs them in hand).
+  while (inv.log > 0) {
     inv.log--
     inv.plank += PLANKS_PER_LOG
   }
@@ -62,10 +73,41 @@ export function craft(mind: Mind) {
     inv.plank -= 1
     tools.sword = 2
   }
+  // Iron, from the mine: the best tools.
+  if (tools.pickaxe < 3 && inv.iron >= 3 && inv.plank >= 2) {
+    inv.iron -= 3
+    inv.plank -= 2
+    tools.pickaxe = 3
+  }
+  if (tools.axe < 3 && tools.pickaxe === 3 && inv.iron >= 3 && inv.plank >= 2) {
+    inv.iron -= 3
+    inv.plank -= 2
+    tools.axe = 3
+  }
+  if (mind.home && tools.sword < 3 && tools.pickaxe === 3 && inv.iron >= 2 && inv.plank >= 1) {
+    inv.iron -= 2
+    inv.plank -= 1
+    tools.sword = 3
+  }
+  while (inv.torch < TORCH_STOCK && inv.coal > 0 && inv.plank > 0) {
+    inv.coal--
+    inv.plank--
+    inv.torch += 4
+  }
+  while (inv.gunpowder < GUNPOWDER_STOCK && inv.coal > 0 && inv.sulfur > 0 && inv.saltpeter > 0) {
+    inv.coal--
+    inv.sulfur--
+    inv.saltpeter--
+    inv.gunpowder += 3
+  }
   if (!tools.gun && inv.gunpowder > 0 && inv.plank >= 3 && inv.stone >= 2) {
     inv.plank -= 3
     inv.stone -= 2
     tools.gun = true
+  }
+  if (!mind.blanket && mind.home && inv.wool >= BLANKET_WOOL) {
+    inv.wool -= BLANKET_WOOL
+    mind.blanket = true
   }
   // A bucket once there's something to water (and the house is covered).
   if (!tools.bucket && (mind.home || mind.saplings.length > 0) && inv.plank >= 3) {

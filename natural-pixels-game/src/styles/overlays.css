@@ -1,0 +1,139 @@
+/* ---------- Over the canvas: zoom buttons and event notes (uses the tokens from global.css) ---------- */
+
+.zoom-controls {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+  opacity: 0.85;
+  transition: opacity 150ms ease;
+}
+
+.zoom-controls:hover,
+.zoom-controls:focus-within {
+  opacity: 1;
+}
+
+.zoom-controls__button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--wash);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    transform 120ms ease;
+}
+
+.zoom-controls__button:hover:not(:disabled) {
+  background: var(--sage-soft);
+  transform: translateY(-1px);
+}
+
+.zoom-controls__button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.zoom-controls__button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.zoom-controls__button:focus-visible {
+  outline: 2.5px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.zoom-controls__level {
+  min-width: 2.6em;
+  padding: 0 6px 0 2px;
+  color: var(--text-muted);
+  font: 600 0.78rem var(--font-body);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.world-events {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.world-events__note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  font: 1rem var(--font-hand);
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  animation: world-event-in 400ms ease-out;
+}
+
+.world-events__note--eclipse {
+  background: color-mix(in srgb, var(--card) 70%, #b9a8d6);
+}
+
+.world-events__note--aurora {
+  background: color-mix(in srgb, var(--card) 70%, var(--sage));
+}
+
+.world-events__note--meteors {
+  background: color-mix(in srgb, var(--card) 65%, var(--butter));
+}
+
+.world-events__note--double-rainbow {
+  background: color-mix(in srgb, var(--card) 70%, var(--sky));
+}
+
+.world-events__note--merchant {
+  background: color-mix(in srgb, var(--card) 70%, var(--peach));
+}
+
+@keyframes world-event-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (max-width: 640px) {
+  .world-events__note {
+    font-size: 0.9rem;
+    white-space: normal;
+    text-align: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world-events__note,
+  .zoom-controls,
+  .zoom-controls__button {
+    animation: none;
+    transition: none;
+  }
+}

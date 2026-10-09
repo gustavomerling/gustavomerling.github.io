@@ -22,6 +22,9 @@ const FLOWER_CHANCE = 0.00002
 const FIREFLY_CHANCE = 0.00002
 const FIREFLY_NIGHT = 0.25
 const WILT_CHANCE = 0.0005
+/** In the rain, now and then a snail comes out of it. */
+const SNAIL_CHANCE = 0.00015
+const SNAIL_RAIN = 0.3
 /** Water taken from the soil each time it spreads. */
 const SPREAD_COST = 4
 
@@ -45,6 +48,8 @@ export const grass: ElementDefinition = {
       return
     }
 
+    // A worm passing just under its roots (or poking up through it): it waits.
+    if (below === 'worm') return
     // Lost its soil, or buried under falling powder: it dies.
     if (below !== 'soil' || above === 'soil' || above === 'sand') {
       ctx.set(0, 0, 'air')
@@ -58,6 +63,11 @@ export const grass: ElementDefinition = {
       return
     }
 
+    // In the rain, a snail comes out (on top of the blade, if it has grown one).
+    if (ctx.rain() > SNAIL_RAIN && ctx.random() < SNAIL_CHANCE) {
+      const top = above === 'air' ? -1 : above === 'grass' && ctx.get(0, -2) === 'air' ? -2 : 0
+      if (top) ctx.set(0, top, 'snail')
+    }
     if (above === 'air') {
       const r = ctx.random()
       if (r < TIP_CHANCE) ctx.set(0, -1, 'grass', { data: TIP })

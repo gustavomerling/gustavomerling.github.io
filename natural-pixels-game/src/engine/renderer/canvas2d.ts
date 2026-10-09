@@ -1,8 +1,12 @@
 import { ELEMENTS } from '../../elements/registry.ts'
 import type { Grid } from '../grid.ts'
 import { CellColors } from './cellColors.ts'
+import { LightMap } from './lighting.ts'
 import { ambientLight, skyColor } from './sky.ts'
 import type { FrameInfo, Renderer } from './types.ts'
+
+/** The light map is worked out every this many frames. */
+const LIGHT_EVERY = 3
 
 /**
  * "Pixel" renderer: one pixel per cell at grid resolution, drawn crisp (CSS pixelated).
@@ -16,6 +20,9 @@ export class Canvas2DRenderer implements Renderer {
   private readonly pixels: Uint32Array
   private readonly colors: Uint32Array
   private readonly cellColors: CellColors
+  private readonly lightMap: LightMap
+  private frames = 0
+  private viewKey = ''
   /** How much each element glows by itself (fire, lava, lamps): night doesn't darken that part. */
   private readonly emissive = Float32Array.from(ELEMENTS, (el) => (el.matter === 'energy' ? 1 : (el.color.emissive ?? 0)))
 
@@ -30,13 +37,21 @@ export class Canvas2DRenderer implements Renderer {
     this.pixels = new Uint32Array(this.image.data.buffer)
     this.colors = new Uint32Array(grid.size)
     this.cellColors = new CellColors(grid)
+    this.lightMap = new LightMap(grid)
   }
 
-  render({ light, overcast, flash }: FrameInfo) {
+  render({ light, sun, overcast, flash, lighting, view }: FrameInfo) {
+    this.applyView(view)
     const { width, height, type } = this.grid
     const { pixels, colors, emissive } = this
     this.cellColors.fill(colors)
     const ambient = ambientLight(light, overcast, flash)
+    // (Light changes slowly: worked out every few frames.)
+    if (this.frames++ % LIGHT_EVERY === 0) {
+      if (lighting) this.lightMap.update(sun.x)
+      else this.lightMap.flat()
+    }
+    const map = this.lightMap.texels
 
     for (let y = 0; y < height; y++) {
       const [sr, sg, sb] = skyColor(y / (height - 1), light, overcast, flash)
@@ -45,11 +60,19 @@ export class Canvas2DRenderer implements Renderer {
         const i = row + x
         const c = colors[i]
         const a = c >>> 24
+        // Skylight and glow reaching this cell (see lighting.ts).
+        const skyLit = map[i * 4] / 255
+        const glow = map[i * 4 + 1] / 255
         if (a === 0) {
-          pixels[i] = (0xff000000 | (sb << 16) | (sg << 8) | sr) >>> 0
+          // The sky only shows where daylight gets to; caves are dark behind.
+          // (Under a tree's crown, a light dark veil: 20% black.)
+          const k = Math.min(1, skyLit / 0.45) * (1 - 0.2 * (map[i * 4 + 2] / 255))
+          const warm = glow * 40
+          pixels[i] = (0xff000000 | (Math.round(sb * k + 9 * (1 - k) + warm * 0.4) << 16) | (Math.round(sg * k + 8 * (1 - k) + warm * 0.75) << 8) | Math.min(255, Math.round(sr * k + 9 * (1 - k) + warm))) >>> 0
           continue
         }
-        const lit = ambient + (1 - ambient) * emissive[type[i]]
+        const world = Math.min(1, Math.max(0.13, skyLit * ambient + glow))
+        const lit = world + (1 - Math.min(1, world)) * emissive[type[i]]
         const k = a / 255
         const r = (c & 0xff) * lit * k + sr * (1 - k)
         const g = ((c >>> 8) & 0xff) * lit * k + sg * (1 - k)
@@ -62,6 +85,16 @@ export class Canvas2DRenderer implements Renderer {
 
   resize() {
     // Fixed grid resolution; CSS scales it.
+  }
+
+  /** Zoomed in: the canvas (crisp pixels) is scaled up and shifted so the view fills the frame. */
+  private applyView({ x, y, zoom }: FrameInfo['view']) {
+    const key = `${x},${y},${zoom}`
+    if (key === this.viewKey) return
+    this.viewKey = key
+    const { style } = this.ctx.canvas
+    style.transformOrigin = '0 0'
+    style.transform = zoom === 1 ? '' : `scale(${zoom}) translate(${-x * 100}%, ${-y * 100}%)`
   }
 
   destroy() {}

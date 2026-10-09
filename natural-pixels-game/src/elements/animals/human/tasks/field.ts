@@ -2,8 +2,11 @@ import { EAR } from '../../../plants/wheat.ts'
 import { isPassable, type Body } from '../body.ts'
 import { halfWidth, MAX_STAGE } from '../house.ts'
 import type { Mind, Point } from '../mind.ts'
-import { avoided, findNearest, groundBelow } from '../senses.ts'
+import { avoided, findNearest, freeWater, groundBelow } from '../senses.ts'
+import { DECOR_PARTS } from './decor.ts'
+import { edible } from './food.ts'
 import { approach, type Task } from './types.ts'
+import { firstTime, practice, skillLevel } from '../skills.ts'
 
 /*
  * The wheat field next to the house: a fenced strip of soil it plants with wheat seeds,
@@ -21,6 +24,8 @@ const SEARCH = 30
 const FENCE_PLANKS = 4
 /** A harvest gives this much food and seed. */
 const HARVEST_FOOD = 1
+/** Farming experience per harvest. */
+const HARVEST_XP = 2
 const HARVEST_SEEDS = 2
 /** Chance that cutting grass turns up a seed. */
 const GRASS_SEED_CHANCE = 0.35
@@ -32,10 +37,13 @@ type Field = NonNullable<Mind['farm']>
 type Job = 'harvest' | 'plant' | 'seeds' | 'fence' | 'fetch' | 'pour'
 const JOBS: readonly Job[] = ['harvest', 'plant', 'seeds', 'fence', 'fetch', 'pour']
 
+/** Never farmed over: what it has built (the yard's things, a workshop's floor). */
+const BUILT: ReadonlySet<string | null> = new Set([...DECOR_PARTS, 'backwall', 'ladder', 'torch', 'mine_wall', 'mine_post', 'fence', 'lamp'])
+
 /** Room for crops: soil at the house's ground level, nothing solid on it. */
 function tillable(body: Body, x: number, ground: number): boolean {
   const above = body.get(x, ground - 1)
-  return body.get(x, ground) === 'soil' && isPassable(above) && above !== 'water' && above !== 'wood'
+  return body.get(x, ground) === 'soil' && isPassable(above) && above !== 'water' && above !== 'wood' && !BUILT.has(above)
 }
 
 /** Picks a flat strip of soil beside the house (past where its biggest stage will reach). */
@@ -115,9 +123,12 @@ export const field: Task = {
     // A field it can't get to any more: pick another spot.
     const farm = mind.farm
     if (farm && avoided(mind, (farm.x0 + farm.x1) >> 1, farm.ground - 1)) mind.farm = null
-    mind.farm ??= findField(body)
+    if (!mind.farm) {
+      mind.farm = findField(body)
+      if (mind.farm) firstTime(mind, 'farm', 'Started a wheat field.', 'home')
+    }
     if (!mind.farm) return false
-    const next = nextJob(body, mind.farm, mind.hunger >= 60 && mind.inv.food === 0)
+    const next = nextJob(body, mind.farm, mind.hunger >= 60 && edible(mind) === 0)
     if (!next) return false
     mind.target = next.at
     mind.phase = JOBS.indexOf(next.job)
@@ -132,7 +143,7 @@ export const field: Task = {
     const job = JOBS[mind.phase]
 
     if (job === 'fetch') {
-      const source = findNearest(body, 40, (x, y) => body.get(x, y) === 'water')
+      const source = findNearest(body, 40, (x, y) => freeWater(body, x, y))
       if (!source) return 'failed'
       const result = body.walkTo(source)
       if (result !== 'arrived') {
@@ -154,7 +165,10 @@ export const field: Task = {
         if (body.get(x, y) !== 'wheat_ripe') return 'failed'
         body.set(x, y, 'air')
         if (body.get(x, y - 1) === 'wheat_ripe' && body.data(x, y - 1) & EAR) body.set(x, y - 1, 'air')
-        mind.inv.food += HARVEST_FOOD
+        // A seasoned farmer gets more out of every harvest.
+        mind.inv.food += HARVEST_FOOD + (skillLevel(mind, 'farming') >= 3 ? 1 : 0)
+        practice(mind, 'farming', HARVEST_XP)
+        firstTime(mind, 'harvest', 'First wheat harvest!', 'nature')
         mind.inv.grain += HARVEST_SEEDS
         // Sow again right away.
         if (tillable(body, x, farm.ground)) {

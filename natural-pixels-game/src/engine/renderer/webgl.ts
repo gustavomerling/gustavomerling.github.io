@@ -2,11 +2,15 @@ import { ELEMENTS } from '../../elements/registry.ts'
 import type { Matter } from '../../elements/types.ts'
 import type { Grid } from '../grid.ts'
 import { CellColors } from './cellColors.ts'
+import { LightMap } from './lighting.ts'
 import { FRAGMENT_SHADER, VERTEX_SHADER } from './shaders.ts'
 import type { FrameInfo, Renderer } from './types.ts'
 
 /** Kind codes for the shader (must match KIND_* in shaders.ts). */
 const KIND: Record<Matter, number> = { empty: 0, static: 1, powder: 2, liquid: 3, gas: 4, energy: 5 }
+/** The light map is worked out every this many frames (it changes slowly). */
+const LIGHT_EVERY = 3
+
 /** Heat halo: starts at this temperature (°C) and is full this many degrees later. */
 const HALO_START = 200
 const HALO_RANGE = 800
@@ -24,6 +28,9 @@ export class WebGLRenderer implements Renderer {
   private readonly vao: WebGLVertexArrayObject
   private readonly colorTexture: WebGLTexture
   private readonly infoTexture: WebGLTexture
+  private readonly lightTexture: WebGLTexture
+  private readonly lightMap: LightMap
+  private frames = 0
   private readonly colors: Uint32Array
   /** Byte view over `colors` for the texture upload. */
   private readonly colorBytes: Uint8Array
@@ -45,12 +52,15 @@ export class WebGLRenderer implements Renderer {
     this.vao = gl.createVertexArray()
     this.colorTexture = createTexture(gl, grid.width, grid.height)
     this.infoTexture = createTexture(gl, grid.width, grid.height)
+    // Light is sampled smoothly between cells: soft shadows and glows, not squares.
+    this.lightTexture = createTexture(gl, grid.width, grid.height, gl.LINEAR)
+    this.lightMap = new LightMap(grid)
     this.colors = new Uint32Array(grid.size)
     this.colorBytes = new Uint8Array(this.colors.buffer)
     this.info = new Uint8Array(grid.size * 4)
     this.cellColors = new CellColors(grid)
 
-    const names = ['uColor', 'uInfo', 'uGrid', 'uTime', 'uLight', 'uSun', 'uCellsPerPixel', 'uOvercast', 'uFlash', 'uRainbow']
+    const names = ['uColor', 'uInfo', 'uGrid', 'uTime', 'uLight', 'uSun', 'uCellsPerPixel', 'uOvercast', 'uFlash', 'uRainbow', 'uLightMap', 'uRainbow2', 'uEclipse', 'uAurora', 'uMeteors', 'uView']
     this.uniforms = Object.fromEntries(names.map((n) => [n, gl.getUniformLocation(this.program, n)]))
   }
 
@@ -60,7 +70,7 @@ export class WebGLRenderer implements Renderer {
     this.canvas.height = Math.max(1, Math.round(cssHeight * dpr))
   }
 
-  render({ time, light, sun, overcast, flash, rainbow }: FrameInfo) {
+  render({ time, light, sun, overcast, flash, rainbow, doubleRainbow, eclipse, aurora, meteors, lighting, view }: FrameInfo) {
     const { gl, grid, info, kinds, emissive, uniforms } = this
     const { width, height, size, type, temp, shade } = grid
 
@@ -88,7 +98,19 @@ export class WebGLRenderer implements Renderer {
     gl.bindTexture(gl.TEXTURE_2D, this.infoTexture)
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, info)
 
+    if (this.frames++ % LIGHT_EVERY === 0) {
+      if (lighting) this.lightMap.update(sun.x)
+      else this.lightMap.flat()
+      gl.activeTexture(gl.TEXTURE2)
+      gl.bindTexture(gl.TEXTURE_2D, this.lightTexture)
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, this.lightMap.texels)
+    } else {
+      gl.activeTexture(gl.TEXTURE2)
+      gl.bindTexture(gl.TEXTURE_2D, this.lightTexture)
+    }
+
     gl.uniform1i(uniforms.uColor, 0)
+    gl.uniform1i(uniforms.uLightMap, 2)
     gl.uniform1i(uniforms.uInfo, 1)
     gl.uniform2f(uniforms.uGrid, width, height)
     gl.uniform1f(uniforms.uTime, time)
@@ -97,7 +119,12 @@ export class WebGLRenderer implements Renderer {
     gl.uniform1f(uniforms.uOvercast, overcast)
     gl.uniform1f(uniforms.uFlash, flash)
     gl.uniform1f(uniforms.uRainbow, rainbow)
-    gl.uniform1f(uniforms.uCellsPerPixel, width / this.canvas.width)
+    gl.uniform1f(uniforms.uRainbow2, doubleRainbow ? rainbow : 0)
+    gl.uniform1f(uniforms.uEclipse, eclipse)
+    gl.uniform1f(uniforms.uAurora, aurora)
+    gl.uniform1f(uniforms.uMeteors, meteors)
+    gl.uniform3f(uniforms.uView, view.x, view.y, 1 / view.zoom)
+    gl.uniform1f(uniforms.uCellsPerPixel, width / this.canvas.width / view.zoom)
 
     gl.drawArrays(gl.TRIANGLES, 0, 3)
   }
@@ -106,17 +133,18 @@ export class WebGLRenderer implements Renderer {
     const { gl } = this
     gl.deleteTexture(this.colorTexture)
     gl.deleteTexture(this.infoTexture)
+    gl.deleteTexture(this.lightTexture)
     gl.deleteVertexArray(this.vao)
     gl.deleteProgram(this.program)
   }
 }
 
-function createTexture(gl: WebGL2RenderingContext, width: number, height: number): WebGLTexture {
+function createTexture(gl: WebGL2RenderingContext, width: number, height: number, filter: number = gl.NEAREST): WebGLTexture {
   const texture = gl.createTexture()
   gl.bindTexture(gl.TEXTURE_2D, texture)
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter)
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
   return texture

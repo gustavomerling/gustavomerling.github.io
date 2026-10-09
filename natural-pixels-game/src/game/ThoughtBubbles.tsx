@@ -1,3 +1,4 @@
+import type { View } from '../engine/renderer/index.ts'
 import type { ThoughtBubble } from '../engine/Sandbox.ts'
 
 interface ThoughtBubblesProps {
@@ -5,6 +6,8 @@ interface ThoughtBubblesProps {
   /** Grid size, to place bubbles over their cells. */
   gridWidth: number
   gridHeight: number
+  /** The camera (bubbles out of view aren't shown). */
+  view: View
 }
 
 /** Rows above the thinking cell where the bubble's tail points (a human's head top). */
@@ -29,20 +32,26 @@ function stackLevels(bubbles: readonly ThoughtBubble[]): number[] {
 }
 
 /** Comic-style thought bubbles floating over the cells that think (humans). */
-export function ThoughtBubbles({ bubbles, gridWidth, gridHeight }: ThoughtBubblesProps) {
+export function ThoughtBubbles({ bubbles, gridWidth, gridHeight, view }: ThoughtBubblesProps) {
   const levels = stackLevels(bubbles)
+  // Where a cell is on screen, as a share of the frame (zoomed and panned).
+  const screenX = (x: number) => (x / gridWidth - view.x) * view.zoom
+  const screenY = (y: number) => (y / gridHeight - view.y) * view.zoom
   return (
     <div className="thoughts" aria-live="polite">
       {bubbles.map(({ key, x, y, icon: Icon, text, hint, name }, index) => {
+        const sx = screenX(x + 0.5)
+        const sy = screenY(y - HEAD_ROWS)
+        if (sx < 0 || sx > 1 || sy < 0 || sy > 1.1) return null
         // Slide the bubble sideways near the edges so it never leaves the canvas.
-        const along = Math.min(1, Math.max(0, x / gridWidth))
+        const along = Math.min(1, Math.max(0, sx))
         return (
           <div
             key={key}
             className={`thought${hint ? ' thought--need' : ''}${levels[index] > 0 ? ' thought--stacked' : ''}`}
             style={{
-              left: `${((x + 0.5) / gridWidth) * 100}%`,
-              top: `${((y - HEAD_ROWS) / gridHeight) * 100}%`,
+              left: `${sx * 100}%`,
+              top: `${sy * 100}%`,
               ['--along' as string]: along,
               ['--stack' as string]: levels[index],
             }}

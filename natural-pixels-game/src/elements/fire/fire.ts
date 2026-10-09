@@ -1,6 +1,9 @@
 import { Flame } from 'lucide-react'
 import type { ElementDefinition } from '../types.ts'
 
+/** Chance per tick a flame gives off a puff of smoke above it. */
+const SMOKE = 0.02
+
 /** Direct flame contact heats what it touches this much per tick... */
 const FLAME_HEAT = 25
 /** ...up to this temperature (enough to light oil, wood and leaves; conduction does the rest). */
@@ -26,6 +29,7 @@ export const fire: ElementDefinition = {
   thermal: { conductivity: 0.15, source: 800 },
   lifetime: { min: 20, max: 45 },
   update(ctx) {
+    if (ctx.get(0, -1) === 'air' && ctx.random() < SMOKE) ctx.set(0, -1, 'smoke')
     for (const [dx, dy] of SIDES) {
       const id = ctx.get(dx, dy)
       // Water puts flames out (the water itself still gets heated by conduction).

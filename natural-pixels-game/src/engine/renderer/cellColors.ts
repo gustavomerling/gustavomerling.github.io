@@ -24,6 +24,10 @@ export class CellColors {
   private readonly wetScale = Float32Array.from(ELEMENTS, (el) =>
     el.color.wet && el.moisture ? WET_LEVELS / (el.moisture.capacity + 1) : 0,
   )
+  /** Per element without moisture: multiplier from `data` to wet level (algae turning water green). */
+  private readonly dataScale = Float32Array.from(ELEMENTS, (el) => (el.color.wet && !el.moisture ? WET_LEVELS / 256 : 0))
+  /** Elements drawn as alternating light/dark rows (ladder rungs) instead of their cell shade. */
+  private readonly stripes = Uint8Array.from(ELEMENTS, (el) => (el.color.stripes ? 1 : 0))
   private readonly glows = Uint8Array.from(ELEMENTS, (el) =>
     el.matter === 'static' || el.matter === 'powder' || el.matter === 'liquid' ? 1 : 0,
   )
@@ -33,12 +37,13 @@ export class CellColors {
   }
 
   fill(out: Uint32Array) {
-    const { type, shade, water, temp, size } = this.grid
-    const { palette, wetScale, glows } = this
+    const { type, shade, water, data, temp, size, width } = this.grid
+    const { palette, wetScale, dataScale, stripes, glows } = this
     for (let i = 0; i < size; i++) {
       const t = type[i]
-      const wet = (water[i] * wetScale[t]) | 0
-      const color = palette[t * COLORS_PER_ELEMENT + wet * SHADES + (shade[i] >> 4)]
+      const wet = (water[i] * wetScale[t] + data[i] * dataScale[t]) | 0
+      const tone = stripes[t] ? (((i / width) | 0) & 1 ? 1 : SHADES - 1) : shade[i] >> 4
+      const color = palette[t * COLORS_PER_ELEMENT + wet * SHADES + tone]
       const heat = temp[i]
       out[i] = heat > GLOW_START && glows[t] ? glow(color, Math.min(1, (heat - GLOW_START) / GLOW_RANGE)) : color
     }

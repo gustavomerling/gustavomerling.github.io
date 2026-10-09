@@ -10,6 +10,8 @@ export interface Settings {
   dayCycle: boolean
   /** Rain for a while every day (storms included). */
   weather: boolean
+  /** Light and shadow: shade under trees, dark caves and mines lit by torches. */
+  lighting: boolean
   /** Thought bubbles over humans. */
   thoughts: boolean
   sound: boolean
@@ -22,6 +24,7 @@ export const DEFAULT_SETTINGS: Settings = {
   grain: 'normal',
   dayCycle: true,
   weather: true,
+  lighting: true,
   thoughts: true,
   sound: true,
   volume: 0.6,

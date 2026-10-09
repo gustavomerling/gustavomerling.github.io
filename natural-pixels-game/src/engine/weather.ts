@@ -6,7 +6,8 @@ import type { Simulation } from './simulation.ts'
  * Weather: it rains for 10% of every day, starting at a random time. Rain comes from clouds
  * spawned along the top of the sky (each cloud cell rains one drop, see cloud.ts); some rains
  * are storms with lightning. The sky darkens while it rains (`overcast`), lightning flashes
- * (`flash`), and a rainbow shows for a while once the rain stops (`rainbow`).
+ * (`flash`), and a rainbow shows for a while once the rain stops (`rainbow`). A wind comes and
+ * goes (`wind`), stronger in storms: gases drift with it.
  */
 
 /** One full day and night, in ticks. */
@@ -23,6 +24,11 @@ const CLOUD_ROWS = 6
 /** Chance per tick of a lightning strike during a storm at full strength. */
 const LIGHTNING_CHANCE = 1 / 240
 const RAINBOW_TICKS = 1800
+/** Chance a rainbow comes with a second one. */
+const DOUBLE_RAINBOW = 0.3
+/** The wind picks a new direction and strength about this often, and eases into it. */
+const WIND_CHANGE_TICKS = 3600
+const WIND_EASE = 0.002
 
 const CLOUD = elementIndex('cloud')
 const LIGHTNING = elementIndex('lightning')
@@ -36,6 +42,11 @@ export class Weather {
   flash = 0
   /** Rainbow visibility 0..1 after a rain. */
   rainbow = 0
+  /** This rainbow comes with a second, fainter one outside it. */
+  doubleRainbow = false
+  /** Wind -1 (blowing left) .. 1 (blowing right): smoke, steam and clouds drift with it. */
+  wind = 0
+  private windTarget = 0
   /** Today's rain: start tick, and whether it's a storm. */
   private start = 0
   private storm = false
@@ -54,6 +65,8 @@ export class Weather {
   tick(sim: Simulation) {
     const { tick } = sim
     this.flash *= 0.85
+    if (tick % WIND_CHANGE_TICKS === 0) this.windTarget = (sim.random() * 2 - 1) * (this.storm && this.rain > 0 ? 1 : 0.6)
+    this.wind += (this.windTarget - this.wind) * WIND_EASE
 
     // A new day: roll today's rain.
     if (this.dayStart < 0 || tick - this.dayStart >= DAY_TICKS) {
@@ -65,7 +78,10 @@ export class Weather {
     const into = tick - this.start
     const raining = this.enabled && into >= 0 && into < RAIN_TICKS
     const target = raining ? Math.min(1, into / RAMP_TICKS, (RAIN_TICKS - into) / RAMP_TICKS) : 0
-    if (this.rain > 0.3 && target === 0 && this.rainbowLeft === 0 && !this.storm) this.rainbowLeft = RAINBOW_TICKS
+    if (this.rain > 0.3 && target === 0 && this.rainbowLeft === 0 && !this.storm) {
+      this.rainbowLeft = RAINBOW_TICKS
+      this.doubleRainbow = sim.random() < DOUBLE_RAINBOW
+    }
     this.rain = target
 
     if (this.rainbowLeft > 0) {

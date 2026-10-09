@@ -3,7 +3,7 @@ import { Canvas2DRenderer } from './canvas2d.ts'
 import type { RenderMode, Renderer } from './types.ts'
 import { WebGLRenderer } from './webgl.ts'
 
-export type { FrameInfo, RenderMode, Renderer } from './types.ts'
+export type { FrameInfo, RenderMode, Renderer, View } from './types.ts'
 
 /**
  * Creates the renderer for `mode`. Throws if smooth (WebGL2) isn't available: a canvas that

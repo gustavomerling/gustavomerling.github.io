@@ -1,6 +1,6 @@
 import { Sprout } from 'lucide-react'
 import type { CellContext } from '../../engine/context.ts'
-import { CROWN_LEAF } from './leaf.ts'
+import { CROWN } from './leaf.ts'
 import { TISSUE_GROUP, drinkFromSoil, sunlight } from './tissue.ts'
 import type { ElementDefinition } from '../types.ts'
 import { WOOD_TREE, trunkTop } from './wood.ts'
@@ -10,6 +10,10 @@ import { WOOD_TREE, trunkTop } from './wood.ts'
  *   bits 0-5  height above the seed (1 = sprout)
  *   bit 6     GROW_TIP  – the growing top of the stem
  *   bit 7     MATURE    – the crown formed; the stem is turning into wood
+ *
+ * Once tall enough the tip stops and a tuft of leaves forms above it; the whole stem matures
+ * and turns into wood strictly from the ground up, shedding its little side leaves. When the
+ * wood reaches the tip, that becomes the trunk top and the tree keeps growing (see wood.ts).
  */
 const HEIGHT_MASK = 0x3f
 export const GROW_TIP = 0x40
@@ -23,7 +27,12 @@ const GROW_CHANCE = 0.06
 /** Below this height the plant never turns into a tree. */
 const MIN_TREE_HEIGHT = 9
 const SIDE_LEAF_CHANCE = 0.25
-const WOOD_CHANCE = 0.03
+/** Chance per tick for a mature stem cell with wood (or soil) under it to turn into wood. */
+const WOOD_CHANCE = 0.05
+/** Chance the stem leans a cell sideways as it grows (it mostly grows straight). */
+const LEAN_CHANCE = 0.12
+/** The tuft of leaves on top of a young tree: a crown leaf with this many generations to spread. */
+const TUFT = CROWN | 2
 
 export const plant: ElementDefinition = {
   id: 'plant',
@@ -61,14 +70,15 @@ function grow(ctx: CellContext, data: number) {
   const buried = ctx.get(0, -1) === 'soil'
 
   // Taller plants are ever more likely to stop and become a tree (never underground).
+  // The stem matures from here down and turns into wood from the ground up.
   if (!buried && height >= MIN_TREE_HEIGHT && ctx.random() < (height - MIN_TREE_HEIGHT + 1) * 0.1) {
-    ctx.set(0, 0, 'wood', { water: water - GROW_COST, data: trunkTop(height) })
-    if (ctx.get(0, -1) === 'air') ctx.set(0, -1, 'leaf', { water: GROW_COST, data: CROWN_LEAF })
+    ctx.setData(0, 0, data | MATURE)
+    if (ctx.get(0, -1) === 'air') ctx.set(0, -1, 'leaf', { water: GROW_COST, data: TUFT })
     return
   }
 
   const r = ctx.random()
-  const dx = buried || r < 0.7 ? 0 : r < 0.85 ? -1 : 1
+  const dx = buried || r >= LEAN_CHANCE ? 0 : r < LEAN_CHANCE / 2 ? -1 : 1
   const target = ctx.get(dx, -1)
   if (target !== 'air' && target !== 'soil') return
 
@@ -87,7 +97,7 @@ function grow(ctx: CellContext, data: number) {
   }
 }
 
-/** True when wood (the crown base) or an already-mature stem sits right above. */
+/** True when an already-mature stem (or wood) sits right above. */
 function crownAbove(ctx: CellContext): boolean {
   for (let dx = -1; dx <= 1; dx++) {
     const above = ctx.get(dx, -1)
@@ -97,16 +107,21 @@ function crownAbove(ctx: CellContext): boolean {
 }
 
 /**
- * Mature stem turns into wood from the ground up: only once wood or soil is below
- * (diagonals count, since stems can grow slanted).
+ * Mature stem turns into wood from the ground up: only once wood or soil is right below
+ * (diagonals count, since stems can lean). The tip becomes the trunk top.
  */
 function lignify(ctx: CellContext) {
   if (ctx.random() >= WOOD_CHANCE) return
+  let rooted = false
   for (let dx = -1; dx <= 1; dx++) {
     const below = ctx.get(dx, 1)
-    if (below === 'soil' || below === 'wood') {
-      ctx.set(0, 0, 'wood', { water: ctx.water(0, 0), data: WOOD_TREE })
-      return
-    }
+    if (below === 'soil' || (below === 'wood' && ctx.data(dx, 1) & WOOD_TREE)) rooted = true
+  }
+  if (!rooted) return
+  const data = ctx.data(0, 0)
+  ctx.set(0, 0, 'wood', { water: ctx.water(0, 0), data: data & GROW_TIP ? trunkTop(data & HEIGHT_MASK) : WOOD_TREE })
+  // The little leaves along the stem dry up and drop: the trunk stays bare below the crown.
+  for (const side of [-1, 1]) {
+    if (ctx.get(side, 0) === 'leaf' && !(ctx.data(side, 0) & CROWN)) ctx.set(side, 0, 'litter')
   }
 }

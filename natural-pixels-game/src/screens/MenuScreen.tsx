@@ -4,6 +4,7 @@ import type { Navigate } from '../app/screens.ts'
 import { SettingsPanel } from '../game/SettingsPanel.tsx'
 import { Button } from '../ui/Button.tsx'
 import { FallingParticles } from '../ui/FallingParticles.tsx'
+import { LogoMark, Scenery } from '../ui/Logo.tsx'
 import { Panel } from '../ui/Panel.tsx'
 
 type MenuPanel = 'how-to-play' | 'settings' | 'about' | null
@@ -14,11 +15,16 @@ export function MenuScreen({ onNavigate }: { onNavigate: Navigate }) {
 
   return (
     <main className="screen menu">
-      <FallingParticles count={50} />
+      <Scenery />
+      <FallingParticles count={40} />
       <div className="menu__content">
-        <h1 className="title title--small">
-          Natural <span className="title__accent">Pixels</span>
-        </h1>
+        <header className="menu__head">
+          <LogoMark className="menu__logo" size={64} />
+          <h1 className="title title--small">
+            Natural <span className="title__accent">Pixels</span>
+          </h1>
+          <p className="menu__tagline">A tiny world of elements</p>
+        </header>
         <nav className="menu__list">
           <Button icon={Play} onClick={() => onNavigate('game')} autoFocus>
             Play
@@ -41,7 +47,8 @@ export function MenuScreen({ onNavigate }: { onNavigate: Navigate }) {
           <ul className="tips">
             <li>Pick an element in the sidebar (or press 1–9, 0) and draw on the canvas. Hold to keep pouring.</li>
             <li>Right-click or E erases. Space pauses, N steps, [ and ] resize the brush.</li>
-            <li>Hover the canvas to see what's there and how hot it is. In the Scene section, roll a Random world or save yours.</li>
+            <li>Mouse wheel zooms in and out; drag with the middle button (or Shift + drag) to look around. The buttons in the corner zoom too, or show the whole world.</li>
+            <li>Hover the canvas to see what's there and how hot it is. Every game starts in a new random world; in the Scene section, roll another one or save yours.</li>
           </ul>
           <h3 className="tips__heading">Life</h3>
           <ul className="tips">
@@ -49,7 +56,8 @@ export function MenuScreen({ onNavigate }: { onNavigate: Navigate }) {
             <li>Plants grow by day. Ash and fallen leaves fertilize the soil; worms turn them into rich earth.</li>
             <li>Bees pollinate tree crowns for more fruit. Birds eat fruit and drop the seeds far away.</li>
             <li>Grass spreads over wet soil; flowers bloom in it and fireflies come out at night. Mushrooms grow in the shade.</li>
-            <li>Rabbits nibble grass and wheat and have babies. Fish live in water. Soaked soil turns into mud.</li>
+            <li>Rabbits nibble grass and wheat and have babies (a scarecrow keeps them off the wheat). Fish live in water. Soaked soil turns into mud.</li>
+            <li>Butterflies visit the flowers on sunny days; wild beehives on tree trunks fill up with honey. Frogs hop along the shores and ducks paddle on the lakes. When it rains, snails come out of the grass.</li>
           </ul>
           <h3 className="tips__heading">Humans</h3>
           <ul className="tips">
@@ -57,13 +65,20 @@ export function MenuScreen({ onNavigate }: { onNavigate: Navigate }) {
             <li>It eats fruit and fish, sleeps at home, replants trees and waters saplings with a bucket. Hover it to see its inventory and what it's doing.</li>
             <li>Its house grows in 4 stages, wider and taller, with ladders, beds and doors. It farms wheat (seeds come from cutting grass), spends time at home and greets its neighbours.</li>
             <li>At night zombies may rise. Humans fight them (swords, or a musket with gunpowder zombies drop) or hide behind their doors. Out after dark, they carry a torch.</li>
+            <li>Once the house is up it makes the yard cozy: a campfire (it grills its fish there and sings at night), a flower garden, a bench, tiki torches, lamp posts, statues, a scarecrow, a workshop with a smoking furnace and a watchtower to keep watch or stargaze. Its chimney smokes of an evening.</li>
+            <li>It digs a mine with ladders and tidy galleries (a post and a torch every few steps). While it rests up top, skeletons, bats and glowing mushrooms turn up down there: it fights skeletons with its sword or musket, and grinds their bones into bone meal for its saplings. Deep down there's iron, gold, amethyst, and sulfur and saltpeter for gunpowder.</li>
+            <li>It gets better at what it does most (mining, fishing, farming, building, woodcutting, fighting) and earns titles like "Seasoned miner". Open its card in the top bar to read its skills and its journal, where it writes down every milestone.</li>
+            <li>Once its house is big, travellers come to live nearby: neighbours greet each other, trade what they have plenty of and visit each other. Now and then a travelling merchant walks in to buy and sell.</li>
+            <li>It builds a pen and brings wild sheep and cows home, shears them for wool (a cozy blanket) and milks the cows. From its pier it fishes, and sometimes hooks a chest or a message in a bottle.</li>
             <li>It can't walk underwater: it swims, or with 5 planks it builds a boat and rows across. The boat stays moored at the shore for the trip back.</li>
             <li>A bubble shows what it's thinking. When it glows orange it needs something: paint Wood, Stone or Fruit near it and it will happily take your gift.</li>
           </ul>
           <h3 className="tips__heading">Weather</h3>
           <ul className="tips">
             <li>It rains for a while every day; some rains are storms with lightning that can start fires. After a gentle rain, look for a rainbow.</li>
-            <li>Puddles evaporate in the sun, rise as steam and come back as rain.</li>
+            <li>Puddles evaporate in the sun, rise as steam and come back as rain. The wind comes and goes: smoke, steam and clouds drift with it.</li>
+            <li>On clear nights, watch for shooting stars. Rarely: a solar eclipse, an aurora, a meteor shower that leaves glowing fallen stars, a double rainbow.</li>
+            <li>Deep in the stone there are caves, with underground pools and glowing mushrooms.</li>
           </ul>
           <h3 className="tips__heading">Chemistry</h3>
           <ul className="tips">

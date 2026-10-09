@@ -85,12 +85,25 @@ function hop(ctx: CellContext) {
   ctx.setData(0, 0, data)
 }
 
-/** Eats a bit of grass or wheat right next to it (wheat first). */
+/** A scarecrow this close keeps it off the wheat. */
+const SCARED = 12
+
+function scarecrowNear(ctx: CellContext): boolean {
+  for (let dy = -6; dy <= 2; dy++) for (let dx = -SCARED; dx <= SCARED; dx++) if (ctx.get(dx, dy) === 'scarecrow') return true
+  return false
+}
+
+/** Eats a bit of grass or wheat right next to it (wheat first, unless a scarecrow's watching). */
 function nibble(ctx: CellContext): boolean {
   let best: [number, number] | null = null
+  let scared: boolean | null = null
   for (const [dx, dy] of [[-1, 0], [1, 0], [0, 1], [-1, 1], [1, 1], [0, -1]] as const) {
     const id = ctx.get(dx, dy)
     if (!FOOD.has(id)) continue
+    if (id === 'wheat' || id === 'wheat_ripe') {
+      scared ??= scarecrowNear(ctx)
+      if (scared) continue
+    }
     best = [dx, dy]
     if (id === 'wheat' || id === 'wheat_ripe') break
   }

@@ -20,6 +20,8 @@ export interface CellContext {
   random(): number
   /** World daylight 0 (night) .. 1 (day). */
   light(): number
+  /** Days since the world began (1 = the first). */
+  day(): number
   /** How hard it's raining right now, 0 (dry) .. 1 (downpour). */
   rain(): number
   /** Element id at the offset, or `null` outside the world. */
@@ -91,6 +93,10 @@ export class SimulationContext implements CellContext {
 
   light(): number {
     return this.sim.daylight
+  }
+
+  day(): number {
+    return this.sim.day
   }
 
   rain(): number {

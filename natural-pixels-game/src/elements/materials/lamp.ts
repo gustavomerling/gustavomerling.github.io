@@ -11,5 +11,7 @@ export const lamp: ElementDefinition = {
   density: 25,
   color: { base: '#ffe08a', variation: 0.05, emissive: 1 },
   icon: Lamp,
+  // Humans build it; not in the palette.
+  hidden: true,
   thermal: { conductivity: 0.05 },
 }

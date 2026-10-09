@@ -12,6 +12,7 @@ import { SettingsPanel } from '../game/SettingsPanel.tsx'
 import { PeopleBar } from '../game/PeopleBar.tsx'
 import { Sidebar } from '../game/Sidebar.tsx'
 import { Button } from '../ui/Button.tsx'
+import { LogoMark } from '../ui/Logo.tsx'
 
 /** Elements whose numbers drive the ambient sound. */
 const SOUND_SOURCES = {
@@ -135,7 +136,10 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
         <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => onNavigate('menu')}>
           Menu
         </Button>
-        <span className="game__title">Natural Pixels</span>
+        <span className="game__title">
+          <LogoMark size={22} />
+          Natural Pixels
+        </span>
         <PeopleBar people={stats.people} />
         <span className="game__stats">
           {stats.hover && (
@@ -168,6 +172,8 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
           onClear={() => sandboxRef.current?.clear()}
           dayCycle={settings.dayCycle}
           onDayCycle={(dayCycle) => update({ dayCycle })}
+          weather={settings.weather}
+          onWeather={(weather) => update({ weather })}
           getSandbox={() => sandboxRef.current?.sandbox ?? null}
         />
 
@@ -179,6 +185,7 @@ export function GameScreen({ onNavigate }: { onNavigate: Navigate }) {
           speed={SPEEDS[speed]}
           dayCycle={settings.dayCycle}
           weather={settings.weather}
+          lighting={settings.lighting}
           cellTarget={GRAIN_CELLS[settings.grain]}
           renderMode={settings.graphics}
           showThoughts={settings.thoughts}

@@ -1,5 +1,8 @@
-import type { Status } from '../../types.ts'
+import type { JournalEntry, SkillId, Status } from '../../types.ts'
 import type { House } from './house.ts'
+import type { Decor, DecorKind } from './tasks/decor.ts'
+import type { Shaft } from './tasks/shaft.ts'
+import { skillsStatus, titleOf } from './skills.ts'
 
 /*
  * A human's mind: what it's doing, what it carries and what it has built.
@@ -24,6 +27,14 @@ export type TaskName =
   | 'hide'
   | 'scavenge'
   | 'level'
+  | 'shaft'
+  | 'well'
+  | 'decorate'
+  | 'cook'
+  | 'herd'
+
+/** Out in the yard (by something it built) or at home (by a piece of furniture). */
+export type RelaxSpot = DecorKind | 'book' | 'tea' | 'plant' | 'window' | 'visit'
 
 /** Something it needs but can't find on its own (shown in its thought bubble so the player can help). */
 export type Want = 'wood' | 'stone' | 'food'
@@ -46,20 +57,38 @@ export interface Inventory {
   water: number
   /** Wheat seeds, from cutting grass and harvesting wheat. */
   grain: number
-  /** For the musket: found lying around, or dropped by zombies. */
+  /** For the musket: found lying around, dropped by zombies, or made from coal, sulfur and saltpeter. */
   gunpowder: number
-  /** Earth dug out while levelling the yard, to fill dips with. */
+  /** Earth dug out while levelling the yard (or digging the mine), to fill dips with. */
   earth: number
+  /** From the mine: coal makes torches, iron makes tools; silver and gold are treasure. */
+  coal: number
+  iron: number
+  silver: number
+  gold: number
+  /** Torches to light the mine with (coal + plank). */
+  torch: number
+  /** From the mine too: with coal, they make gunpowder. */
+  sulfur: number
+  saltpeter: number
+  /** Raw fish: edible, but much better grilled at the campfire (see tasks/cook.ts). */
+  fish: number
+  /** From skeletons: ground into bone meal for saplings. */
+  bone: number
+  /** Glimmering treasure from deep down. */
+  amethyst: number
+  /** Shorn from its sheep: a blanket, and something to sell. */
+  wool: number
 }
 
-/** 0 = none, 1 = wooden, 2 = stone. */
-export type ToolTier = 0 | 1 | 2
+/** 0 = none, 1 = wooden, 2 = stone, 3 = iron. */
+export type ToolTier = 0 | 1 | 2 | 3
 
 export interface Tools {
   pickaxe: ToolTier
   axe: ToolTier
   bucket: boolean
-  /** 0 = fists, 1 = wooden sword, 2 = stone sword. */
+  /** 0 = fists, 1 = wooden sword, 2 = stone sword, 3 = iron sword. */
   sword: ToolTier
   /** A musket (needs gunpowder to fire). */
   gun: boolean
@@ -97,7 +126,66 @@ export interface Mind {
   /** Its house as it stands (see house.ts). */
   home: House | null
   /** House (or next house stage) under construction, and how far along it is. */
-  site: (House & { step: number }) | null
+  site: (House & { step: number; credit?: number; todo?: number }) | null
+  /** Where its boat is (the middle of the hull): a new boat replaces it. */
+  boatAt?: Point | null
+  /** Times in a row it found the next stage of its house blocked (water, rock, a cliff...). */
+  blockedChecks?: number
+  /**
+   * Ladders and bridge planks it put up just to get somewhere (not its house's or its mine's):
+   * taken down again, planks back, once it's moved on (see Body.tidyScaffold).
+   */
+  scaffold?: (Point & { id: 'ladder' | 'plank'; paid: boolean })[]
+  /**
+   * How tired it is (0..100): every waking action adds a little, hard work more, the mine most;
+   * past SLEEPY (brain.ts) it goes to bed, whatever the time of day, and sleeps it off.
+   */
+  tired?: number
+  /** (Old saves: mine fatigue, now just tiredness.) */
+  mineTired?: number
+  /** The segment of its mine it's in (where segments overlap, the one it came along). */
+  mineSeg?: number
+  /** Fishing from its pier: the water off the end of it. */
+  fishingFrom?: Point | null
+  /** Where its fishing line meets the water, while it waits for a bite. */
+  cast?: Point | null
+  /** Actions left leaving far-off zombies be (after a fight it couldn't get anywhere with). */
+  leaveZombies?: number
+  /** Its artesian well (the top of the shaft), once drilled; and where it's drilling one. */
+  well?: Point | null
+  wellAt?: Point | null
+  /** What it has built around the house: campfire, statues, workshop... (see tasks/decor.ts). */
+  decor?: Decor[]
+  /** Where (or how) it's spending its free time (see tasks/relax.ts). */
+  relaxAt?: RelaxSpot | null
+  /** What it's fighting ('zombie', 'skeleton'). */
+  foe?: string
+  /** Experience in each skill (see skills.ts). */
+  skills?: Partial<Record<SkillId, number>>
+  /** Its journal: milestones of its life (see skills.ts). */
+  journal?: JournalEntry[]
+  /** Someone who isn't a settler: a travelling merchant (see merchant.ts). */
+  role?: 'merchant'
+  /** Where the merchant leaves the world again. */
+  leaveTo?: Point | null
+  /** Neighbours it has met, by name: where their house is (to visit). */
+  friends?: Record<string, { x: number; ground: number; half: number }>
+  /** The neighbour it's visiting (while relaxing at their door). */
+  visiting?: string | null
+  /** An animal it's carrying home to its pen. */
+  carrying?: string | null
+  /** A wool blanket on its bed: it sleeps better (heals faster). */
+  blanket?: boolean
+  /** Monsters it has beaten. */
+  wins?: number
+  /** Firsts already written down (first house, first fish...). */
+  firsts?: string[]
+  /** The world's day today (kept up to date each action, for dating journal lines). */
+  today?: number
+  /** Entrances of mines it has finished with (it opens a new one elsewhere, see tasks/shaft.ts). */
+  oldMines?: number[]
+  /** Its mine (see tasks/shaft.ts). */
+  shaft: Shaft | null
   /** Its wheat field next to the house: columns x0..x1, soil at row `ground`. */
   farm: { x0: number; x1: number; ground: number; fenced: boolean } | null
   /** Something it's saying out loud (a greeting), for `ttl` more actions. */
@@ -124,6 +212,13 @@ export interface Mind {
   want: Want | null
   /** Actions in a row it couldn't get any closer to where it's going. */
   stuck: number
+  /** Closest it has got to the current goal (key = "x,y"), and actions since it last got closer. */
+  progress?: { key: string; best: number; idle: number }
+  /**
+   * What was in the way the last time it got stuck, for its thought bubble: an element id, or
+   * 'high' / 'low' (right above or below, out of reach) or 'edge' (the end of the world).
+   */
+  blocked?: string | null
   /** Places it recently failed to reach: ignored until `ttl` (actions) runs out. */
   avoid: (Point & { ttl: number })[]
 }
@@ -142,13 +237,14 @@ export function createMind(): Mind {
     hunger: 20,
     asleep: false,
     afloat: null,
-    inv: { log: 0, plank: 0, stone: 0, food: 1, seed: 0, water: 0, grain: 0, gunpowder: 0, earth: 0 },
+    inv: { log: 0, plank: 0, stone: 0, food: 1, seed: 0, water: 0, grain: 0, gunpowder: 0, earth: 0, coal: 0, iron: 0, silver: 0, gold: 0, torch: 0, sulfur: 0, saltpeter: 0, fish: 0, bone: 0, amethyst: 0, wool: 0 },
     tools: { pickaxe: 0, axe: 0, bucket: false, sword: 0, gun: false },
     v: MIND_VERSION,
     name: '',
     home: null,
     site: null,
     farm: null,
+    shaft: null,
     say: null,
     greetIn: 0,
     family: 0,
@@ -165,7 +261,7 @@ export function createMind(): Mind {
   }
 }
 
-const MIND_VERSION = 4
+const MIND_VERSION = 5
 
 /** Minds saved by older versions miss newer fields: fill them in (and convert old houses). */
 export function upgradeMind(mind: Mind): Mind {
@@ -200,14 +296,41 @@ const ACTIVITY: Record<TaskName, string> = {
   water: 'Watering a sapling',
   relax: 'At home',
   farm: 'Farming',
-  fight: 'Fighting a zombie',
-  hide: 'Hiding from a zombie',
+  fight: 'Fighting a monster',
+  hide: 'Hiding from a monster',
   scavenge: 'Picking up gunpowder',
   level: 'Levelling the yard',
+  shaft: 'Digging a mine',
+  well: 'Drilling a well',
+  decorate: 'Building in the yard',
+  cook: 'Cooking',
+  herd: 'Looking after the animals',
 }
 
-const TIER = ['', 'wooden', 'stone'] as const
-const ITEM = { log: 'log', plank: 'plank', stone: 'stone', food: 'food', seed: 'tree seed', grain: 'wheat seed', gunpowder: 'gunpowder', earth: 'earth' } as const
+const TIER = ['', 'wooden', 'stone', 'iron'] as const
+const ITEM = {
+  log: 'log',
+  plank: 'plank',
+  stone: 'stone',
+  food: 'food',
+  seed: 'tree seed',
+  grain: 'wheat seed',
+  gunpowder: 'gunpowder',
+  earth: 'earth',
+  coal: 'coal',
+  iron: 'iron',
+  silver: 'silver',
+  gold: 'gold',
+  torch: 'torch',
+  sulfur: 'sulfur',
+  saltpeter: 'saltpeter',
+  fish: 'raw fish',
+  bone: 'bone',
+  amethyst: 'amethyst',
+  wool: 'wool',
+} as const
+/** Inventory slots shown, in order (the bucket's water shows with the bucket). */
+const SHOWN = ['log', 'plank', 'stone', 'coal', 'iron', 'silver', 'gold', 'amethyst', 'sulfur', 'saltpeter', 'torch', 'fish', 'bone', 'wool', 'food', 'seed', 'grain', 'gunpowder', 'earth'] as const
 
 /** How the player can help with each want. */
 export const WANT_HINT: Record<Want, string> = {
@@ -219,8 +342,7 @@ export const WANT_HINT: Record<Want, string> = {
 /** Inventory as words: "3 planks", "1 wheat seed"... */
 function itemList(mind: Mind): string[] {
   const { inv } = mind
-  return (['log', 'plank', 'stone', 'food', 'seed', 'grain', 'gunpowder'] as const)
-    .filter((k) => inv[k] > 0)
+  return SHOWN.filter((k) => k !== 'earth' && inv[k] > 0)
     .map((k) => `${inv[k]} ${ITEM[k]}${inv[k] === 1 ? '' : 's'}`)
 }
 
@@ -238,8 +360,7 @@ function gearList(mind: Mind): string[] {
 /** Status card for the top bar. */
 export function statusOf(mind: Mind): Status {
   const { inv, tools } = mind
-  const items = (['log', 'plank', 'stone', 'food', 'seed', 'grain', 'gunpowder', 'earth'] as const)
-    .filter((k) => inv[k] > 0)
+  const items = SHOWN.filter((k) => inv[k] > 0)
     .map((k) => ({ id: k, label: ITEM[k], count: inv[k] }))
   const held: Status['tools'] = []
   if (tools.axe) held.push({ id: 'axe', label: `${TIER[tools.axe]} axe`, tier: tools.axe })
@@ -255,15 +376,19 @@ export function statusOf(mind: Mind): Status {
   if (mind.farm) facts.push({ label: 'Farm', value: `${mind.farm.x1 - mind.farm.x0 + 1} columns of wheat${mind.farm.fenced ? ', fenced' : ''}` })
   if (mind.want) facts.push({ label: 'Needs', value: `${mind.want} (${WANT_HINT[mind.want]})` })
   return {
-    name: mind.name || 'Human',
-    activity: mind.asleep ? 'Sleeping' : mind.afloat ? (mind.afloat === 'boat' ? 'Rowing a boat' : 'Swimming') : ACTIVITY[mind.task],
+    name: mind.role === 'merchant' ? `${mind.name} the merchant` : mind.name || 'Human',
+    activity: mind.role === 'merchant' ? 'Trading' : mind.asleep ? 'Sleeping' : mind.afloat ? (mind.afloat === 'boat' ? 'Rowing a boat' : 'Swimming') : ACTIVITY[mind.task],
     meters: [
       { label: 'Health', value: Math.max(0, Math.round(mind.health)), good: true },
       { label: 'Hunger', value: Math.round(mind.hunger), good: false },
+      { label: 'Tiredness', value: Math.round(mind.tired ?? 0), good: false },
     ],
     items,
     tools: held,
     facts,
+    title: titleOf(mind),
+    skills: skillsStatus(mind),
+    journal: mind.journal ?? [],
   }
 }
 

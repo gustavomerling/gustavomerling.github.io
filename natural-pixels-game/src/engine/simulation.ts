@@ -9,7 +9,12 @@ import { updateMoisture } from './moisture.ts'
 import { compileReactions, react } from './reactions.ts'
 import { createRandom } from './random.ts'
 import { updateThermal } from './thermal.ts'
+import { TreeFall } from './treefall.ts'
+import { ECLIPSE_DARK, Events } from './events.ts'
 import { Weather } from './weather.ts'
+
+/** Time of day a new day starts. */
+const SUNRISE = 0.25
 
 const FLUID_MATTER: ReadonlySet<Matter> = new Set(['empty', 'liquid', 'gas'])
 const WATER = elementIndex('water')
@@ -42,10 +47,16 @@ export class Simulation {
   dayCycle = true
   /** Current time of day 0..1 while the cycle runs. */
   private clock = START_TIME
+  /** Days since the world began (1 = the first), counted at each sunrise. */
+  day = 1
   /** Daylight 0..1, refreshed every tick (plants and animals read it via ctx.light()). */
   daylight = daylightAt(START_TIME)
   /** Rain, storms and rainbows (see weather.ts). */
   readonly weather = new Weather()
+  /** Eclipses, auroras, meteor showers, the travelling merchant (see events.ts). */
+  readonly events = new Events()
+  /** Trees that lost their footing come down as a whole (see treefall.ts). */
+  readonly trees = new TreeFall()
   /** Per-cell memory objects (see CellContext.memory), keyed by the cell's `life`. */
   readonly memory = new Map<number, unknown>()
   private nextMemoryKey = 1
@@ -151,8 +162,14 @@ export class Simulation {
   step() {
     const { width, height, type, stamp } = this.grid
     const tick = ++this.tick
-    if (this.dayCycle) this.clock = advanceTime(this.clock)
-    this.daylight = daylightAt(this.timeOfDay)
+    if (this.dayCycle) {
+      const before = this.clock
+      this.clock = advanceTime(this.clock)
+      if (before < SUNRISE && this.clock >= SUNRISE) this.day++
+    }
+    this.events.tick(this)
+    // (An eclipse darkens the day: animals and zombies take it for night.)
+    this.daylight = daylightAt(this.timeOfDay) * (1 - ECLIPSE_DARK * this.events.eclipse)
     this.weather.tick(this)
     // Alternate horizontal scan direction every tick so nothing drifts to one side.
     const leftToRight = (tick & 1) === 0
@@ -180,6 +197,7 @@ export class Simulation {
       }
     }
 
+    this.trees.step(this)
     updateThermal(this)
   }
 

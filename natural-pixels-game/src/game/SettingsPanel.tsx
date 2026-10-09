@@ -67,6 +67,17 @@ export function SettingsPanel({ onClose, inGame = false }: SettingsPanelProps) {
         </div>
 
         <div className="settings__row">
+          <span className="settings__label">Light &amp; shadow</span>
+          <Segmented
+            label="Light and shadow"
+            value={settings.lighting ? 'on' : 'off'}
+            options={ON_OFF}
+            onChange={(v) => update({ lighting: v === 'on' })}
+          />
+          <span className="settings__hint">Shade under trees; caves and mines are dark unless something lights them.</span>
+        </div>
+
+        <div className="settings__row">
           <span className="settings__label">Thought bubbles</span>
           <Segmented
             label="Thought bubbles"

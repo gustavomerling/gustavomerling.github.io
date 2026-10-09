@@ -1,7 +1,8 @@
 import { Flower2 } from 'lucide-react'
+import { hatchButterfly } from '../animals/butterfly.ts'
 import type { ElementDefinition } from '../types.ts'
 
-/** Wildflowers pop up in sunny grass. Bees love them (and multiply around them). */
+/** Wildflowers pop up in sunny grass. Bees love them (and multiply around them); butterflies come to them. */
 export const flower: ElementDefinition = {
   id: 'flower',
   name: 'Flower',
@@ -17,5 +18,6 @@ export const flower: ElementDefinition = {
   update(ctx) {
     const below = ctx.get(0, 1)
     if (below !== 'grass' && below !== 'soil') ctx.set(0, 0, 'air')
+    else if (ctx.light() > 0.6 && ctx.rain() < 0.1) hatchButterfly(ctx)
   },
 }

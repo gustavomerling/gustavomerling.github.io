@@ -1,5 +1,6 @@
 import { Hammer } from 'lucide-react'
 import type { ElementDefinition } from '../types.ts'
+import { soakPuddles } from './soak.ts'
 
 /** Worked wood for building. Humans craft it from logs. */
 export const plank: ElementDefinition = {
@@ -12,4 +13,6 @@ export const plank: ElementDefinition = {
   color: { base: '#c08a52', variation: 0.08 },
   icon: Hammer,
   thermal: { conductivity: 0.05, burn: { at: 260, temp: 650, rate: 0.006, into: 'ash' } },
+  // Puddles against it soak in (see soak.ts).
+  update: soakPuddles,
 }

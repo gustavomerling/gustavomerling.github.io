@@ -8,8 +8,10 @@ import type { Point } from './mind.ts'
  *   stage 3 — 15 wide, two floors, glass windows upstairs
  *   stage 4 — 19 wide, three floors
  *
- * Every floor is 4 rows high with a plank slab on top; inside, a back wall fills it in, a lamp
- * hangs from the ceiling and the ground floor has a bed. A stone foundation sits under it all
+ * Every floor is 4 rows high with a plank slab on top; inside, a back wall fills it in with
+ * windows (see-through to the sky) and paintings along it, a lamp hangs from the ceiling, and
+ * every floor is furnished: the ground floor has the bed and a table with chairs; upper floors
+ * have a bookshelf, a reading corner and a potted plant. A stone foundation sits under it all
  * and a stepped plank roof on top. Coordinates are absolute: `x` is the middle column and
  * `ground` the foundation row.
  */
@@ -20,7 +22,21 @@ export interface House {
   stage: number
 }
 
-export type HouseBlock = 'stone' | 'plank' | 'backwall' | 'ladder' | 'lamp' | 'bed' | 'glass' | 'door'
+export type HouseBlock =
+  | 'stone'
+  | 'plank'
+  | 'backwall'
+  | 'ladder'
+  | 'lamp'
+  | 'bed'
+  | 'glass'
+  | 'door'
+  | 'back_window'
+  | 'painting'
+  | 'table'
+  | 'chair'
+  | 'bookshelf'
+  | 'flowerpot'
 
 export interface Block extends Point {
   id: HouseBlock
@@ -100,7 +116,7 @@ export function blueprint(house: House): Block[] {
     for (let dx = -span; dx <= span; dx++) add(dx, roof - k, 'plank')
   }
 
-  // Inside: back wall, the ladder, a lamp per floor and the bed.
+  // Inside: back wall, the ladder, a lamp per floor, the bed, and furniture and decoration.
   const bed = bedSpot(house)
   for (let f = 0; f < floors; f++) {
     const base = g - STORY * f
@@ -112,11 +128,42 @@ export function blueprint(house: House): Block[] {
         if (x === lx && floors > 1 && f < floors - 1) id = 'ladder'
         else if (dx === 0 && k === 4) id = 'lamp'
         else if (f === 0 && k === 1 && Math.abs(x - bed.x) <= 1) id = 'bed'
+        else id = furnish(half, f, dx, k) ?? 'backwall'
         add(dx, y, id)
       }
     }
   }
   return blocks
+}
+
+/**
+ * What goes at column `dx`, `k` rows up from floor `f` (besides the ladder, lamp and bed):
+ * two-pane windows and paintings take turns along the wall; the ground floor has a
+ * table with chairs, upper floors a bookshelf in the corner, a chair by a little table and a
+ * potted plant next to the ladder.
+ */
+function furnish(half: number, f: number, dx: number, k: number): HouseBlock | null {
+  // Along the wall, at eye level: a two-pane window, a painting, a window...
+  if (k === 2 || k === 3) {
+    const n = dx + half - 3
+    if (n >= 0 && dx <= half - 2) {
+      if (n % 8 <= 1) return 'back_window'
+      if (n % 8 === 4) return 'painting'
+    }
+  }
+  if (f === 0) {
+    if (k !== 1) return null
+    if (dx === -1) return 'table'
+    if (dx === -2 || dx === 0) return 'chair'
+    if (half >= 5 && dx === -half + 2) return 'flowerpot'
+    return null
+  }
+  if (dx >= half - 2 && k <= 2) return 'bookshelf'
+  if (k !== 1) return null
+  if (dx === 0) return 'chair'
+  if (dx === 1) return 'table'
+  if (dx === -half + 2) return 'flowerpot'
+  return null
 }
 
 /** A random spot to hang out in: some floor, away from the ladder. */

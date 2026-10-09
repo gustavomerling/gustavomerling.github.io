@@ -14,7 +14,7 @@ interface PlaybackControlsProps {
 /** Play/pause, single step, speed and clear. */
 export function PlaybackControls({ paused, onTogglePause, onStep, speed, onSpeed, onClear }: PlaybackControlsProps) {
   return (
-    <div className="control-row">
+    <div className="control-group">
       <Button
         variant={paused ? 'primary' : 'ghost'}
         size="sm"
@@ -26,7 +26,6 @@ export function PlaybackControls({ paused, onTogglePause, onStep, speed, onSpeed
       <Button variant="ghost" size="sm" icon={Gauge} aria-label="Simulation speed" onClick={() => onSpeed((speed + 1) % SPEEDS.length)}>
         {SPEEDS[speed]}×
       </Button>
-      <span className="control-row__spacer" />
       <Button variant="ghost" size="sm" icon={Trash} aria-label="Clear everything" onClick={onClear} />
     </div>
   )
@@ -42,7 +41,7 @@ interface BrushControlsProps {
 /** Brush size and the eraser tool. */
 export function BrushControls({ brush, onBrush, erasing, onEraser }: BrushControlsProps) {
   return (
-    <div className="control-row">
+    <div className="control-group">
       <div className="control-group" title="Brush size ([ and ])">
         <Button variant="ghost" size="sm" icon={Minus} aria-label="Smaller brush" disabled={brush === 0} onClick={() => onBrush(brush - 1)} />
         <span className="control-value">
@@ -57,18 +56,16 @@ export function BrushControls({ brush, onBrush, erasing, onEraser }: BrushContro
           onClick={() => onBrush(brush + 1)}
         />
       </div>
-      <span className="control-row__spacer" />
       <Button
         variant="ghost"
         size="sm"
         icon={Eraser}
         className={erasing ? 'btn--active' : ''}
         aria-pressed={erasing}
-        title="Remove anything. Right-click also erases. (E)"
+        aria-label="Eraser"
+        title="Eraser: remove anything. Right-click also erases. (E)"
         onClick={onEraser}
-      >
-        Eraser
-      </Button>
+      />
     </div>
   )
 }

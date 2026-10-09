@@ -105,13 +105,13 @@ export const zombieHead: ElementDefinition = {
   },
 }
 
-function underSky(body: Body): boolean {
+export function underSky(body: Body): boolean {
   for (let y = body.y - 3; y >= 0; y--) if (!SKY.has(body.get(body.x, y))) return false
   return true
 }
 
 /** Goes up in flames in the sunlight. */
-function burn(body: Body) {
+export function burn(body: Body) {
   const { x, y } = body
   body.vanish()
   for (let k = 0; k < 3; k++) if (body.get(x, y - k) === 'air') body.set(x, y - k, 'fire')
@@ -125,7 +125,7 @@ function fallen(body: Body) {
 }
 
 /** Shamble towards the nearest human and hit it; otherwise wander. */
-function hunt(body: Body) {
+export function hunt(body: Body) {
   const { mind } = body
   const prey = findNearest(body, SIGHT, (x, y) => body.get(x, y) === 'human')
   if (!prey) {
