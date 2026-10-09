@@ -248,6 +248,14 @@ noite; o céu muda (estrelas, lua, crepúsculo) e o fogo ilumina os arredores. D
   Também é o fallback se WebGL2 não existir ou o shader falhar.
 - Cores por célula (`cellColors.ts`): paleta por elemento × shade × umidade (`color.wet`) + brasa
   acima de 350 °C.
+- **Horizonte** (`renderer/horizon.ts`, espelhado no shader em `horizon()`): no lugar do céu só em
+  degradê, três camadas de paisagem atrás do mundo — montanhas azuladas e enevoadas com **neve nos
+  picos**, morros verde-acinzentados e colinas verdes com uma franja de **árvores** na crista (linhas
+  de cume de value noise ao longo do mundo). Cada camada é misturada com a cor do próprio céu pela
+  distância (mais névoa ao fundo), então pega a luz da hora: dourada no entardecer, azul-escura à
+  noite, cinza na chuva; sol e lua se põem **atrás** das montanhas. Só aparece onde o céu aparece
+  (em cavernas e galerias o fundo continua escuro). Modo pixel: as cristas são calculadas uma vez
+  por coluna.
 - **Luz e sombra** (`renderer/lighting.ts`, Settings → Light & shadow, ligado por padrão): um mapa
   de luz por célula, recalculado a cada 3 frames na CPU (~1–2 ms por frame). **Luz do céu** desce
   **em leque a partir do sol** (ou da lua): reta logo abaixo dele e mais inclinada quanto mais
