@@ -19,7 +19,66 @@ export function createChain(ctx: BaseAudioContext): AudioNode {
   reverb.connect(wet);
   wet.connect(comp);
   comp.connect(ctx.destination);
+  dryOf.set(input, comp);
   return input;
+}
+
+/** The chain's way around the reverb, for sounds that must stay dry. */
+const dryOf = new WeakMap<AudioNode, AudioNode>();
+const noiseOf = new WeakMap<BaseAudioContext, AudioBuffer>();
+
+function noise(ctx: BaseAudioContext) {
+  let buf = noiseOf.get(ctx);
+  if (!buf) {
+    buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.06), ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    const rng = mulberry32(7);
+    for (let i = 0; i < d.length; i++) d[i] = rng() * 2 - 1;
+    noiseOf.set(ctx, buf);
+  }
+  return buf;
+}
+
+/**
+ * Dry "tock" of two marbles knocking: a short filtered noise snap plus a quick falling ping, no reverb.
+ * Harder knocks are louder and brighter.
+ */
+function playClick(ctx: BaseAudioContext, dest: AudioNode, hit: NoteHit, when: number) {
+  const out = dryOf.get(dest) ?? dest;
+  const v = Math.max(0, Math.min(1, hit.vel));
+  // A small, deterministic variation so a flurry of knocks doesn't sound like one sample repeated.
+  const vary = 0.92 + 0.16 * (Math.sin(hit.t * 12_345.678) * 0.5 + 0.5);
+  const peak = (0.04 + 0.26 * Math.pow(v, 1.3));
+
+  const snap = ctx.createBufferSource();
+  snap.buffer = noise(ctx);
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = (1700 + 2600 * v) * vary;
+  bp.Q.value = 1.4;
+  const snapEnv = ctx.createGain();
+  snapEnv.gain.setValueAtTime(0, when);
+  snapEnv.gain.linearRampToValueAtTime(peak, when + 0.001);
+  snapEnv.gain.exponentialRampToValueAtTime(0.0005, when + 0.03 + 0.02 * v);
+  snap.connect(bp);
+  bp.connect(snapEnv);
+  snapEnv.connect(out);
+  snap.start(when);
+  snap.stop(when + 0.06);
+
+  const ping = ctx.createOscillator();
+  ping.type = 'triangle';
+  const f = (900 + 500 * v) * vary;
+  ping.frequency.setValueAtTime(f, when);
+  ping.frequency.exponentialRampToValueAtTime(f * 0.6, when + 0.03);
+  const pingEnv = ctx.createGain();
+  pingEnv.gain.setValueAtTime(0, when);
+  pingEnv.gain.linearRampToValueAtTime(peak * 0.6, when + 0.001);
+  pingEnv.gain.exponentialRampToValueAtTime(0.0005, when + 0.045);
+  ping.connect(pingEnv);
+  pingEnv.connect(out);
+  ping.start(when);
+  ping.stop(when + 0.06);
 }
 
 function impulse(ctx: BaseAudioContext, seconds: number) {
@@ -34,6 +93,7 @@ function impulse(ctx: BaseAudioContext, seconds: number) {
 }
 
 export function playHit(ctx: BaseAudioContext, dest: AudioNode, hit: NoteHit, when: number) {
+  if (hit.click) return playClick(ctx, dest, hit, when);
   for (const midi of hit.midis) {
     const freq = 440 * Math.pow(2, (midi - 69) / 12);
     const bass = midi < 52;

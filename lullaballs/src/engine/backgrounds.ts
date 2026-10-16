@@ -8,8 +8,6 @@ export interface Background {
   tags: string[];
   /** Light skies need darker, more saturated lines to keep contrast. */
   light?: boolean;
-  /** Not offered in the editor nor in random picks (used by special pages). */
-  hidden?: boolean;
   draw(ctx: Ctx2D, t: number): void;
 }
 
@@ -433,62 +431,48 @@ const christmas: Background = {
   },
 };
 
-// Hidden: "Eras" sky for the Taylor Swift gift page — midnight to lover pink, sparkles, hearts and butterflies.
-const erasSparkles = makeStars(130, 90, H);
-const hearts = (() => {
-  const r = mulberry32(131);
-  return Array.from({ length: 22 }, () => ({ x: r() * W, off: r() * (H + 200), speed: 30 + r() * 40, size: 10 + r() * 14, ph: r() * TAU }));
+// 9. Ball pit: a sea of glossy colored balls seen out of focus, in three depths, gently bobbing.
+const PIT_COLORS = ['255,92,110', '255,206,64', '64,160,255', '80,205,140', '255,150,60', '170,120,255', '255,120,200'];
+const pitBalls = (() => {
+  const r = mulberry32(99);
+  // Far layer first so near (bigger, blurrier) balls are drawn on top.
+  return [
+    { count: 46, rMin: 45, rMax: 75, blur: 0.35, alpha: 0.75 },
+    { count: 26, rMin: 95, rMax: 140, blur: 0.55, alpha: 0.7 },
+    { count: 12, rMin: 170, rMax: 260, blur: 0.85, alpha: 0.55 },
+  ].flatMap((layer, depth) => Array.from({ length: layer.count }, () => ({
+    x: r() * W, y: r() * H, r: layer.rMin + r() * (layer.rMax - layer.rMin),
+    blur: layer.blur, alpha: layer.alpha, color: PIT_COLORS[Math.floor(r() * PIT_COLORS.length)],
+    bob: 6 + depth * 6 + r() * 6, f: 0.35 + r() * 0.4, ph: r() * TAU, drift: (depth + 1) * (r() < 0.5 ? -3 : 3),
+  })));
 })();
-const butterflies = (() => {
-  const r = mulberry32(132);
-  return Array.from({ length: 6 }, () => ({ x: r() * W, y: 300 + r() * (H - 600), ph: r() * TAU, sp: 0.15 + r() * 0.2 }));
-})();
-function heart(ctx: Ctx2D, x: number, y: number, s: number) {
-  ctx.beginPath();
-  ctx.moveTo(x, y + s * 0.35);
-  ctx.bezierCurveTo(x - s, y - s * 0.4, x - s * 0.45, y - s, x, y - s * 0.45);
-  ctx.bezierCurveTo(x + s * 0.45, y - s, x + s, y - s * 0.4, x, y + s * 0.35);
-  ctx.fill();
-}
-const eras: Background = {
-  id: 'eras',
-  name: 'Eras',
-  tags: ['#erastour'],
-  hidden: true,
+const ballpit: Background = {
+  id: 'ballpit',
+  name: 'Piscina de bolinhas',
+  tags: ['#ballpit', '#colorful'],
+  light: true,
   draw(ctx, t) {
-    vertical(ctx, ['#140b2e', '#2a1652', '#552a74', '#a04f86']);
-    for (const s of erasSparkles) {
-      const a = 0.3 + 0.6 * Math.max(0, Math.sin(t * 1.6 + s.ph));
-      const r = s.s * 2.2;
-      ctx.fillStyle = `rgba(255,240,250,${a})`;
+    vertical(ctx, ['#ffe1ec', '#fff0d9', '#dff1ff', '#e8defc']);
+    for (const b of pitBalls) {
+      const x = wrapX(b.x + b.drift * t, b.r), y = b.y + Math.sin(t * b.f + b.ph) * b.bob;
+      // Out of focus: a solid core fading over a rim as wide as the blur, plus a soft highlight.
+      const g = ctx.createRadialGradient(x - b.r * 0.3, y - b.r * 0.3, 0, x, y, b.r);
+      g.addColorStop(0, `rgba(255,255,255,${b.alpha * 0.55})`);
+      g.addColorStop(0.3, `rgba(${b.color},${b.alpha})`);
+      g.addColorStop(1 - b.blur * 0.6, `rgba(${b.color},${b.alpha * 0.9})`);
+      g.addColorStop(1, `rgba(${b.color},0)`);
+      ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.moveTo(s.x, s.y - r * 2); ctx.lineTo(s.x + r * 0.4, s.y); ctx.lineTo(s.x, s.y + r * 2); ctx.lineTo(s.x - r * 0.4, s.y);
-      ctx.moveTo(s.x - r * 2, s.y); ctx.lineTo(s.x, s.y + r * 0.4); ctx.lineTo(s.x + r * 2, s.y); ctx.lineTo(s.x, s.y - r * 0.4);
+      ctx.arc(x, y, b.r, 0, TAU);
       ctx.fill();
     }
-    for (const h of hearts) {
-      const y = H + 100 - ((h.off + h.speed * t) % (H + 200));
-      ctx.fillStyle = 'rgba(255,150,200,0.35)';
-      heart(ctx, h.x + Math.sin(t * 0.7 + h.ph) * 20, y, h.size);
-    }
-    for (const b of butterflies) {
-      const x = b.x + Math.sin(t * b.sp + b.ph) * 200;
-      const y = b.y + Math.sin(t * b.sp * 1.7 + b.ph) * 120;
-      const flap = 0.3 + 0.7 * Math.abs(Math.sin(t * 6 + b.ph));
-      ctx.fillStyle = 'rgba(170,215,255,0.75)';
-      for (const side of [-1, 1]) {
-        ctx.beginPath();
-        ctx.ellipse(x + side * 12 * flap, y - 6, 14 * flap, 18, side * 0.4, 0, TAU);
-        ctx.ellipse(x + side * 9 * flap, y + 12, 9 * flap, 11, side * -0.3, 0, TAU);
-        ctx.fill();
-      }
-    }
+    // A milky wash softens it all into a dreamy backdrop.
+    ctx.fillStyle = 'rgba(255,248,252,0.28)';
+    ctx.fillRect(0, 0, W, H);
   },
 };
 
-export const BACKGROUNDS: Background[] = [dusk, aurora, ocean, cotton, galaxy, fireflyNight, sakura, christmas, eras];
-/** What the editor offers and what "Regerar" draws from. */
-export const VISIBLE_BACKGROUNDS = BACKGROUNDS.filter((b) => !b.hidden);
+export const BACKGROUNDS: Background[] = [dusk, aurora, ocean, cotton, galaxy, fireflyNight, sakura, christmas, ballpit];
 
 export function getBackground(id: string | undefined): Background {
   return BACKGROUNDS.find((b) => b.id === id) ?? BACKGROUNDS[0];

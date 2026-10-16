@@ -1,3 +1,4 @@
+import { Play, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Sequencer, type Song } from '../audio/notes';
 import { createChain, playHit } from '../audio/synth';
@@ -64,14 +65,22 @@ export function Preview({ post, song, duration }: { post: Post; song: Song | und
 
   return (
     <div className="preview">
-      <canvas ref={canvasRef} width={W} height={H} />
+      <div className="preview-frame">
+        <canvas ref={canvasRef} width={W} height={H} />
+        {!playing && (
+          <button className="play-overlay" onClick={play} disabled={!song} aria-label="Assistir">
+            <Play size={28} fill="currentColor" />
+          </button>
+        )}
+      </div>
       <div className="preview-bar">
         {playing ? (
-          <button onClick={() => stopRef.current()}>⏹ Parar</button>
+          <button className="icon" onClick={() => stopRef.current()} aria-label="Parar"><Square size={14} fill="currentColor" /></button>
         ) : (
-          <button onClick={play} disabled={!song}>▶ Assistir</button>
+          <button className="icon" onClick={play} disabled={!song} aria-label="Assistir"><Play size={14} fill="currentColor" /></button>
         )}
-        <span className="muted">{fmt(time)} / {fmt(duration)}</span>
+        <div className="scrub"><div style={{ width: `${duration ? (time / duration) * 100 : 0}%` }} /></div>
+        <span className="time">{fmt(time)} / {fmt(duration)}</span>
       </div>
     </div>
   );

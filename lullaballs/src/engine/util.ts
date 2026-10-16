@@ -84,13 +84,15 @@ export function burst(
 }
 
 /** The Lullaballs mascot: a pastel ball with a sleepy smile and blushing cheeks. */
-export function drawMascot(ctx: Ctx2D, x: number, y: number, r: number, hue: number, squash = 0) {
+export function drawMascot(
+  ctx: Ctx2D, x: number, y: number, r: number, hue: number, squash = 0, sat = 55, light = 74,
+) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(1 + squash * 0.18, 1 - squash * 0.18);
   const g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r);
-  g.addColorStop(0, `hsl(${hue}, 70%, 92%)`);
-  g.addColorStop(1, `hsl(${hue}, 55%, 74%)`);
+  g.addColorStop(0, `hsl(${hue}, ${Math.min(100, sat + 15)}%, ${Math.max(light + 18, 90)}%)`);
+  g.addColorStop(1, `hsl(${hue}, ${sat}%, ${light}%)`);
   ctx.fillStyle = g;
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, TAU);

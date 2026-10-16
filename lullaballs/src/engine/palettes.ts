@@ -6,8 +6,6 @@ export interface Palette {
   /** Hashtags added to the caption when this palette is used. */
   tags: string[];
   colors: HS[];
-  /** Not offered in the editor nor in random picks (used by special pages). */
-  hidden?: boolean;
 }
 
 export const PALETTES: Palette[] = [
@@ -60,31 +58,12 @@ export const PALETTES: Palette[] = [
     colors: [[355, 78], [140, 55], [45, 92], [0, 0], [355, 78], [140, 55], [45, 92]],
   },
   {
-    // Hidden: one color per era, for the Taylor Swift gift page.
-    id: 'eras',
-    name: 'Eras',
-    tags: [],
-    hidden: true,
-    colors: [
-      [140, 45], // Debut — green
-      [45, 90], // Fearless — gold
-      [280, 65], // Speak Now — purple
-      [355, 80], // Red
-      [200, 80], // 1989 — light blue
-      [0, 0], // Reputation — silver/black
-      [330, 85], // Lover — pink
-      [220, 15], // folklore — grey
-      [25, 55], // evermore — amber
-      [235, 60], // Midnights — navy
-      [35, 25], // The Tortured Poets Department — sepia
-      [20, 90], // The Life of a Showgirl — orange glitter
-      [300, 70], // and one more, for luck
-    ],
+    id: 'ballpit',
+    name: 'Piscina de bolinhas',
+    tags: ['#ballpit', '#colorful'],
+    colors: [[355, 88], [42, 95], [205, 88], [145, 62], [25, 95], [268, 78], [320, 85]],
   },
 ];
-
-/** What the editor offers and what "Regerar" draws from. */
-export const VISIBLE_PALETTES = PALETTES.filter((p) => !p.hidden);
 
 export function getPalette(id: string | undefined): Palette {
   return PALETTES.find((p) => p.id === id) ?? PALETTES[0];

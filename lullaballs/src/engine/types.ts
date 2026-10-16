@@ -14,10 +14,13 @@ export const MIN_DURATION = 65.5;
 /** Cut-off for simulations that never finish. */
 export const MAX_SIM = 75;
 
-export type EventKind = 'hit' | 'break' | 'finish';
+/** hit/break/finish play the song; clack is a dry percussive knock that doesn't move the melody on. */
+export type EventKind = 'hit' | 'break' | 'finish' | 'clack';
 export interface SimEvent {
   t: number;
   kind: EventKind;
+  /** Strength 0-1, for clacks. */
+  vel?: number;
 }
 
 export type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
@@ -29,6 +32,8 @@ export interface Sim {
   /** Advances one video frame (1/FPS) and returns the events that happened in it. */
   step(): SimEvent[];
   draw(ctx: Ctx2D, overlay: string): void;
+  /** Extra condition for a seed to be picked, checked after the run (e.g. when the winner of a race arrives). */
+  accept?(): boolean;
 }
 
 export interface ParamSpec {

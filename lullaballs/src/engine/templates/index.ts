@@ -1,15 +1,17 @@
 import type { Template } from '../types';
 import { breakoutRing } from './breakoutRing';
-import { christmasTree } from './christmasTree';
+import { brickBreaker } from './brickBreaker';
 import { escapeRings } from './escapeRings';
 import { growingBall } from './growingBall';
+import { marbleRace } from './marbleRace';
 import { mazeDescent } from './mazeDescent';
+import { meetingBalls } from './meetingBalls';
 import { multiplyBalls } from './multiplyBalls';
 import { nestedPolygons } from './nestedPolygons';
 import { paintRing } from './paintRing';
 
 export const TEMPLATES: Template[] = [
-  escapeRings, growingBall, multiplyBalls, breakoutRing, paintRing, nestedPolygons, mazeDescent, christmasTree,
+  escapeRings, growingBall, multiplyBalls, breakoutRing, paintRing, nestedPolygons, mazeDescent, meetingBalls, marbleRace, brickBreaker,
 ];
 
 export function getTemplate(id: string): Template {

@@ -1,6 +1,6 @@
 import type { Song } from './audio/notes';
-import { VISIBLE_BACKGROUNDS, getBackground } from './engine/backgrounds';
-import { VISIBLE_PALETTES, getPalette } from './engine/palettes';
+import { BACKGROUNDS, getBackground } from './engine/backgrounds';
+import { PALETTES, getPalette } from './engine/palettes';
 import { findSeed } from './engine/run';
 import { TEMPLATES, getTemplate } from './engine/templates';
 import type { Look } from './engine/types';
@@ -52,7 +52,7 @@ export function randomize(post: Post, songs: Song[]): Post | null {
   if (seed === null) return null;
   const changedContent = template.id !== post.template || song.id !== post.song;
   const overlay = template.id !== post.template ? template.defaultOverlay : post.overlay;
-  const look = { background: pick(VISIBLE_BACKGROUNDS).id, palette: pick(VISIBLE_PALETTES).id };
+  const look = { background: pick(BACKGROUNDS).id, palette: pick(PALETTES).id };
   return {
     ...post,
     ...look,
@@ -74,7 +74,7 @@ export function newPost(date: string, songs: Song[], posts: Post[]): Post {
     posts.filter((p) => p.song === id).map((p) => p.date).sort().at(-1) ?? '';
   const song = [...songs].sort((a, b) => lastUse(a.id).localeCompare(lastUse(b.id)))[0];
   const seed = findSeed(template.id, {}, 1 + Math.floor(Math.random() * 100_000)) ?? 1;
-  const look = { background: pick(VISIBLE_BACKGROUNDS).id, palette: pick(VISIBLE_PALETTES).id };
+  const look = { background: pick(BACKGROUNDS).id, palette: pick(PALETTES).id };
   return {
     ...look,
     date,

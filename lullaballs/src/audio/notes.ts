@@ -13,6 +13,8 @@ export interface NoteHit {
   t: number;
   midis: number[];
   vel: number;
+  /** A dry percussive click instead of notes (ball-on-ball knocks). */
+  click?: boolean;
 }
 
 const SEMITONES: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
@@ -31,6 +33,7 @@ export function parseNote(n: string): number[] {
 export class Sequencer {
   private i = 0;
   private lastT = -1;
+  private lastClick = -1;
   private parsed: number[][];
 
   constructor(song: Song) {
@@ -38,6 +41,12 @@ export class Sequencer {
   }
 
   next(ev: SimEvent): NoteHit | null {
+    if (ev.kind === 'clack') {
+      // Its own lane: doesn't take a note of the song, nor delay the next one.
+      if (ev.t - this.lastClick < 0.03 || !ev.vel) return null;
+      this.lastClick = ev.t;
+      return { t: ev.t, midis: [], vel: ev.vel, click: true };
+    }
     if (ev.kind === 'finish') {
       const root = Math.min(...this.parsed[0]);
       return { t: ev.t, midis: [root - 12, root, root + 7, root + 12, root + 16], vel: 1 };
