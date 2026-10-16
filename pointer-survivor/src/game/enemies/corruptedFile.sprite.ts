@@ -1,0 +1,55 @@
+import { defineSprite } from '../sprites'
+
+/** 10x11 px, 3 frame(s). Each char is a palette key ('.' = transparent). */
+export const corruptedFileSprite = defineSprite({
+  fps: 6,
+  flip: false,
+  palette: {
+    k: '#000000',
+    w: '#ffffff',
+    g: '#9090a0',
+    M: '#ff00ff',
+    C: '#00ffff',
+  },
+  frames: [
+    [
+      'kkkkkkk...',
+      'kwwwwwkk..',
+      'kwwwwwkwk.',
+      'kwwwwwkkkk',
+      'kwgMMggwwk',
+      'kwwwwwwwwk',
+      'kkwggggCCg',
+      'kwwwwwwwwk',
+      'kwMMggwwwk',
+      'kwwwwwwwwk',
+      'kkkkkkkkkk',
+    ],
+    [
+      'kkkkkkk...',
+      'kwwwwwkk..',
+      'kwwwwwkwk.',
+      'kwwwwwkkkk',
+      'kkwgggCCww',
+      'kwwwwwwwwk',
+      'kwMMgggggk',
+      'kwwwwwwwwk',
+      'kwggggwCCk',
+      'kwwwwwwwwk',
+      'kkkkkkkkkk',
+    ],
+    [
+      'kkkkkkk...',
+      'kwwwwwkk..',
+      'kwwwwwkwk.',
+      'kwwwwwkkkk',
+      'kwgggggwwk',
+      'kwwwMMwwwk',
+      'kwggggggCC',
+      'kwwwwwwwwk',
+      'kkwgCCgwww',
+      'kwwwwwwwwk',
+      'kkkkkkkkkk',
+    ],
+  ],
+})

@@ -1,0 +1,55 @@
+import { defineSprite } from '../sprites'
+
+/** 26x16 px, 2 frame(s). Each char is a palette key ('.' = transparent). */
+export const y2kBugSprite = defineSprite({
+  fps: 3,
+  // the clock digits would read backwards if mirrored
+  flip: false,
+  pixel: 3,
+  palette: {
+    k: '#0a1408',
+    g: '#5a8a30',
+    d: '#3a5a20',
+    G: '#7aff4a',
+    K: '#0a200a',
+    r: '#ff2020',
+  },
+  frames: [
+    [
+      '..........................',
+      '.......................k.k',
+      '......kGGkkkkkkk......k.k.',
+      '....kGggggggggggkk...k.k..',
+      '...kKKKKKKKKKKKKKKk..k....',
+      '..kgKGGGKGGGKKKKKKgkkdkk..',
+      '.kggKGKGKGKGKKKKKKkdddddk.',
+      '.kggKGKGKGKGKKKKKKkdddrrk.',
+      '.kggKGKGKGKGKKKKKKdddddddk',
+      '.kggKGGGKGGGKKKKKKkddddrk.',
+      '..kgKKKKKKKKKKKKKKkdddddk.',
+      '...kggggggggggggggkkkdkk..',
+      '....kkggggggggggkk...k....',
+      '......kkkkkkkkkk..........',
+      '....k.....k.....k.........',
+      '...k.....k.....k..........',
+    ],
+    [
+      '..........................',
+      '.......................k.k',
+      '......kGGkkkkkkk......k.k.',
+      '....kGggggggggggkk...k.k..',
+      '...kKKKKKKKKKKKKKKk..k....',
+      '..kgKGGGKGGGKKKKKKgkkdkk..',
+      '.kggKGKGKGKGKKKKKKkdddddk.',
+      '.kggKGGGKGGGKKKKKKkdddrrk.',
+      '.kggKKKGKKKGKKKKKKdddddddk',
+      '.kggKGGGKGGGKKKKKKkddddrk.',
+      '..kgKKKKKKKKKKKKKKkdddddk.',
+      '...kggggggggggggggkkkdkk..',
+      '....kkggggggggggkk...k....',
+      '......kkkkkkkkkk..........',
+      '....k.....k.....k.........',
+      '.....k.....k.....k........',
+    ],
+  ],
+})

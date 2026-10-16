@@ -1,0 +1,52 @@
+import { defineSprite } from '../sprites'
+
+/** 16x14 px, 2 frame(s). Each char is a palette key ('.' = transparent). */
+export const popupSprite = defineSprite({
+  fps: 3,
+  flip: false,
+  palette: {
+    w: '#ffffff',
+    f: '#d4d0c8',
+    s: '#808080',
+    k: '#000000',
+    t: '#0a246a',
+    T: '#a6caf0',
+    x: '#c00000',
+    R: '#ff0000',
+    y: '#ffe000',
+  },
+  frames: [
+    [
+      'wwwwwwwwwwwwwwwk',
+      'wfffffffffffffsk',
+      'wftttttTTTTxxfsk',
+      'wftttttTTTTxxfsk',
+      'wfffffffffffffsk',
+      'wfRRRRRRRRRRRfsk',
+      'wfRyRRRyRRRyRfsk',
+      'wfRyRRRyRRRyRfsk',
+      'wfRyRRRyRRRyRfsk',
+      'wfRRRRRRRRRRRfsk',
+      'wfRyRRRyRRRyRfsk',
+      'wfRRRRRRRRRRRfsk',
+      'wssssssssssssssk',
+      'kkkkkkkkkkkkkkkk',
+    ],
+    [
+      'wwwwwwwwwwwwwwwk',
+      'wfffffffffffffsk',
+      'wftttttTTTTxxfsk',
+      'wftttttTTTTxxfsk',
+      'wfffffffffffffsk',
+      'wfyyyyyyyyyyyfsk',
+      'wfyRyyyRyyyRyfsk',
+      'wfyRyyyRyyyRyfsk',
+      'wfyRyyyRyyyRyfsk',
+      'wfyyyyyyyyyyyfsk',
+      'wfyRyyyRyyyRyfsk',
+      'wfyyyyyyyyyyyfsk',
+      'wssssssssssssssk',
+      'kkkkkkkkkkkkkkkk',
+    ],
+  ],
+})
