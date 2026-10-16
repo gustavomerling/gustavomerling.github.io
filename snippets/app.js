@@ -12,16 +12,28 @@
     { id: '1.85:1', label: '1.85:1', value: 1.85 },
     { id: '4:3', label: '4:3', value: 4 / 3 },
     { id: '1:1', label: '1:1', value: 1 },
+    { id: '4:5', label: '4:5', value: 4 / 5 },
+    { id: '9:16', label: '9:16', value: 9 / 16 },
+  ];
+  // Fixed output formats; the rows are stretched to fill the canvas.
+  const FORMATS = [
+    { id: 'free', label: 'Livre', value: 0 },
+    { id: '1:1', label: '1:1', value: 1 },
+    { id: '4:5', label: '4:5', value: 4 / 5 },
+    { id: '9:16', label: '9:16', value: 9 / 16 },
+    { id: '16:9', label: '16:9', value: 16 / 9 },
   ];
   const BGS = ['#000000', '#ffffff'];
-  const COLORS = ['#ffffff', '#ffe14d'];
+  const COLORS = ['#ffffff', '#ffe14d', '#ff7eb6', '#4fb3ff'];
   const MAX = 4;
   const STORE = 'snippets:settings';
+  const PRESET_STORE = 'snippets:presets';
   const KEY_STORE = 'snippets:tmdb';
 
   const defaults = {
-    rows: [1, 1], ratio: '16:9', gap: 8, bg: '#000000',
-    font: 'Source Sans 3', weight: '500', size: 4.5, italic: false, color: '#ffffff', width: '1600',
+    rows: [1, 1], ratio: '16:9', format: 'free', gap: 8, bg: '#000000',
+    font: 'Source Sans 3', weight: '500', size: 4.5, italic: false, color: '#ffffff',
+    stroke: false, shadow: true, width: '1600',
   };
 
   const store = {
@@ -30,21 +42,28 @@
     del(k) { try { localStorage.removeItem(k); } catch { /* ignore */ } },
   };
 
-  const S = { ...defaults };
+  const fresh = () => JSON.parse(JSON.stringify(defaults));
+  const S = fresh();
   try { Object.assign(S, JSON.parse(store.get(STORE) || '{}')); } catch { /* ignore */ }
-  // `rows` holds the column count of each row; older saves stored a uniform cols × rows.
-  if (!Array.isArray(S.rows)) S.rows = Array(clamp(Number(S.rows) || 2, 1, MAX)).fill(clamp(Number(S.cols) || 1, 1, MAX));
-  S.rows = S.rows.slice(0, MAX).map((n) => clamp(Number(n) || 1, 1, MAX));
-  if (!S.rows.length) S.rows = [1];
-  delete S.cols;
-  // Per-row column width weights and height multipliers, set by dragging the gutters.
-  if (!Array.isArray(S.colW)) S.colW = [];
-  if (!Array.isArray(S.rowS)) S.rowS = [];
-  S.rows.forEach((n, r) => {
-    const w = S.colW[r];
-    if (!Array.isArray(w) || w.length !== n || w.some((v) => !(v > 0))) S.colW[r] = null;
-    if (!(S.rowS[r] > 0)) S.rowS[r] = 1;
-  });
+
+  function normalize() {
+    // `rows` holds the column count of each row; older saves stored a uniform cols × rows.
+    if (!Array.isArray(S.rows)) S.rows = Array(clamp(Number(S.rows) || 2, 1, MAX)).fill(clamp(Number(S.cols) || 1, 1, MAX));
+    S.rows = S.rows.slice(0, MAX).map((n) => clamp(Number(n) || 1, 1, MAX));
+    if (!S.rows.length) S.rows = [1];
+    delete S.cols;
+    // Per-row column width weights and height multipliers, set by dragging the gutters.
+    if (!Array.isArray(S.colW)) S.colW = [];
+    if (!Array.isArray(S.rowS)) S.rowS = [];
+    S.rows.forEach((n, r) => {
+      const w = S.colW[r];
+      if (!Array.isArray(w) || w.length !== n || w.some((v) => !(v > 0))) S.colW[r] = null;
+      if (!(S.rowS[r] > 0)) S.rowS[r] = 1;
+    });
+    S.colW.length = S.rowS.length = S.rows.length;
+    if (!FORMATS.some((f) => f.id === S.format)) S.format = 'free';
+  }
+  normalize();
   const save = () => store.set(STORE, JSON.stringify(S));
 
   const newCell = () => ({ img: null, ox: 0.5, oy: 0.5, zoom: 1, caption: '' });
@@ -55,22 +74,36 @@
   const visible = () => S.rows.flatMap((n, r) => Array.from({ length: n }, (_, c) => r * MAX + c));
   const ratio = () => (RATIOS.find((r) => r.id === S.ratio) || RATIOS[0]).value;
 
+  const format = () => (FORMATS.find((f) => f.id === S.format) || FORMATS[0]).value;
+
   // All geometry is in output pixels; the preview multiplies by `k`.
   // By default every cell keeps the frame ratio, so rows with fewer columns are taller;
   // the gutters then reweight the columns and scale each row's height.
+  // There is no outer border: the gap only separates the cells.
+  // With a fixed format the row heights are scaled to fill the canvas height.
   function dims() {
     const W = Number(S.width);
     const g = Math.round((S.gap * W) / 1600);
+    const fixed = format();
+    const rows = S.rows.map((n, r) => {
+      const inner = W - g * (n - 1);
+      const baseH = inner / n / ratio();
+      return { n, inner, baseH, h: baseH * (S.rowS[r] || 1) };
+    });
+    let H = 0;
+    if (fixed) {
+      H = Math.round(W / fixed);
+      const avail = Math.max(1, H - g * (rows.length - 1));
+      const total = rows.reduce((a, o) => a + o.h, 0);
+      rows.forEach((o) => { o.h = (o.h * avail) / total; });
+    }
     const rects = {};
     const rowsInfo = [];
-    let y = g;
-    S.rows.forEach((n, r) => {
-      const inner = W - g * (n + 1);
+    let y = 0;
+    rows.forEach(({ n, inner, baseH, h }, r) => {
       const weights = S.colW[r] || Array(n).fill(1);
       const sum = weights.reduce((a, b) => a + b, 0);
-      const baseH = inner / n / ratio();
-      const h = baseH * (S.rowS[r] || 1);
-      let x = g;
+      let x = 0;
       for (let c = 0; c < n; c++) {
         const w = (inner * weights[c]) / sum;
         rects[r * MAX + c] = { x, y, w, h };
@@ -79,7 +112,7 @@
       rowsInfo.push({ y, h, baseH, inner });
       y += h + g;
     });
-    return { W, H: y, g, rects, rowsInfo };
+    return { W, H: fixed ? H : y - g, g, rects, rowsInfo, fixed: !!fixed };
   }
 
   // Caption size follows the cell's area, so it matches the plain width when the frame is untouched.
@@ -93,6 +126,8 @@
   }
 
   const fontCss = (px) => `${S.italic ? 'italic ' : ''}${S.weight} ${px}px "${S.font}", sans-serif`;
+  const STROKE = 0.07; // outline width, of font size
+  const STROKE_COLOR = '#000000';
   const CAP_BOTTOM = 0.055; // of cell height
   const CAP_WIDTH = 0.9; // of cell width
   const LINE = 1.18;
@@ -141,9 +176,11 @@
 
   function buildGutters() {
     gutters = [];
+    const fixed = !!format();
     S.rows.forEach((n, r) => {
       for (let c = 0; c < n - 1; c++) gutters.push(makeGutter('v', r, c));
-      gutters.push(makeGutter('h', r));
+      // A fixed canvas has no free bottom edge, so only the gutters between rows resize.
+      if (!fixed || r < S.rows.length - 1) gutters.push(makeGutter('h', r));
     });
   }
 
@@ -164,7 +201,7 @@
       start = {
         x: e.clientX, y: e.clientY, d,
         weights: (S.colW[r] || Array(n).fill(1)).slice(),
-        scale: S.rowS[r] || 1,
+        rowS: S.rowS.slice(),
       };
       resizing = true;
       el.setPointerCapture(e.pointerId);
@@ -183,6 +220,14 @@
         w[c] = wa * unit;
         w[c + 1] = (pair - wa) * unit;
         S.colW[r] = w;
+      } else if (d.fixed) {
+        // Trade height between this row and the next, keeping the canvas height.
+        const a = d.rowsInfo[r], b = d.rowsInfo[r + 1];
+        const pair = a.h + b.h, min = pair * 0.12;
+        const ha = clamp(a.h + (e.clientY - start.y) / k, min, pair - min);
+        const f = a.h / (start.rowS[r] * a.baseH);
+        S.rowS[r] = ha / (f * a.baseH);
+        S.rowS[r + 1] = (pair - ha) / (f * b.baseH);
       } else {
         const info = d.rowsInfo[r];
         const h = clamp(info.h + (e.clientY - start.y) / k, info.baseH * 0.25, info.baseH * 3);
@@ -202,6 +247,7 @@
     el.addEventListener('pointercancel', end);
     el.addEventListener('dblclick', () => {
       if (dir === 'v') S.colW[r] = null;
+      else if (format()) S.rowS[r] = S.rowS[r + 1] = 1;
       else S.rowS[r] = 1;
       save();
       layout();
@@ -221,7 +267,8 @@
           left: `${cx - hit / 2}px`, top: `${info.y * k}px`, width: `${hit}px`, height: `${info.h * k}px`,
         });
       } else {
-        const cy = (info.y + info.h + d.g / 2) * k;
+        const last = gt.r === d.rowsInfo.length - 1;
+        const cy = (info.y + info.h + (last ? 0 : d.g / 2)) * k;
         Object.assign(gt.el.style, {
           left: '0px', top: `${cy - hit / 2}px`, width: `${d.W * k}px`, height: `${hit}px`,
         });
@@ -254,8 +301,11 @@
         left: `${o.x * k}px`, top: `${o.y * k}px`, width: `${o.w * k}px`, height: `${o.h * k}px`,
       });
       const cap = el.querySelector('.cap');
+      const fs = (S.size / 100) * capBase(o) * k;
       Object.assign(cap.style, {
-        font: fontCss((S.size / 100) * capBase(o) * k),
+        font: fontCss(fs),
+        textShadow: S.shadow ? '' : 'none',
+        webkitTextStroke: S.stroke ? `${2 * STROKE * fs}px ${STROKE_COLOR}` : '',
         lineHeight: String(LINE),
         color: S.color,
         bottom: `${CAP_BOTTOM * o.h * k}px`,
@@ -554,53 +604,78 @@
     });
   }
 
+  // Each control registers how to repaint itself from `S`, so a preset can refresh them all.
+  const refreshers = [];
+  const paintControls = () => refreshers.forEach((f) => f());
+
   function chips(container, items, key, onPick) {
     container.textContent = '';
     for (const it of items) {
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = it.label;
-      b.setAttribute('aria-pressed', String(S[key] === it.id));
+      b.dataset.id = it.id;
       b.addEventListener('click', () => {
         S[key] = it.id;
         save();
-        for (const x of container.children) x.setAttribute('aria-pressed', String(x === b));
+        paintControls();
         onPick();
       });
       container.appendChild(b);
     }
+    refreshers.push(() => {
+      for (const x of container.children) x.setAttribute('aria-pressed', String(S[key] === x.dataset.id));
+    });
   }
 
-  function swatches(container, colors, key, names) {
+  function swatches(container, colors, key, names, customName) {
+    const pick = (col) => {
+      S[key] = col;
+      save();
+      paintControls();
+      layout();
+    };
     colors.forEach((col, n) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.style.background = col;
       b.title = names[n];
       b.setAttribute('aria-label', names[n]);
-      b.setAttribute('aria-pressed', String(S[key] === col));
-      b.addEventListener('click', () => {
-        S[key] = col;
-        save();
-        for (const x of container.children) x.setAttribute('aria-pressed', String(x === b));
-        layout();
-      });
+      b.addEventListener('click', () => pick(col));
       container.appendChild(b);
+    });
+    const custom = document.createElement('input');
+    custom.type = 'color';
+    custom.title = customName;
+    custom.setAttribute('aria-label', customName);
+    custom.addEventListener('input', () => pick(custom.value));
+    container.appendChild(custom);
+    refreshers.push(() => {
+      const val = String(S[key]).toLowerCase();
+      [...container.querySelectorAll('button')].forEach((b, n) => b.setAttribute('aria-pressed', String(colors[n] === val)));
+      custom.classList.toggle('on', !colors.includes(val));
+      if (/^#[0-9a-f]{6}$/.test(val)) custom.value = val;
     });
   }
 
+  function onFormat() {
+    $('#ratio-section').classList.toggle('dim', !!format());
+    buildStage();
+  }
+
+  chips($('#format'), FORMATS, 'format', onFormat);
   chips($('#ratio'), RATIOS, 'ratio', layout);
-  swatches($('#bg'), BGS, 'bg', ['Fundo preto', 'Fundo branco']);
-  swatches($('#color'), COLORS, 'color', ['Legenda branca', 'Legenda amarela']);
+  swatches($('#bg'), BGS, 'bg', ['Fundo preto', 'Fundo branco'], 'Outra cor de fundo');
+  swatches($('#color'), COLORS, 'color', ['Legenda branca', 'Legenda amarela', 'Legenda rosa', 'Legenda azul'], 'Outra cor de legenda');
 
   function bindInput(id, key, num = false) {
     const input = $(id);
-    input.value = S[key];
     input.addEventListener('input', () => {
       S[key] = num ? Number(input.value) : input.value;
       save();
       layout();
     });
+    refreshers.push(() => { input.value = S[key]; });
   }
   bindInput('#gap', 'gap', true);
   bindInput('#size', 'size', true);
@@ -608,13 +683,94 @@
   bindInput('#weight', 'weight');
   bindInput('#width', 'width');
 
-  const italic = $('#italic');
-  italic.setAttribute('aria-pressed', String(S.italic));
-  italic.addEventListener('click', () => {
-    S.italic = !S.italic;
-    italic.setAttribute('aria-pressed', String(S.italic));
+  function bindToggle(id, key) {
+    const b = $(id);
+    b.addEventListener('click', () => {
+      S[key] = !S[key];
+      save();
+      paintControls();
+      layout();
+    });
+    refreshers.push(() => b.setAttribute('aria-pressed', String(!!S[key])));
+  }
+  bindToggle('#italic', 'italic');
+  bindToggle('#stroke', 'stroke');
+  bindToggle('#shadow', 'shadow');
+
+  // ---------- Presets ----------
+
+  const presetList = $('#presets');
+  const loadPresets = () => {
+    try {
+      const list = JSON.parse(store.get(PRESET_STORE) || '[]');
+      return Array.isArray(list) ? list.filter((p) => p && p.name && p.s) : [];
+    } catch { return []; }
+  };
+  const savePresets = (list) => store.set(PRESET_STORE, JSON.stringify(list));
+
+  function paintPresets() {
+    presetList.textContent = '';
+    const list = loadPresets();
+    if (!list.length) {
+      const p = document.createElement('p');
+      p.className = 'presets-empty';
+      p.textContent = 'Nenhum preset salvo ainda.';
+      presetList.appendChild(p);
+      return;
+    }
+    for (const p of list) {
+      const item = document.createElement('div');
+      item.className = 'preset';
+      const apply = document.createElement('button');
+      apply.type = 'button';
+      apply.className = 'preset-apply';
+      apply.textContent = p.name;
+      apply.title = 'Aplicar preset';
+      apply.addEventListener('click', () => applyPreset(p));
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'preset-del';
+      del.textContent = '×';
+      del.title = 'Excluir preset';
+      del.setAttribute('aria-label', `Excluir preset ${p.name}`);
+      del.addEventListener('click', () => {
+        if (!confirm(`Excluir o preset "${p.name}"?`)) return;
+        savePresets(loadPresets().filter((x) => x.name !== p.name));
+        paintPresets();
+      });
+      item.append(apply, del);
+      presetList.appendChild(item);
+    }
+  }
+
+  // A preset holds every setting; keys it lacks (from older versions) fall back to the defaults.
+  function applyPreset(p) {
+    for (const key of Object.keys(S)) delete S[key];
+    Object.assign(S, fresh(), JSON.parse(JSON.stringify(p.s)));
+    normalize();
     save();
-    layout();
+    paintControls();
+    paintPicker();
+    paintRowEditor();
+    onFormat();
+    toast(`Preset "${p.name}" aplicado.`);
+  }
+
+  $('#preset-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = $('#preset-name');
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    const list = loadPresets();
+    const at = list.findIndex((p) => p.name === name);
+    if (at >= 0 && !confirm(`Já existe um preset "${name}". Substituir?`)) return;
+    const entry = { name, s: JSON.parse(JSON.stringify(S)) };
+    if (at >= 0) list[at] = entry;
+    else list.push(entry);
+    savePresets(list);
+    input.value = '';
+    paintPresets();
+    toast(`Preset "${name}" salvo.`);
   });
 
   $('#reset').addEventListener('click', () => {
@@ -684,19 +840,27 @@
         const lines = wrapLines(ctx, text, cw * CAP_WIDTH);
         const lh = fs * LINE;
         const bottom = ch - CAP_BOTTOM * ch;
-        const shadows = [
+        const shadows = S.shadow ? [
           { blur: fs * 0.35, dy: 0, color: 'rgba(0,0,0,0.6)' },
           { blur: fs * 0.12, dy: fs * 0.04, color: 'rgba(0,0,0,0.95)' },
-        ];
+        ] : [];
+        ctx.fillStyle = S.color;
+        ctx.strokeStyle = STROKE_COLOR;
+        ctx.lineWidth = 2 * STROKE * fs;
+        ctx.lineJoin = 'round';
         lines.forEach((line, n) => {
           const ly = bottom - (lines.length - n - 0.5) * lh;
+          // With an outline the shadow is cast by it, as in the CSS preview.
           for (const s of shadows) {
             ctx.shadowColor = s.color;
             ctx.shadowBlur = s.blur;
             ctx.shadowOffsetY = s.dy;
-            ctx.fillStyle = S.color;
-            ctx.fillText(line, cw / 2, ly);
+            if (S.stroke) ctx.strokeText(line, cw / 2, ly);
+            else ctx.fillText(line, cw / 2, ly);
           }
+          ctx.shadowColor = 'transparent';
+          if (S.stroke) ctx.strokeText(line, cw / 2, ly);
+          ctx.fillText(line, cw / 2, ly);
         });
       }
       ctx.restore();
@@ -936,8 +1100,10 @@
 
   // ---------- Boot ----------
 
+  paintControls();
+  paintPresets();
   paintPicker();
   paintRowEditor();
-  buildStage();
+  onFormat();
   refreshSource();
 })();

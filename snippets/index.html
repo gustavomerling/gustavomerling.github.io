@@ -27,14 +27,29 @@
   <main class="layout">
     <aside class="panel controls" aria-label="Configurações">
       <section>
+        <h2>Presets</h2>
+        <form class="row" id="preset-form">
+          <input id="preset-name" placeholder="Nome do preset" maxlength="40" autocomplete="off" aria-label="Nome do preset" />
+          <button class="btn" type="submit">Salvar</button>
+        </form>
+        <div class="presets" id="presets"></div>
+      </section>
+
+      <section>
         <h2>Grade <span class="hint" id="grid-label"></span></h2>
         <div class="grid-picker" id="grid-picker" role="group" aria-label="Colunas e linhas"></div>
         <div class="row-editor" id="row-editor" aria-label="Colunas por linha"></div>
       </section>
 
       <section>
+        <h2>Formato da imagem</h2>
+        <div class="chips" id="format"></div>
+      </section>
+
+      <section id="ratio-section">
         <h2>Proporção do quadro</h2>
         <div class="chips" id="ratio"></div>
+        <p class="note">No formato fixo, os quadros se ajustam ao tamanho da imagem.</p>
       </section>
 
       <section>
@@ -50,10 +65,36 @@
         <label class="field">
           <span>Fonte</span>
           <select id="font">
-            <option>Source Sans 3</option>
-            <option>Inter</option>
-            <option>Figtree</option>
-            <option>Noto Sans</option>
+            <optgroup label="Web">
+              <option>Source Sans 3</option>
+              <option>Inter</option>
+              <option>Figtree</option>
+              <option>Noto Sans</option>
+            </optgroup>
+            <optgroup label="Windows">
+              <option>Arial</option>
+              <option>Arial Black</option>
+              <option>Calibri</option>
+              <option>Cambria</option>
+              <option>Candara</option>
+              <option>Comic Sans MS</option>
+              <option>Consolas</option>
+              <option>Constantia</option>
+              <option>Corbel</option>
+              <option>Courier New</option>
+              <option>Franklin Gothic Medium</option>
+              <option>Georgia</option>
+              <option>Impact</option>
+              <option>Lucida Console</option>
+              <option>Palatino Linotype</option>
+              <option>Segoe Print</option>
+              <option>Segoe Script</option>
+              <option>Segoe UI</option>
+              <option>Tahoma</option>
+              <option>Times New Roman</option>
+              <option>Trebuchet MS</option>
+              <option>Verdana</option>
+            </optgroup>
           </select>
         </label>
         <label class="field">
@@ -69,10 +110,12 @@
           <span>Tamanho</span>
           <input type="range" id="size" min="3" max="10" step="0.25" />
         </label>
-        <div class="row">
+        <div class="row toggles">
           <button class="toggle" id="italic" aria-pressed="false"><em>Itálico</em></button>
-          <div class="swatches" id="color"></div>
+          <button class="toggle" id="stroke" aria-pressed="false">Contorno</button>
+          <button class="toggle" id="shadow" aria-pressed="false">Sombra</button>
         </div>
+        <div class="swatches" id="color"></div>
       </section>
 
       <section>
