@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Snippets</title>
+  <meta name="description" content="Snippets de filmes e séries com legenda estilo cinema." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23111'/><rect x='7' y='20' width='18' height='3' rx='1.5' fill='%23f5c451'/></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400..700;1,400..700&family=Inter:ital,wght@0,400..700;1,400..700&family=Noto+Sans:ital,wght@0,400..700;1,400..700&family=Source+Sans+3:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"><i></i></span>
+      <h1>Snippets</h1>
+    </div>
+    <p class="tagline">Cenas de filme com legenda de cinema</p>
+    <div class="top-actions">
+      <button class="btn" id="copy">Copiar</button>
+      <button class="btn primary" id="download">Baixar PNG</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel controls" aria-label="Configurações">
+      <section>
+        <h2>Grade <span class="hint" id="grid-label"></span></h2>
+        <div class="grid-picker" id="grid-picker" role="group" aria-label="Colunas e linhas"></div>
+        <div class="row-editor" id="row-editor" aria-label="Colunas por linha"></div>
+      </section>
+
+      <section>
+        <h2>Proporção do quadro</h2>
+        <div class="chips" id="ratio"></div>
+      </section>
+
+      <section>
+        <h2>Espaçamento</h2>
+        <div class="row">
+          <input type="range" id="gap" min="0" max="48" step="1" />
+          <div class="swatches" id="bg"></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Legenda</h2>
+        <label class="field">
+          <span>Fonte</span>
+          <select id="font">
+            <option>Source Sans 3</option>
+            <option>Inter</option>
+            <option>Figtree</option>
+            <option>Noto Sans</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Peso</span>
+          <select id="weight">
+            <option value="400">Regular</option>
+            <option value="500">Médio</option>
+            <option value="600">Seminegrito</option>
+            <option value="700">Negrito</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Tamanho</span>
+          <input type="range" id="size" min="3" max="10" step="0.25" />
+        </label>
+        <div class="row">
+          <button class="toggle" id="italic" aria-pressed="false"><em>Itálico</em></button>
+          <div class="swatches" id="color"></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Exportar</h2>
+        <label class="field">
+          <span>Largura</span>
+          <select id="width">
+            <option value="1080">1080 px</option>
+            <option value="1600">1600 px</option>
+            <option value="2400">2400 px</option>
+          </select>
+        </label>
+        <button class="btn ghost wide" id="reset">Limpar tudo</button>
+      </section>
+    </aside>
+
+    <section class="stage-wrap" id="stage-wrap">
+      <div class="stage" id="stage"></div>
+      <p class="tips">Arraste imagens para os quadros · Cole com <kbd>Ctrl</kbd>+<kbd>V</kbd> · Arraste a imagem para enquadrar e use a roda do mouse para zoom · Arraste as divisórias para ajustar os tamanhos · Clique na legenda para escrever</p>
+    </section>
+
+    <aside class="panel search" aria-label="Buscar imagens">
+      <div class="tabs" role="tablist">
+        <button role="tab" data-src="tmdb" aria-selected="true">Filmes e séries</button>
+        <button role="tab" data-src="wiki" aria-selected="false">Wikimedia</button>
+      </div>
+      <form id="search-form" class="search-form">
+        <input type="search" id="q" placeholder="Ex.: Breaking Bad" autocomplete="off" />
+        <button class="btn primary" type="submit">Buscar</button>
+      </form>
+      <div id="tmdb-key" class="key-box" hidden>
+        <p>A busca de filmes usa o <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">TMDB</a>. Crie uma conta grátis e cole aqui a sua chave da API (ou o token de leitura). Ela fica salva só neste navegador.</p>
+        <div class="row">
+          <input type="password" id="key-input" placeholder="Chave da API do TMDB" autocomplete="off" />
+          <button class="btn" id="key-save">Salvar</button>
+        </div>
+      </div>
+      <div class="results" id="results"></div>
+      <button class="link" id="key-change" hidden>Trocar chave do TMDB</button>
+    </aside>
+  </main>
+
+  <input type="file" id="file" accept="image/*" multiple hidden />
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
