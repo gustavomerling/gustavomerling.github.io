@@ -102,7 +102,7 @@ const OBSTACLES: Obstacle[] = [
   'pegs', 'spinners', 'bumpers', 'windmills', 'pendulums', 'shuttles', 'stairs', 'wheels', 'oval', 'glass',
 ];
 
-/** The winner should arrive around here; the last one inside the usual finish window. */
+/** Seconds after the start gate drops when the winner should arrive; the last one inside the usual finish window. */
 const WINNER_MIN = 46;
 const WINNER_MAX = 54;
 /** Seconds the camera stays on a ball that just arrived before going back for the next one. */
@@ -116,7 +116,8 @@ const easeInOut = (u: number) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u 
  * pack and a glass floor to break through), in a seed-shuffled order, plus one shortcut ramp in every race: the first ball to
  * cross its checkpoint opens a trapdoor that lets the ones behind skip two ramps.
  * Balls far behind the front ride a slipstream (less drag, a bit more pull), so the pack stays together: the winner
- * arrives around 50s and the last one by ~1:05.
+ * arrives around 50s after the start and the last one by ~1:05 of video. It opens with a countdown (`pickTime`) on the
+ * start gate, for the viewer to pick a color.
  * The music comes only from the note blocks the course is built of, and only from the ball the camera follows: every
  * fresh touch of a block (a new tile rolled onto, a bounce) plays the next note of the song. A block lights up in the color of the
  * first ball that touched it. Wall bumps stay silent; ball-on-ball knocks make a dry click scaled by how hard they hit.
@@ -126,9 +127,21 @@ const easeInOut = (u: number) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u 
 export const marbleRace: Template = {
   id: 'marble-race',
   name: 'Corrida de bolinhas',
-  defaultOverlay: 'Which color wins? 🏁',
+  hooks: [
+    { text: 'Which color wins? 🏁' },
+    { text: 'Pick a color before it starts 👇' },
+    { text: 'Comment your color BEFORE the race 🏁' },
+    { text: 'The underdog always wins… right? 👀' },
+    { text: 'Photo finish? Watch till the end 🏁' },
+  ],
+  blurbs: [
+    'Marble race with five colors on a musical track: every block they touch plays the song.',
+    'Satisfying marble run race. Pick your color and watch who wins, with relaxing piano music.',
+    'Relaxing marble race simulation with shortcuts, glass and bumpers. Which color is yours?',
+  ],
+  tags: ['#marblerace', '#marblerun'],
   defaults: {
-    sections: 7, gravity: 1500, ballRadius: 30, friction: 0.9, bounce: 0.6, slope: 11.5, catchUp: 0.3,
+    sections: 7, gravity: 1500, ballRadius: 30, friction: 0.9, bounce: 0.6, slope: 11.5, catchUp: 0.3, pickTime: 5,
   },
   specs: [
     { key: 'sections', label: 'Trechos da pista', min: 2, max: 14, step: 1 },
@@ -137,12 +150,15 @@ export const marbleRace: Template = {
     { key: 'bounce', label: 'Quique', min: 0.05, max: 0.9, step: 0.05 },
     { key: 'gravity', label: 'Gravidade', min: 600, max: 3000, step: 50 },
     { key: 'catchUp', label: 'Vácuo para quem está atrás', min: 0, max: 1, step: 0.05 },
+    { key: 'pickTime', label: 'Contagem para escolher a cor (s)', min: 0, max: 10, step: 1 },
   ],
   create(p, seed, look = {}) {
     const background = getBackground(look.background);
     const palette = getPalette(look.palette).colors;
     const rng = mulberry32(seed);
     const r = p.ballRadius;
+    /** Countdown before the start gate drops, for the viewer to pick a color. */
+    const pre = p.pickTime;
     const L = 110, R = W - 110, cx = W / 2;
     const colorOffset = Math.floor(rng() * 1000);
     let sectionIdx = 0;
@@ -444,6 +460,9 @@ export const marbleRace: Template = {
     let holdUntil: number | null = null;
     let winner: Racer | null = null;
     let winnerTime: number | null = null;
+    /** For the drama score: lead changes in the second half of the race, and when the runner-up arrived. */
+    let lateLeadChanges = 0;
+    let secondTime: number | null = null;
     const lastClack: number[] = [];
 
     /** Pushes a ball out of a surface and bounces it, relative to the surface's own velocity. */
@@ -520,7 +539,7 @@ export const marbleRace: Template = {
       if (t - last < 0.15) return;
       if (blk.trap?.armed && --blk.hp <= 0) shatter(blk, t, events);
       if (ball !== focus || sim.finishTime !== null) return;
-      events.push({ t, kind: 'hit' });
+      events.push({ t, kind: 'hit', x: ball.x });
       notes.push({ x: ball.x + (rng() - 0.5) * 30, y: ball.y - r, life: 1.2, color: ball.color });
     }
 
@@ -532,11 +551,34 @@ export const marbleRace: Template = {
     }
 
     const sim = {
-      accept: () => winnerTime !== null && winnerTime >= WINNER_MIN && winnerTime <= WINNER_MAX,
+      accept: () => winnerTime !== null && winnerTime - pre >= WINNER_MIN && winnerTime - pre <= WINNER_MAX,
+      // A photo finish (runner-up within ~1s) and a few late overtakes make the best races.
+      drama: () => Math.min(1, lateLeadChanges / 4)
+        + (winnerTime !== null && secondTime !== null ? Math.max(0, 1 - (secondTime - winnerTime) / 1.5) : 0),
       time: 0,
       finishTime: null as number | null,
       step() {
         const events: SimEvent[] = [];
+        if (sim.time < pre) {
+          // Countdown: the balls wait on the start gate; every second ticks a note, and it drops on GO.
+          const before = Math.ceil(pre - sim.time - 1e-6);
+          sim.time += 1 / FPS;
+          const left = pre - sim.time;
+          if (left <= 1e-6) {
+            events.push({ t: sim.time, kind: 'break' });
+            for (const b of racers) { b.bestAt = sim.time; b.squash = 0.6; }
+            burst(particles, rng, cx, startY + r, 40, 700, palette);
+          } else if (Math.ceil(left - 1e-6) < before) {
+            events.push({ t: sim.time, kind: 'hit' });
+            for (const b of racers) b.squash = 0.4;
+          }
+          for (const b of racers) {
+            b.hudX += (W / 2 + (b.id - 2) * 150 - b.hudX) * 0.15;
+            b.squash *= 0.82;
+          }
+          particles = updateParticles(particles, 1 / FPS, 700);
+          return events;
+        }
         // Slipstream: ramps up from ~250px behind the front, full at ~1500px (or more) behind.
         const front = Math.max(...racers.map((b) => Math.min(b.y, finishY)));
         for (const b of racers) b.boost = b.place !== null ? 0 : Math.min(1, Math.max(0, (front - b.y - 250) / 1300));
@@ -616,6 +658,7 @@ export const marbleRace: Template = {
                 first || last ? [b.color, b.color, ...palette] : [b.color]);
               notes.push({ x: b.x, y: finishY - 60, life: 1.6, color: b.color });
               if (first) { winner = b; winnerTime = t; }
+              if (b.place === 2) secondTime = t;
               if (last) {
                 sim.finishTime = t;
                 events.push({ t, kind: 'finish' });
@@ -659,11 +702,12 @@ export const marbleRace: Template = {
         if (ranked[0] !== leader && (ranked[0].place !== null || ranked[0].y > leader.y + 25)) {
           leader = ranked[0];
           leadGlow = 1;
-          if (!winner && sim.time - lastLeadChange > 1.5 && sim.time > 2) {
+          if (!winner && sim.time - lastLeadChange > 1.5 && sim.time > pre + 2) {
             events.push({ t: sim.time, kind: 'break' });
             notes.push({ x: leader.x, y: leader.y - r * 2, life: 1.4, color: leader.color });
           }
           lastLeadChange = sim.time;
+          if (!winner && sim.time > pre + WINNER_MIN / 2) lateLeadChanges++;
         }
         ranked.forEach((b, i) => { b.hudX += (W / 2 + (i - 2) * 150 - b.hudX) * 0.15; });
         // The camera lingers on a ball that just arrived, then pans (eased) to the best-placed one still racing.
@@ -848,6 +892,21 @@ export const marbleRace: Template = {
           ctx.stroke();
         }
 
+        // Start gate under the waiting balls: on GO its two halves swing down from the middle.
+        const open = Math.min(1, Math.max(0, (sim.time - pre) / 0.35));
+        if (open < 1) {
+          const gy = startY + 10 + r + THICK / 2;
+          ctx.strokeStyle = hsl(palette[0], light ? 55 : 78, 1 - open);
+          ctx.lineWidth = THICK - 4;
+          ctx.beginPath();
+          for (const [hx, dir] of [[L, 1], [R, -1]] as const) {
+            const ang = open * 1.4 * dir;
+            ctx.moveTo(hx, gy);
+            ctx.lineTo(hx + Math.cos(ang) * (cx - L) * dir, gy + Math.sin(ang) * (cx - L) * dir);
+          }
+          ctx.stroke();
+        }
+
         drawParticles(ctx, particles);
         ctx.font = '700 44px "Nunito", "Segoe UI", system-ui, sans-serif';
         ctx.textAlign = 'center';
@@ -875,7 +934,7 @@ export const marbleRace: Template = {
         }
         for (const b of racers) drawRacer(ctx, b, r, b.rot);
         // The leader wears a little crown; finished balls show their place.
-        drawCrown(ctx, leader.x, leader.y - r - 14 - leadGlow * 8, 1 + leadGlow * 0.3);
+        if (sim.time >= pre) drawCrown(ctx, leader.x, leader.y - r - 14 - leadGlow * 8, 1 + leadGlow * 0.3);
         ctx.font = '800 30px "Nunito", "Segoe UI", system-ui, sans-serif';
         ctx.lineWidth = 6;
         ctx.strokeStyle = 'rgba(45,30,70,0.55)';
@@ -899,14 +958,53 @@ export const marbleRace: Template = {
         ctx.fillStyle = 'rgba(255,248,240,0.9)';
         ctx.strokeStyle = 'rgba(45,30,70,0.5)';
         ctx.lineWidth = 6;
-        PLACES.forEach((label, i) => {
+        // During the countdown the names take the places' spot.
+        if (sim.time >= pre) PLACES.forEach((label, i) => {
           ctx.strokeText(label, W / 2 + (i - 2) * 150, hudY + 62);
           ctx.fillText(label, W / 2 + (i - 2) * 150, hudY + 62);
         });
         for (const b of racers) drawRacer(ctx, { ...b, x: b.hudX, y: hudY, squash: 0 }, 34, 0);
+        if (sim.time < pre + 0.8) drawCountdown(ctx);
         if (winner) drawCaption(ctx, `${winner.name} wins! 🏆`, hudY - 110);
       },
     };
+
+    /** "Pick your color!" with the racers' names, the seconds left, then GO! */
+    function drawCountdown(ctx: Ctx2D) {
+      const left = pre - sim.time;
+      const fade = left > 0 ? 1 : Math.max(0, 1 + left / 0.8);
+      ctx.save();
+      ctx.globalAlpha = fade;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = 'rgba(20,15,40,0.55)';
+      ctx.shadowBlur = 18;
+      ctx.strokeStyle = 'rgba(45,30,70,0.55)';
+      if (left > 0) {
+        drawCaption(ctx, 'Pick your color!', 470);
+        // The racers' names under them in the leaderboard, in their colors.
+        ctx.font = '800 30px "Nunito", "Segoe UI", system-ui, sans-serif';
+        ctx.lineWidth = 6;
+        for (const b of racers) {
+          ctx.strokeText(b.name, b.hudX, H - 420 + 62);
+          ctx.fillStyle = hsl(b.color, 75);
+          ctx.fillText(b.name, b.hudX, H - 420 + 62);
+        }
+      }
+      // Each number pops in big and settles.
+      const frac = left > 0 ? left - Math.floor(left - 1e-6) : 1 + left;
+      const k = left > 0 ? 1 + 0.35 * Math.max(0, frac - 0.75) / 0.25 : 1 + 0.4 * (1 - fade);
+      ctx.translate(W / 2, 1000);
+      ctx.scale(k, k);
+      ctx.font = '900 220px "Nunito", "Segoe UI", system-ui, sans-serif';
+      ctx.lineWidth = 16;
+      const label = left > 0 ? String(Math.ceil(left - 1e-6)) : 'GO!';
+      ctx.strokeText(label, 0, 0);
+      ctx.fillStyle = '#fff8f0';
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    }
 
     function drawRacer(ctx: Ctx2D, b: Racer, size: number, rot: number) {
       ctx.save();

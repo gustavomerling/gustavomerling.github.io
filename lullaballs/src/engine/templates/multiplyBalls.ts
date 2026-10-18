@@ -15,7 +15,19 @@ interface Ball {
 export const multiplyBalls: Template = {
   id: 'multiply-balls',
   name: 'Multiplicação',
-  defaultOverlay: 'Every escape = 2 more balls 🫧',
+  hooks: [
+    { text: 'Every escape = 2 more balls 🫧' },
+    { text: 'How many balls at the end? 🤔', poll: ['20?', '50?', '100?'] },
+    { text: 'It starts with just ONE ball… 😳' },
+    { text: 'Wait until the box overflows 🫧' },
+    { text: 'Guess the final count before it ends 👇' },
+  ],
+  blurbs: [
+    'Satisfying multiplying balls simulation: every escape releases two more, with soft piano music.',
+    'One bouncing ball turns into hundreds. Relaxing physics with a calming melody.',
+    'Oddly satisfying ball multiplication: every bounce plays the song.',
+  ],
+  tags: ['#multiplyingballs', '#oddlysatisfying'],
   defaults: { half: 380, gap: 175, spin: 0.6, gravity: 1300, ballRadius: 14, minSpeed: 650, target: 50 },
   specs: [
     { key: 'target', label: 'Bolinhas no final', min: 10, max: 300, step: 5 },
@@ -106,7 +118,7 @@ export const multiplyBalls: Template = {
               if (ly < -L - br) {
                 escaped.push(b);
                 born += 2;
-                events.push({ t, kind: 'break' });
+                events.push({ t, kind: 'break', x: b.x });
               }
               continue;
             }
@@ -128,7 +140,7 @@ export const multiplyBalls: Template = {
             if (hit) {
               b.squash = 1;
               flash = 1;
-              events.push({ t, kind: 'hit' });
+              events.push({ t, kind: 'hit', x: b.x });
             }
           }
           if (!done) collide();

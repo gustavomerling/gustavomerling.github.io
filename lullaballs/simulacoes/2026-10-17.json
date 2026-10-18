@@ -1,13 +1,13 @@
 {
-  "background": "ballpit",
-  "palette": "ballpit",
+  "background": "cotton",
+  "palette": "lavender",
   "date": "2026-10-17",
-  "title": "Quebra-tijolos · Korobeiniki",
-  "caption": "Can it clear every block before 1:10? ⏱️\n\n🎵 Korobeiniki — Folclore russo (1861)\n\n#lullaballs #relaxing #satisfying #bouncingball #sleepmusic #piano #korobeiniki #ballpit #colorful",
-  "song": "korobeiniki",
-  "template": "brick-breaker",
+  "title": "Polígonos aninhados · Für Elise",
+  "caption": "Can it escape every shape? 🔷\n\n🎵 Für Elise — Ludwig van Beethoven (1810)\n\n#lullaballs #relaxing #satisfying #bouncingball #sleepmusic #piano #furelise #clouds #cottoncandysky #lavender #purple",
+  "song": "fur-elise",
+  "template": "nested-polygons",
   "params": {},
-  "seed": 70097,
-  "overlay": "Can it clear every block before 1:10? ⏱️",
+  "seed": 437412,
+  "overlay": "Can it escape every shape? 🔷",
   "exported": "2026-10-17.mp4"
 }

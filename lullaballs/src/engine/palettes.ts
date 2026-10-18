@@ -63,6 +63,12 @@ export const PALETTES: Palette[] = [
     tags: ['#ballpit', '#colorful'],
     colors: [[355, 88], [42, 95], [205, 88], [145, 62], [25, 95], [268, 78], [320, 85]],
   },
+  {
+    id: 'halloween',
+    name: 'Halloween',
+    tags: ['#halloween', '#spooky'],
+    colors: [[26, 95], [275, 62], [95, 65], [42, 95], [300, 50], [15, 88]],
+  },
 ];
 
 export function getPalette(id: string | undefined): Palette {

@@ -2,28 +2,37 @@ import { Play, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Sequencer, type Song } from '../audio/notes';
 import { createChain, playHit } from '../audio/synth';
+import { dressed } from '../engine/extras';
 import { resolveParams } from '../engine/run';
 import { getTemplate } from '../engine/templates';
 import { H, W } from '../engine/types';
 import type { Post } from '../types';
 
 /** Live preview: runs the same deterministic simulation as the export, in real time, with sound. */
-export function Preview({ post, song, duration }: { post: Post; song: Song | undefined; duration: number }) {
+export function Preview({ post, song, duration, finishTime }: {
+  post: Post; song: Song | undefined; duration: number; finishTime: number | null;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stopRef = useRef<() => void>(() => {});
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
 
-  const create = () => getTemplate(post.template).create(resolveParams(post.template, post.params), post.seed, post);
+  const create = () => dressed(
+    () => getTemplate(post.template).create(resolveParams(post.template, post.params), post.seed, post),
+    { overlay: post.overlay, poll: post.poll, finishTime, duration },
+  );
 
   // Still frame whenever the post changes (a few seconds in, so the background's motion is visible).
   useEffect(() => {
     stopRef.current();
     const sim = create();
     for (let i = 0; i < 60 * 3; i++) sim.step();
-    sim.draw(canvasRef.current!.getContext('2d')!, post.overlay);
+    sim.draw(canvasRef.current!.getContext('2d')!);
     setTime(0);
-  }, [post.template, post.seed, post.overlay, post.background, post.palette, JSON.stringify(post.params)]);
+  }, [
+    post.template, post.seed, post.overlay, post.background, post.palette, JSON.stringify(post.params),
+    JSON.stringify(post.poll), finishTime, duration,
+  ]);
 
   useEffect(() => () => stopRef.current(), []);
 
@@ -33,19 +42,19 @@ export function Preview({ post, song, duration }: { post: Post; song: Song | und
     const ctx2d = canvasRef.current!.getContext('2d')!;
     const audio = new AudioContext();
     const dest = createChain(audio);
-    const seq = new Sequencer(song);
+    const seq = new Sequencer(song, finishTime);
     const sim = create();
     const start = performance.now();
     let raf = 0;
     const frame = () => {
       const elapsed = Math.min(duration, (performance.now() - start) / 1000);
-      while (sim.time < elapsed) {
+      while (sim.sim.time < elapsed) {
         for (const ev of sim.step()) {
           const hit = seq.next(ev);
-          if (hit) playHit(audio, dest, hit, audio.currentTime + 0.01);
+          if (hit) playHit(audio, dest, hit, audio.currentTime + 0.01, post.instrument);
         }
       }
-      sim.draw(ctx2d, post.overlay);
+      sim.draw(ctx2d);
       setTime(elapsed);
       if (elapsed >= duration) stop();
       else raf = requestAnimationFrame(frame);

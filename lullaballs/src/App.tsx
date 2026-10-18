@@ -1,10 +1,11 @@
 import {
   AlertTriangle, CalendarDays, Check, CheckCircle2, Clapperboard, Copy, Dices, ExternalLink, Film, Hash, Image,
-  Moon, Music, Palette, Plus, Save, Shuffle, Sparkles, Trash2, Type,
+  ListChecks, Moon, Music, Palette, Piano, Plus, Save, Shuffle, Sparkles, Trash2, Type,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from './api';
-import type { Song } from './audio/notes';
+import { CATEGORIES, type Song } from './audio/notes';
+import { INSTRUMENTS } from './audio/synth';
 import { Preview } from './components/Preview';
 import { BACKGROUNDS, getBackground } from './engine/backgrounds';
 import { PALETTES, getPalette } from './engine/palettes';
@@ -13,7 +14,7 @@ import { findSeed, simulateHeadless } from './engine/run';
 import { FINISH_MAX, FINISH_MIN } from './engine/types';
 import { TEMPLATES, getTemplate } from './engine/templates';
 import { exportVideo } from './export';
-import { makeCaption, makeTitle, newPost, randomize, withHashtags } from './newPost';
+import { makeCaption, makeTitle, newPost, pickHook, randomize, withHashtags } from './newPost';
 import type { Post } from './types';
 
 type Tone = 'info' | 'ok' | 'error';
@@ -139,13 +140,22 @@ function Editor({ post: initial, songs, onSaved }: { post: Post; songs: Song[]; 
   function changeTemplate(id: string) {
     const tpl = getTemplate(id);
     const seed = findSeed(id, {}, 1 + Math.floor(Math.random() * 1_000_000)) ?? post.seed;
+    const hook = pickHook(tpl);
+    const next = { ...post, ...hook, template: id };
     set({
+      ...hook,
       template: id,
       params: {},
       seed,
-      overlay: tpl.defaultOverlay,
-      ...(song ? { title: makeTitle(id, song), caption: makeCaption(tpl.defaultOverlay, song, post) } : {}),
+      ...(song ? { title: makeTitle(id, song), caption: makeCaption(hook.overlay, song, next) } : {}),
     });
+  }
+
+  /** Another hook (and its poll); the caption's first line follows when it still was the old hook. */
+  function rollHook() {
+    const hook = pickHook(getTemplate(post.template));
+    const [first, ...rest] = post.caption.split('\n');
+    set({ ...hook, caption: first === post.overlay ? [hook.overlay, ...rest].join('\n') : post.caption });
   }
 
   /** Background/palette changes also refresh the caption's hashtag line. */
@@ -158,7 +168,7 @@ function Editor({ post: initial, songs, onSaved }: { post: Post; songs: Song[]; 
   /** Saves; if anything that changes the video was edited, the old MP4 no longer matches and is removed. */
   async function persist() {
     const videoKey = (p: Post) =>
-      JSON.stringify([p.template, p.params, p.seed, p.song, p.overlay, p.background, p.palette]);
+      JSON.stringify([p.template, p.params, p.seed, p.song, p.overlay, p.poll, p.background, p.palette, p.instrument]);
     let toSave = post;
     if (initial.exported && videoKey(post) !== videoKey(initial)) {
       await api.deleteExport(post.date);
@@ -259,7 +269,14 @@ function Editor({ post: initial, songs, onSaved }: { post: Post; songs: Song[]; 
                   set({ song: s.id, title: makeTitle(post.template, s), caption: makeCaption(post.overlay, s, post) });
                 }}
               >
-                {songs.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+                {Object.entries(CATEGORIES).map(([cat, label]) => {
+                  const group = songs.filter((s) => (s.category ?? 'classica') === cat);
+                  return group.length ? (
+                    <optgroup key={cat} label={label}>
+                      {group.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+                    </optgroup>
+                  ) : null;
+                })}
               </select>
             </Field>
           </div>
@@ -300,14 +317,50 @@ function Editor({ post: initial, songs, onSaved }: { post: Post; songs: Song[]; 
               </select>
             </Field>
           </div>
+          <div className="row">
+            <Field label="Timbre" icon={<Piano size={14} />}>
+              <select value={post.instrument ?? 'felt'} onChange={(e) => set({ instrument: e.target.value })}>
+                {Object.entries(INSTRUMENTS).map(([id, v]) => <option key={id} value={id}>{v.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Enquete no início (separe com /)" icon={<ListChecks size={14} />}>
+              <input
+                value={(post.poll ?? []).join(' / ')}
+                placeholder="YES ✅ / NO ❌"
+                onChange={(e) => {
+                  const opts = e.target.value.split('/').map((o) => o.trim());
+                  set({ poll: opts.some(Boolean) ? opts : undefined });
+                }}
+              />
+            </Field>
+          </div>
           <Field label="Texto no vídeo" icon={<Type size={14} />}>
-            <input value={post.overlay} onChange={(e) => set({ overlay: e.target.value })} />
+            <div className="seed-input">
+              <input value={post.overlay} onChange={(e) => set({ overlay: e.target.value })} />
+              <button
+                type="button"
+                className="icon-square"
+                onClick={(e) => { e.preventDefault(); rollHook(); }}
+                title="Sortear outro gancho (e enquete)"
+                aria-label="Sortear outro gancho"
+              >
+                <Dices size={16} />
+              </button>
+            </div>
           </Field>
         </div>
 
         <div className="group">
           <div className="group-head">
             <h3>Legenda + hashtags</h3>
+            <button
+              className="ghost small"
+              onClick={() => song && set({ caption: makeCaption(post.overlay, song, post) })}
+              disabled={!song}
+              title="Sortear outra descrição e chamada"
+            >
+              <Dices size={14} /> Outra legenda
+            </button>
             <button
               className="ghost small"
               onClick={() => navigator.clipboard.writeText(post.caption).then(() => say('ok', 'Legenda copiada'))}
@@ -344,7 +397,7 @@ function Editor({ post: initial, songs, onSaved }: { post: Post; songs: Song[]; 
           </a>
         )}
       </div>
-      <Preview post={post} song={song} duration={info.duration} />
+      <Preview post={post} song={song} duration={info.duration} finishTime={info.finishTime} />
     </section>
   );
 }

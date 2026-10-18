@@ -10,7 +10,20 @@ import {
 export const escapeRings: Template = {
   id: 'escape-rings',
   name: 'Escape dos anéis',
-  defaultOverlay: 'Can the little ball escape? 🌙',
+  hooks: [
+    { text: 'Can the little ball escape? 🌙', poll: ['YES ✅', 'NO ❌'] },
+    { text: 'Bet it gets stuck forever 👀' },
+    { text: 'Will it escape before 1:00? ⏱️', poll: ['YES ✅', 'NO ❌'] },
+    { text: 'Only 1% watch until it gets free 🌙' },
+    { text: 'Count the rings with me… 🔢' },
+    { text: 'Wait for the last ring 😮‍💨' },
+  ],
+  blurbs: [
+    'Relaxing bouncing ball escaping spinning rings, with soft piano music for sleep and calm.',
+    'Satisfying ring escape simulation: every bounce plays a note of the melody.',
+    'A sleepy little ball, a dozen rotating rings and a lullaby. Perfect to fall asleep to.',
+  ],
+  tags: ['#ringescape', '#oddlysatisfying'],
   defaults: {
     rings: 12, innerRadius: 120, spacing: 34, gapDeg: 35, spin: 0.9,
     gravity: 1400, ballRadius: 16, minSpeed: 650,
@@ -92,7 +105,7 @@ export const escapeRings: Template = {
               crossing = false;
               shatter(active, t);
               active++;
-              events.push({ t, kind: 'break' });
+              events.push({ t, kind: 'break', x });
               if (active >= n) {
                 sim.finishTime = t;
                 events.push({ t, kind: 'finish' });
@@ -107,7 +120,7 @@ export const escapeRings: Template = {
             [vx, vy] = bounce(vx, vy, nx, ny, rng, p.minSpeed);
             ring.flash = 1;
             squash = 1;
-            events.push({ t, kind: 'hit' });
+            events.push({ t, kind: 'hit', x });
           }
           x = cx + nx * (ring.r - br);
           y = cy + ny * (ring.r - br);

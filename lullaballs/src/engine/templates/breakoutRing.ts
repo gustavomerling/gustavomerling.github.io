@@ -12,7 +12,19 @@ const mod = (x: number, m: number) => ((x % m) + m) % m;
 export const breakoutRing: Template = {
   id: 'breakout-ring',
   name: 'Quebra-blocos',
-  defaultOverlay: 'Can it break every block? 🧱',
+  hooks: [
+    { text: 'Can it break every block? 🧱', poll: ['YES ✅', 'NO ❌'] },
+    { text: 'The last block takes forever 😤' },
+    { text: 'Bet it misses the last one 👀' },
+    { text: 'Will it clear them all before 1:00? ⏱️', poll: ['YES ✅', 'NO ❌'] },
+    { text: 'So satisfying when the last one breaks 😌' },
+  ],
+  blurbs: [
+    'Satisfying breakout circle: a bouncing ball breaks every block, playing soft piano music.',
+    'Relaxing block breaking simulation inside a rotating ring. Every hit is a note.',
+    'Oddly satisfying circular brick breaker with a calming lullaby.',
+  ],
+  tags: ['#breakout', '#oddlysatisfying'],
   defaults: { radius: 420, blocks: 40, thickness: 34, spin: 0.35, gravity: 1400, ballRadius: 16, minSpeed: 650 },
   specs: [
     { key: 'blocks', label: 'Blocos', min: 12, max: 120, step: 1 },
@@ -82,7 +94,7 @@ export const breakoutRing: Template = {
             left--;
             squash = 1;
             shatter(k, t);
-            events.push({ t, kind: 'break' });
+            events.push({ t, kind: 'break', x });
             if (left === 0) {
               done = true;
               sim.finishTime = t;
@@ -94,7 +106,7 @@ export const breakoutRing: Template = {
               [vx, vy] = bounce(vx, vy, nx, ny, rng, p.minSpeed);
               squash = 1;
               wallFlash = 1;
-              if (!done) events.push({ t, kind: 'hit' });
+              if (!done) events.push({ t, kind: 'hit', x });
             }
             x = cx + nx * (R - br);
             y = cy + ny * (R - br);

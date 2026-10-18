@@ -36,7 +36,19 @@ const SPEEDS = [1, 1.12, 0.9];
 export const meetingBalls: Template = {
   id: 'meeting-balls',
   name: 'Encontros',
-  defaultOverlay: 'Every time they meet, a new one is born 💞',
+  hooks: [
+    { text: 'Every time they meet, a new one is born 💞' },
+    { text: 'How many will there be at the end? 🤔', poll: ['5?', '11?', '20?'] },
+    { text: 'It starts with just two… 💞' },
+    { text: 'Wait for the last one to be born 🥹' },
+    { text: 'A little family, one meeting at a time 💞' },
+  ],
+  blurbs: [
+    'Cute bouncing balls: every time two meet, a new one is born. Soft piano music for sleep.',
+    'Relaxing ball family simulation with a calming melody. Every bounce is a note.',
+    'Oddly satisfying and wholesome physics with a gentle lullaby.',
+  ],
+  tags: ['#cute', '#oddlysatisfying'],
   defaults: {
     arena: 430, ballRadius: 22, gravity: 1300, minSpeed: 700,
     firstMeet: 20, wait: 10, shrink: 0.8, target: 11,
@@ -197,7 +209,7 @@ export const meetingBalls: Template = {
       burst(particles, rng, mx, my, 40, 500, [a.color, b.color]);
       meetings++;
       glow = 1;
-      events.push({ t, kind: 'break' });
+      events.push({ t, kind: 'break', x: mx });
       // The newborn leaves roughly perpendicular to its parents, on whichever side is clear.
       const side = rng() < 0.5 ? -1 : 1;
       const base = Math.atan2(nx * side, -ny * side);
@@ -266,7 +278,7 @@ export const meetingBalls: Template = {
             if (!done) {
               b.squash = 1;
               flash = 1;
-              events.push({ t, kind: 'hit' });
+              events.push({ t, kind: 'hit', x: b.x });
             }
           }
           if (done) continue;

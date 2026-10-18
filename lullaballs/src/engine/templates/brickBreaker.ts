@@ -50,7 +50,19 @@ function roundRect(ctx: Ctx2D, x: number, y: number, w: number, h: number, r: nu
 export const brickBreaker: Template = {
   id: 'brick-breaker',
   name: 'Quebra-tijolos',
-  defaultOverlay: 'Can it clear every block before 1:10? ⏱️',
+  hooks: [
+    { text: 'Can it clear every block before 1:10? ⏱️', poll: ['YES ✅', 'NO ❌'] },
+    { text: 'The last brick is always the hardest 😤' },
+    { text: 'Bet it misses the last one 👀' },
+    { text: 'Satisfying until the very last brick 🧱' },
+    { text: 'Every block is a note of the song 🎹' },
+  ],
+  blurbs: [
+    'Satisfying brick breaker game played by itself, every block a note of the song.',
+    'Relaxing breakout simulation with soft piano music. Watch every brick fall.',
+    'Oddly satisfying auto-play brick breaker with a calming melody.',
+  ],
+  tags: ['#brickbreaker', '#breakout'],
   defaults: { rows: 7, cols: 9, speed: 1250, ballRadius: 16 },
   specs: [
     { key: 'rows', label: 'Linhas', min: 3, max: 10, step: 1 },
@@ -213,7 +225,7 @@ export const brickBreaker: Template = {
               ball.vx = Math.sin(a) * speed;
               ball.vy = -Math.cos(a) * speed;
               paddleSquash = 1;
-              events.push({ t, kind: 'hit' });
+              events.push({ t, kind: 'hit', x: ball.x });
             } else {
               ball.x = paddleX;
               continue;
@@ -223,14 +235,14 @@ export const brickBreaker: Template = {
           if (hit === WALL) {
             squash = 1;
             planned = false;
-            if (!done) events.push({ t, kind: 'hit' });
+            if (!done) events.push({ t, kind: 'hit', x: ball.x });
           } else if (hit >= 0) {
             squash = 1;
             flash[hit] = 1;
             planned = false;
             left--;
             shatter(hit);
-            if (!done) events.push({ t, kind: 'break' });
+            if (!done) events.push({ t, kind: 'break', x: ball.x });
             if (left === 0 && !done) {
               done = true;
               sim.finishTime = t;
@@ -247,7 +259,7 @@ export const brickBreaker: Template = {
             squash = 1;
             paddleSquash = 1;
             planned = false;
-            if (!done) events.push({ t, kind: 'hit' });
+            if (!done) events.push({ t, kind: 'hit', x: ball.x });
           }
           if (ball.vy > 0 && !planned) {
             planned = true;

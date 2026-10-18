@@ -13,7 +13,19 @@ import {
 export const nestedPolygons: Template = {
   id: 'nested-polygons',
   name: 'Polígonos aninhados',
-  defaultOverlay: 'Can it escape every shape? 🔷',
+  hooks: [
+    { text: 'Can it escape every shape? 🔷', poll: ['YES ✅', 'NO ❌'] },
+    { text: 'Triangle, square, pentagon… how far will it go? 🔷' },
+    { text: 'Bet it gets stuck in the last one 👀' },
+    { text: 'Will it escape before 1:00? ⏱️', poll: ['YES ✅', 'NO ❌'] },
+    { text: 'Shapes inside shapes inside shapes 🤯' },
+  ],
+  blurbs: [
+    'Satisfying bouncing ball escaping nested spinning shapes, with soft piano music.',
+    'Relaxing geometry simulation: a ball escapes polygon after polygon, every bounce a note.',
+    'Calming shapes and a sleepy lullaby. Oddly satisfying physics.',
+  ],
+  tags: ['#geometry', '#oddlysatisfying'],
   defaults: { layers: 6, innerRadius: 120, margin: 26, gapDeg: 13, spin: 1, gravity: 1400, ballRadius: 12, minSpeed: 1000 },
   specs: [
     { key: 'layers', label: 'Formas', min: 3, max: 6, step: 1 },
@@ -129,7 +141,7 @@ export const nestedPolygons: Template = {
               crossing = false;
               shatter(active, t);
               active++;
-              events.push({ t, kind: 'break' });
+              events.push({ t, kind: 'break', x });
               if (active >= count) {
                 sim.finishTime = t;
                 events.push({ t, kind: 'finish' });
@@ -157,7 +169,7 @@ export const nestedPolygons: Template = {
           if (hit) {
             sh.flash = 1;
             squash = 1;
-            events.push({ t, kind: 'hit' });
+            events.push({ t, kind: 'hit', x });
           }
         }
         sim.time += 1 / FPS;

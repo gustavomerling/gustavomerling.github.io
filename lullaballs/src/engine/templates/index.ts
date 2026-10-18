@@ -9,9 +9,11 @@ import { meetingBalls } from './meetingBalls';
 import { multiplyBalls } from './multiplyBalls';
 import { nestedPolygons } from './nestedPolygons';
 import { paintRing } from './paintRing';
+import { spiderWeb } from './spiderWeb';
 
 export const TEMPLATES: Template[] = [
   escapeRings, growingBall, multiplyBalls, breakoutRing, paintRing, nestedPolygons, mazeDescent, meetingBalls, marbleRace, brickBreaker,
+  spiderWeb,
 ];
 
 export function getTemplate(id: string): Template {

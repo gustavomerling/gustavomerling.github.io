@@ -10,7 +10,19 @@ import {
 export const growingBall: Template = {
   id: 'growing-ball',
   name: 'Bolinha que cresce',
-  defaultOverlay: 'Every bounce makes it bigger 🎵',
+  hooks: [
+    { text: 'Every bounce makes it bigger 🎵' },
+    { text: 'Will it fill the whole circle? 🫧', poll: ['YES ✅', 'NO ❌'] },
+    { text: 'Guess when it stops growing 👀' },
+    { text: 'This gets so satisfying at the end 😌' },
+    { text: 'Watch it grow to the beat 🎶' },
+  ],
+  blurbs: [
+    'Satisfying growing ball simulation: every bounce makes it bigger and plays a note.',
+    'Relaxing bouncing ball that grows with the music, until it fills the circle.',
+    'Calm piano melody played by a growing ball. Oddly satisfying physics for sleep.',
+  ],
+  tags: ['#growingball', '#oddlysatisfying'],
   defaults: { arena: 430, startRadius: 22, growth: 2.15, gravity: 1400, minSpeed: 700 },
   specs: [
     { key: 'growth', label: 'Crescimento por quique', min: 0.5, max: 8, step: 0.1 },
@@ -57,7 +69,7 @@ export const growingBall: Template = {
               colorIdx++;
               flash = 1;
               squash = 1;
-              events.push({ t, kind: 'hit' });
+              events.push({ t, kind: 'hit', x });
               if (r >= R - 6) {
                 popped = true;
                 sim.finishTime = t;

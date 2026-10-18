@@ -145,6 +145,16 @@ export function drawOverlay(ctx: Ctx2D, text: string) {
   ctx.restore();
 }
 
+/** How far down the headline goes (the middle of the line below its last one). */
+export function overlayBottom(ctx: Ctx2D, text: string) {
+  if (!text) return 300;
+  ctx.save();
+  ctx.font = '700 64px "Nunito", "Segoe UI", system-ui, sans-serif';
+  const lines = wrap(ctx, text, 900).length;
+  ctx.restore();
+  return 300 + lines * 80;
+}
+
 export function drawCaption(ctx: Ctx2D, text: string, y: number) {
   ctx.save();
   ctx.font = '700 50px "Nunito", "Segoe UI", system-ui, sans-serif';

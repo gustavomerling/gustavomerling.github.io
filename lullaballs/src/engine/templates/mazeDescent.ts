@@ -15,7 +15,19 @@ type Seg = [number, number, number, number];
 export const mazeDescent: Template = {
   id: 'maze-descent',
   name: 'Labirinto descendente',
-  defaultOverlay: 'Can it reach the bottom? 🌀',
+  hooks: [
+    { text: 'Can it reach the bottom? 🌀', poll: ['YES ✅', 'NO ❌'] },
+    { text: 'So close… then it falls again 😩' },
+    { text: 'Will it reach the bottom before 1:00? ⏱️', poll: ['YES ✅', 'NO ❌'] },
+    { text: 'The slowest fall ever 🌀' },
+    { text: 'Follow it all the way down 👇' },
+  ],
+  blurbs: [
+    'Relaxing bouncing ball finding its way down a maze, with soft piano music for sleep.',
+    'Satisfying maze descent simulation: every bounce plays the melody.',
+    'Calm falling ball through layer after layer. Oddly satisfying and sleepy.',
+  ],
+  tags: ['#maze', '#oddlysatisfying'],
   defaults: {
     floors: 11, spacing: 300, width: 860, hole: 120, holeSpeed: 0.9, baffle: 0.45,
     gravity: 1400, ballRadius: 16, minSpeed: 650, cruise: 850,
@@ -113,7 +125,7 @@ export const mazeDescent: Template = {
           if (hit) {
             squash = 1;
             if (active < n) floors[active].flash = 1;
-            if (sim.finishTime === null) events.push({ t, kind: 'hit' });
+            if (sim.finishTime === null) events.push({ t, kind: 'hit', x });
           }
           if (active < n && y - br > floors[active].y + thick / 2) {
             const f = floors[active];
@@ -131,7 +143,7 @@ export const mazeDescent: Template = {
               });
             }
             active++;
-            events.push({ t, kind: 'break' });
+            events.push({ t, kind: 'break', x });
             if (active >= n) {
               sim.finishTime = t;
               events.push({ t, kind: 'finish' });

@@ -12,7 +12,19 @@ const mod = (x: number, m: number) => ((x % m) + m) % m;
 export const paintRing: Template = {
   id: 'paint-ring',
   name: 'Pintar a borda',
-  defaultOverlay: 'Can it paint the whole circle? 🎨',
+  hooks: [
+    { text: 'Can it paint the whole circle? 🎨', poll: ['YES ✅', 'NO ❌'] },
+    { text: 'The last gap is the hardest 😤' },
+    { text: 'Will it finish painting before 1:00? ⏱️', poll: ['YES ✅', 'NO ❌'] },
+    { text: 'Watch the colors fill in 🌈' },
+    { text: 'Wait for the very last spot 👀' },
+  ],
+  blurbs: [
+    'Satisfying paint simulation: a bouncing ball colors the circle with every hit, to soft piano music.',
+    'Relaxing ball painting the ring one bounce at a time. Calm melody for sleep.',
+    'Oddly satisfying color fill with a bouncing ball and a lullaby.',
+  ],
+  tags: ['#paintball', '#oddlysatisfying'],
   defaults: { radius: 420, segments: 120, brushDeg: 14, spin: 0.35, gravity: 1400, ballRadius: 16, minSpeed: 650 },
   specs: [
     { key: 'brushDeg', label: 'Pincel (graus)', min: 2, max: 30, step: 0.5 },
@@ -69,7 +81,7 @@ export const paintRing: Template = {
                 paint[k] = color;
                 glow[k] = 1;
               }
-              events.push({ t, kind: 'hit' });
+              events.push({ t, kind: 'hit', x });
               if (count === m) {
                 done = true;
                 sim.finishTime = t;

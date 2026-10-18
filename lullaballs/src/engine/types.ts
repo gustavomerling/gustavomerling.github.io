@@ -21,6 +21,8 @@ export interface SimEvent {
   kind: EventKind;
   /** Strength 0-1, for clacks. */
   vel?: number;
+  /** Where it happened (0..W), to place the sound left or right. */
+  x?: number;
 }
 
 export type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
@@ -34,6 +36,14 @@ export interface Sim {
   draw(ctx: Ctx2D, overlay: string): void;
   /** Extra condition for a seed to be picked, checked after the run (e.g. when the winner of a race arrives). */
   accept?(): boolean;
+  /** How tense the run was (late lead changes, photo finish...), to prefer the most dramatic seeds. About 0-1. */
+  drama?(): number;
+}
+
+/** A line for the text on the video; with a poll, its options show as chips during the first seconds. */
+export interface Hook {
+  text: string;
+  poll?: string[];
 }
 
 export interface ParamSpec {
@@ -53,7 +63,12 @@ export interface Look {
 export interface Template {
   id: string;
   name: string;
-  defaultOverlay: string;
+  /** Hooks for the text on the video, drawn at random (the first is the classic one). */
+  hooks: Hook[];
+  /** Keyword-rich lines describing the video, for the caption (TikTok search reads it). */
+  blurbs: string[];
+  /** Hashtags for this kind of video. */
+  tags: string[];
   defaults: Params;
   specs: ParamSpec[];
   create(params: Params, seed: number, look?: Look): Sim;

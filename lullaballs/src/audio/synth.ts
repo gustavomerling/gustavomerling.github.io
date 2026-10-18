@@ -92,32 +92,80 @@ function impulse(ctx: BaseAudioContext, seconds: number) {
   return buf;
 }
 
-export function playHit(ctx: BaseAudioContext, dest: AudioNode, hit: NoteHit, when: number) {
-  if (hit.click) return playClick(ctx, dest, hit, when);
-  for (const midi of hit.midis) {
-    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+interface Voice {
+  name: string;
+  /** Oscillator type, frequency multiple and level of each partial. */
+  partials: [OscillatorType, number, number][];
+  attack: number;
+  /** Seconds to fade out (bass notes ring a bit longer). */
+  decay: number;
+  /** Seconds held at full level before fading (organ). */
+  hold?: number;
+  /** Low-pass cutoff as a multiple of the note's frequency. */
+  bright: number;
+  /** Semitones added to the melody (not to the bass): music boxes and celestas sound an octave up. */
+  shift?: number;
+}
+
+/** Timbres a post can use; the felt piano is the original voice. */
+export const INSTRUMENTS: Record<string, Voice> = {
+  felt: {
+    name: 'Piano de feltro', attack: 0.008, decay: 1.8, bright: 6,
+    partials: [['sine', 1, 1], ['triangle', 1, 0.35], ['sine', 2, 0.18], ['sine', 3, 0.05]],
+  },
+  musicbox: {
+    name: 'Caixinha de música', attack: 0.002, decay: 1.3, bright: 12, shift: 12,
+    partials: [['sine', 1, 1], ['sine', 4, 0.22], ['sine', 6.2, 0.06]],
+  },
+  celesta: {
+    name: 'Celesta', attack: 0.003, decay: 1.6, bright: 10, shift: 12,
+    partials: [['sine', 1, 1], ['sine', 2, 0.28], ['sine', 4, 0.12]],
+  },
+  harpsichord: {
+    name: 'Cravo', attack: 0.002, decay: 1.0, bright: 7,
+    partials: [['sawtooth', 1, 0.45], ['sine', 1, 0.6], ['square', 2, 0.08]],
+  },
+  kalimba: {
+    name: 'Kalimba', attack: 0.003, decay: 1.1, bright: 9,
+    partials: [['sine', 1, 1], ['triangle', 1, 0.2], ['sine', 5.4, 0.1]],
+  },
+  organ: {
+    name: 'Órgão suave', attack: 0.04, decay: 1.2, hold: 0.22, bright: 5,
+    partials: [['sine', 1, 1], ['sine', 2, 0.5], ['sine', 3, 0.22], ['sine', 4, 0.1], ['sine', 0.5, 0.25]],
+  },
+};
+
+export function playHit(ctx: BaseAudioContext, dest: AudioNode, hit: NoteHit, when: number, instrument = 'felt') {
+  // Every sound is placed left or right where it happened.
+  const panner = ctx.createStereoPanner();
+  panner.pan.value = hit.pan ?? 0;
+  panner.connect(dest);
+  dryOf.set(panner, dryOf.get(dest) ?? dest);
+  if (hit.click) return playClick(ctx, panner, hit, when);
+  if (hit.pad) playPad(ctx, dest, hit.pad, when);
+  const voice = INSTRUMENTS[instrument] ?? INSTRUMENTS.felt;
+  const level = 1.58 / voice.partials.reduce((sum, [, , g]) => sum + g, 0);
+  hit.midis.forEach((midi, idx) => {
+    const at = when + idx * (hit.roll ?? 0);
     const bass = midi < 52;
-    const decay = bass ? 2.6 : 1.8;
-    const peak = (bass ? 0.2 : 0.16) * hit.vel / Math.sqrt(hit.midis.length);
+    const freq = 440 * Math.pow(2, (midi + (bass ? 0 : voice.shift ?? 0) - 69) / 12);
+    const decay = bass ? voice.decay + 0.8 : voice.decay;
+    const peak = (bass ? 0.2 : 0.16) * level * hit.vel / Math.sqrt(hit.midis.length);
 
     const env = ctx.createGain();
-    env.gain.setValueAtTime(0, when);
-    env.gain.linearRampToValueAtTime(peak, when + 0.008);
-    env.gain.exponentialRampToValueAtTime(0.0008, when + decay);
+    env.gain.setValueAtTime(0, at);
+    env.gain.linearRampToValueAtTime(peak, at + voice.attack);
+    if (voice.hold) env.gain.setValueAtTime(peak, at + voice.attack + voice.hold);
+    env.gain.exponentialRampToValueAtTime(0.0008, at + voice.attack + (voice.hold ?? 0) + decay);
     // A gentle low-pass keeps the timbre round.
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = Math.min(6000, freq * 6);
+    lp.frequency.value = Math.min(8000, freq * voice.bright);
     env.connect(lp);
-    lp.connect(dest);
+    lp.connect(panner);
 
-    const partials: [OscillatorType, number, number][] = [
-      ['sine', 1, 1],
-      ['triangle', 1, 0.35],
-      ['sine', 2, 0.18],
-      ['sine', 3, 0.05],
-    ];
-    for (const [type, mult, gain] of partials) {
+    const end = at + voice.attack + (voice.hold ?? 0) + decay + 0.05;
+    for (const [type, mult, gain] of voice.partials) {
       const osc = ctx.createOscillator();
       osc.type = type;
       osc.frequency.value = freq * mult;
@@ -125,16 +173,42 @@ export function playHit(ctx: BaseAudioContext, dest: AudioNode, hit: NoteHit, wh
       g.gain.value = gain;
       osc.connect(g);
       g.connect(env);
+      osc.start(at);
+      osc.stop(end);
+    }
+  });
+}
+
+/** A warm, slowly swelling pad (two detuned voices per note) that fades over a few seconds, centered. */
+function playPad(ctx: BaseAudioContext, dest: AudioNode, midis: number[], when: number) {
+  const env = ctx.createGain();
+  const peak = 0.05 / Math.sqrt(midis.length);
+  env.gain.setValueAtTime(0, when);
+  env.gain.linearRampToValueAtTime(peak, when + 0.45);
+  env.gain.exponentialRampToValueAtTime(0.0005, when + 4.5);
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 900;
+  env.connect(lp);
+  lp.connect(dest);
+  for (const midi of midis) {
+    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+    for (const [type, cents] of [['sine', -5], ['triangle', 5]] as const) {
+      const osc = ctx.createOscillator();
+      osc.type = type;
+      osc.frequency.value = freq;
+      osc.detune.value = cents;
+      osc.connect(env);
       osc.start(when);
-      osc.stop(when + decay + 0.05);
+      osc.stop(when + 4.6);
     }
   }
 }
 
-export async function renderAudio(hits: NoteHit[], duration: number): Promise<AudioBuffer> {
+export async function renderAudio(hits: NoteHit[], duration: number, instrument?: string): Promise<AudioBuffer> {
   const ctx = new OfflineAudioContext(2, Math.ceil(duration * SAMPLE_RATE), SAMPLE_RATE);
   const dest = createChain(ctx);
-  for (const h of hits) playHit(ctx, dest, h, h.t);
+  for (const h of hits) playHit(ctx, dest, h, h.t, instrument);
   const buf = await ctx.startRendering();
   fadeOut(buf, 1.5);
   return buf;

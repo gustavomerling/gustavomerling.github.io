@@ -472,7 +472,130 @@ const ballpit: Background = {
   },
 };
 
-export const BACKGROUNDS: Background[] = [dusk, aurora, ocean, cotton, galaxy, fireflyNight, sakura, christmas, ballpit];
+// 10. Halloween night: a big moon over a graveyard hill, flickering jack-o'-lanterns, bats and low mist.
+const spookyStars = makeStars(101, 70, H * 0.55);
+const graves = (() => {
+  const r = mulberry32(102);
+  return Array.from({ length: 7 }, (_, i) => ({
+    x: 60 + i * ((W - 120) / 6) + (r() - 0.5) * 60, h: 70 + r() * 50, w: 44 + r() * 20, tilt: (r() - 0.5) * 0.25,
+    cross: r() < 0.3,
+  }));
+})();
+const pumpkins = [{ x: 150, s: 1 }, { x: 560, s: 0.8 }, { x: 930, s: 1.15 }];
+const bats = (() => {
+  const r = mulberry32(103);
+  return Array.from({ length: 6 }, () => ({
+    x: r() * W, y: 380 + r() * 900, speed: (40 + r() * 50) * (r() < 0.5 ? -1 : 1), s: 0.6 + r() * 0.6, ph: r() * TAU,
+  }));
+})();
+const mist = (() => {
+  const r = mulberry32(104);
+  return Array.from({ length: 7 }, () => ({ x: r() * W, y: H - 260 + r() * 160, w: 260 + r() * 220, speed: 10 + r() * 18 }));
+})();
+/** Ground line of the hill. */
+const hill = (x: number) => H - 230 - Math.sin((x / W) * Math.PI) * 70;
+
+function bat(ctx: Ctx2D, x: number, y: number, s: number, flap: number) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  ctx.fillStyle = '#140d1f';
+  const lift = flap * 16;
+  ctx.beginPath();
+  for (const side of [-1, 1]) {
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(side * 20, -12 - lift, side * 44, -6 - lift);
+    ctx.quadraticCurveTo(side * 36, 2, side * 30, 4);
+    ctx.quadraticCurveTo(side * 22, 0, side * 16, 8);
+    ctx.quadraticCurveTo(side * 8, 4, 0, 8);
+  }
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0, 3, 7, 9, 0, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+}
+
+const halloween: Background = {
+  id: 'halloween',
+  name: 'Noite de Halloween',
+  tags: ['#halloween', '#spooky', '#fullmoon'],
+  draw(ctx, t) {
+    vertical(ctx, ['#120a24', '#24123c', '#3a1c4f', '#5a2a52']);
+    drawStars(ctx, spookyStars, t);
+    // Big moon with a warm glow and a few soft craters.
+    const mx = W * 0.27, my = 520;
+    glow(ctx, mx, my, 380, 'rgba(255,190,120,0.22)');
+    ctx.fillStyle = '#ffe2b0';
+    ctx.beginPath();
+    ctx.arc(mx, my, 120, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(220,170,110,0.35)';
+    for (const [ox, oy, rr] of [[-40, -30, 22], [30, 20, 30], [-10, 55, 14], [50, -45, 12]]) {
+      ctx.beginPath();
+      ctx.arc(mx + ox, my + oy, rr, 0, TAU);
+      ctx.fill();
+    }
+    for (const b of bats) {
+      const x = wrapX(b.x + b.speed * t, 60);
+      bat(ctx, x, b.y + Math.sin(t * 1.5 + b.ph) * 25, b.s, Math.sin(t * 9 + b.ph));
+    }
+    // The hill, the graves on it and the jack-o'-lanterns.
+    ctx.fillStyle = '#1a1026';
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 20) ctx.lineTo(x, hill(x));
+    ctx.lineTo(W, H);
+    ctx.fill();
+    for (const g of graves) {
+      ctx.save();
+      ctx.translate(g.x, hill(g.x) + 8);
+      ctx.rotate(g.tilt);
+      ctx.fillStyle = '#2b1f3b';
+      if (g.cross) {
+        ctx.fillRect(-7, -g.h, 14, g.h);
+        ctx.fillRect(-g.w / 2, -g.h * 0.72, g.w, 14);
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(-g.w / 2, 0);
+        ctx.lineTo(-g.w / 2, -g.h + g.w / 2);
+        ctx.arc(0, -g.h + g.w / 2, g.w / 2, Math.PI, 0);
+        ctx.lineTo(g.w / 2, 0);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    pumpkins.forEach((pk, i) => {
+      const x = pk.x, y = hill(x) + 30, s = pk.s;
+      const flick = 0.75 + 0.25 * Math.sin(t * 7 + i * 2) * Math.sin(t * 3.1 + i);
+      glow(ctx, x, y, 120 * s, `rgba(255,150,40,${0.3 * flick})`);
+      ctx.fillStyle = '#e8741c';
+      ctx.beginPath();
+      for (const ox of [-18, 0, 18]) ctx.ellipse(x + ox * s, y, 26 * s, 30 * s, 0, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = '#4a6b2a';
+      ctx.fillRect(x - 4 * s, y - 40 * s, 8 * s, 14 * s);
+      // The carved face, lit from inside.
+      ctx.fillStyle = `rgba(255,220,110,${flick})`;
+      ctx.beginPath();
+      for (const ex of [-16, 16]) {
+        ctx.moveTo(x + (ex - 8) * s, y - 4 * s);
+        ctx.lineTo(x + ex * s, y - 16 * s);
+        ctx.lineTo(x + (ex + 8) * s, y - 4 * s);
+      }
+      ctx.moveTo(x - 22 * s, y + 8 * s);
+      ctx.quadraticCurveTo(x, y + 30 * s, x + 22 * s, y + 8 * s);
+      ctx.quadraticCurveTo(x, y + 18 * s, x - 22 * s, y + 8 * s);
+      ctx.fill();
+    });
+    for (const m of mist) {
+      const x = wrapX(m.x + m.speed * t, m.w);
+      glow(ctx, x, m.y, m.w / 2, 'rgba(200,180,230,0.12)');
+    }
+  },
+};
+
+export const BACKGROUNDS: Background[] = [dusk, aurora, ocean, cotton, galaxy, fireflyNight, sakura, christmas, ballpit, halloween];
 
 export function getBackground(id: string | undefined): Background {
   return BACKGROUNDS.find((b) => b.id === id) ?? BACKGROUNDS[0];
