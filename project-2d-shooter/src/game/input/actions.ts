@@ -1,0 +1,56 @@
+import { key, mouse, wheel, type Bindings } from '@engine/input/input';
+
+/** Every gameplay verb. Systems only ever ask about actions, never about keys. */
+export const ACTIONS = [
+  'left',
+  'right',
+  'up',
+  'down',
+  'jump',
+  'sprint',
+  'crouch',
+  'slowmo',
+  'fire',
+  'throw',
+  'reload',
+  'interact',
+  'nextItem',
+  'nextWeapon',
+  'prevWeapon',
+  'pause',
+  'debug',
+  'debugGod',
+  'debugSpawn',
+  'debugItems',
+  'debugStep',
+  'debugTick',
+  'debugReplay',
+] as const;
+
+export type Action = (typeof ACTIONS)[number];
+
+export const DEFAULT_BINDINGS: Bindings<Action> = {
+  left: [key('KeyA'), key('ArrowLeft')],
+  right: [key('KeyD'), key('ArrowRight')],
+  up: [key('KeyW'), key('ArrowUp')],
+  down: [key('KeyS'), key('ArrowDown')],
+  jump: [key('Space'), key('KeyW'), key('ArrowUp')],
+  sprint: [key('ShiftLeft'), key('ShiftRight')],
+  crouch: [key('KeyS'), key('ArrowDown')],
+  slowmo: [key('KeyE')],
+  fire: [mouse(0)],
+  throw: [mouse(2), key('KeyG')],
+  reload: [key('KeyR')],
+  interact: [key('KeyF')],
+  nextItem: [key('KeyQ')],
+  nextWeapon: [wheel('down'), key('Digit2')],
+  prevWeapon: [wheel('up'), key('Digit1')],
+  pause: [key('Escape')],
+  debug: [key('F3')],
+  debugGod: [key('F4')],
+  debugSpawn: [key('F6')],
+  debugItems: [key('F7')],
+  debugStep: [key('F8')],
+  debugTick: [key('F9')],
+  debugReplay: [key('F10')],
+};

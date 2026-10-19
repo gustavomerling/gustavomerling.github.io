@@ -1,0 +1,57 @@
+{
+  "name": "project-2d-shooter",
+  "productName": "Lasanha",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Roguelite 2D de tiro com geração procedural. Roubaram sua lasanha.",
+  "type": "module",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "dev:desktop": "node scripts/dev-desktop.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run test",
+    "build": "npm run check && vite build && node scripts/build-electron.mjs",
+    "smoke": "node scripts/electron.mjs scripts/smoke.cjs",
+    "dist": "npm run build && electron-builder --win portable",
+    "preview": "vite preview"
+  },
+  "build": {
+    "appId": "io.github.gustavomerling.lasanha",
+    "productName": "Lasanha",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": "portable",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.exe"
+    }
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  }
+}
