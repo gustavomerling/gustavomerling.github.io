@@ -9,6 +9,7 @@ import { CartaSection } from '../sections/CartaSection'
 import { ElencoSection } from '../sections/ElencoSection'
 import { FilmesSection } from '../sections/FilmesSection'
 import { FinalSection } from '../sections/FinalSection'
+import { FrancesSection } from '../sections/FrancesSection'
 import { HeroSection } from '../sections/HeroSection'
 import { IntroSection } from '../sections/IntroSection'
 import { LinksSection } from '../sections/LinksSection'
@@ -25,6 +26,7 @@ const NAV = [
   { id: 'musica', label: 'Música' },
   { id: 'linha-do-tempo', label: 'Linha do tempo' },
   { id: 'elenco', label: 'Bastet & Mocha' },
+  { id: 'frances', label: 'Francês' },
   { id: 'vale', label: 'Coisa do vale' },
   { id: 'quiz', label: 'Quiz' },
   { id: 'carta', label: 'Carta' },
@@ -58,7 +60,9 @@ export default function Home() {
       <TimelineSection />
       <TornEdge from="paper" to="pink" seed={14} />
       <ElencoSection />
-      <TornEdge from="pink" to="red" seed={17} />
+      <TornEdge from="pink" to="paper" seed={17} />
+      <FrancesSection />
+      <TornEdge from="paper" to="red" seed={18} />
       <ValeSection />
       <TornEdge from="red" to="paper" seed={20} />
       <QuizSection />

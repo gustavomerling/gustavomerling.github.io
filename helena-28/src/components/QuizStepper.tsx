@@ -27,7 +27,7 @@ function draw(bank: Pergunta[], count: number) {
     })
 }
 
-function verdict(score: number, total: number) {
+function defaultVerdict(score: number, total: number) {
   if (score === total) return 'Gabaritou. Diva!'
   if (score >= total - 1) return 'Quase lá. Conhece bem a Helena.'
   if (score >= total / 2) return 'Dá pra melhorar. Assiste mais filme de bruxa com ela.'
@@ -38,10 +38,14 @@ type QuizStepperProps = {
   bank: Pergunta[]
   /** Quantas perguntas por partida */
   count?: number
+  /** Frase do resultado; o padrão é o da Helena */
+  verdict?: (score: number, total: number) => string
+  /** Mostra o GIF da Taylor no resultado (padrão: true) */
+  showGif?: boolean
 }
 
 /** Quiz por etapas: uma pergunta por vez, placar no fim */
-export function QuizStepper({ bank, count = 5 }: QuizStepperProps) {
+export function QuizStepper({ bank, count = 5, verdict = defaultVerdict, showGif = true }: QuizStepperProps) {
   const [round, setRound] = useState(() => draw(bank, count))
   const [step, setStep] = useState(0)
   const [score, setScore] = useState(0)
@@ -89,12 +93,14 @@ export function QuizStepper({ bank, count = 5 }: QuizStepperProps) {
               <Ransom text={`${score} DE ${round.length}`} play />
             </p>
             <p className="quiz__reveal">{verdict(score, round.length)}</p>
-            {/* a Taylor reage ao placar */}
-            <GifCard
-              gif={score >= round.length / 2 ? GIFS.me : GIFS.whyMad}
-              rotate={score >= round.length / 2 ? 2 : -2}
-              className="quiz-stepper__gif"
-            />
+            {showGif && (
+              // a Taylor reage ao placar
+              <GifCard
+                gif={score >= round.length / 2 ? GIFS.me : GIFS.whyMad}
+                rotate={score >= round.length / 2 ? 2 : -2}
+                className="quiz-stepper__gif"
+              />
+            )}
             <Button onClick={restart}>Jogar de novo</Button>
           </motion.div>
         ) : (

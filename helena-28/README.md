@@ -95,6 +95,7 @@ Estrutura:
 - ✅ **Música:** Taylor Swift, Paramore e **Hayley Williams solo**. Ela vai a **3 shows da Hayley em 2026**.
 - ✅ **Avril Lavigne** (tem pasta própria no Pinterest, estética Y2K e rosa)
 - ✅ **Cores favoritas:** rosa, vermelho e laranja
+- ✅ **Duolingo:** mais de **500 dias de ofensiva no francês** (seção "Ofensiva francesa")
 - ✅ **Estética desejada:** mix de Taylor Swift, Hello Kitty e Paramore
 - ✅ **Linguagem visual dela:** muito **noise** (granulado) e **recorte e colagem**
 - ✅ **Cinema:** terror, bruxas e Halloween, mais comédias românticas e "coisas de menina"
