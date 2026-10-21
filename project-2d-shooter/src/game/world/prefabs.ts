@@ -19,6 +19,7 @@ import {
   emptyIntent,
   Faction,
   Focus,
+  Guard,
   Health,
   Intent,
   Npc,
@@ -27,6 +28,7 @@ import {
   Projectile,
   Ragdoll,
   Rig,
+  SwordState,
   Velocity,
   type BodyData,
   type HealthData,
@@ -57,8 +59,24 @@ const at = (x: number, y: number) => ({ x, y, prevX: x, prevY: y });
 
 /** Ammo is endless for now (no pickups yet): reloading still takes time. */
 export function weaponState(weapon: AssembledWeapon, reserve = Infinity): WeaponState {
-  return { weapon, ammo: weapon.stats.magazine, reloadLeft: 0, cooldown: 0, burstLeft: 0, bloom: 0, reserve };
+  return {
+    weapon,
+    ammo: weapon.def.infiniteAmmo ? Infinity : weapon.stats.magazine,
+    reloadLeft: 0,
+    cooldown: 0,
+    burstLeft: 0,
+    bloom: 0,
+    reserve,
+  };
 }
+
+const guardState = (): { raised: boolean; flash: number; magicLeft: number; magicMax: number; magicCooldownLeft: number } => ({
+  raised: false,
+  flash: 0,
+  magicLeft: 0,
+  magicMax: 4,
+  magicCooldownLeft: 0,
+});
 
 /** `feet` = bottom-centre position. */
 export function spawnPlayer(world: World, def: PlayerDef, feet: Vec2): Entity {
@@ -106,6 +124,17 @@ export function spawnPlayer(world: World, def: PlayerDef, feet: Vec2): Entity {
   world.add(e, Faction, { team: 'player' });
   world.add(e, Health, health(def.maxHp));
   world.add(e, Focus, { value: 1 });
+  world.add(e, Guard, guardState());
+  world.add(e, SwordState, {
+    lastX: feet.x + 32,
+    lastY: feet.y - h / 2,
+    speed: 0,
+    cooldownLeft: 0,
+    swingLeft: 0,
+    swingTotal: 0.18,
+    swingAngle: 0,
+    hit: new Set<number>(),
+  });
   world.add(e, Arsenal, {
     weapons: def.startingWeapons.map((w) =>
       weaponState(assembleWeapon(WEAPONS.get(w.weaponId), w.attachments.map((id) => ATTACHMENTS.get(id)))),
@@ -145,7 +174,11 @@ export function spawnEnemy(world: World, enemyId: string, feet: Vec2, facing: 1 
     idleLeft: 1 + (feet.x % 3),
   });
   if (def.weaponId) world.add(e, Arsenal, { weapons: [weaponState(assembleWeapon(WEAPONS.get(def.weaponId)))], active: 0 });
-  world.add(e, Rig, { animator: new HumanoidAnimator(def.size.h), style: rigStyle(def.color) });
+  if (def.shield) world.add(e, Guard, guardState());
+  world.add(e, Rig, {
+    animator: new HumanoidAnimator(def.size.h),
+    style: rigStyle(def.color, { skeleton: def.skeleton, shield: def.shield }),
+  });
   return e;
 }
 
@@ -161,6 +194,7 @@ export function spawnProjectile(
 ): Entity {
   const e = world.create();
   const s = weapon.stats;
+  const kind = weapon.def.projectileKind ?? 'bullet';
   const ricochetAmmo = weapon.behaviors.has('ricochet');
   world.add(e, Position, at(origin.x, origin.y));
   const speed = s.projectileSpeed * speedScale;
@@ -169,8 +203,10 @@ export function spawnProjectile(
     team,
     damage: s.damage * damageScale,
     distanceLeft: s.range,
+    kind,
+    explosionRadius: weapon.def.explosionRadius ?? 0,
     behaviors: weapon.behaviors,
-    bouncesLeft: ricochetAmmo ? RICOCHET.ricochetAmmoBounces : RICOCHET.bounces,
+    bouncesLeft: kind === 'bullet' ? (ricochetAmmo ? RICOCHET.ricochetAmmoBounces : RICOCHET.bounces) : 0,
     alwaysRicochet: ricochetAmmo,
     power: s.penetration,
     hit: new Set<number>(),

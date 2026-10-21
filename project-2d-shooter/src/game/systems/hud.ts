@@ -26,6 +26,17 @@ export function createHudSystem(): RunSystem {
         ctx.feedback.busy = ws.reloadLeft > 0 || ws.cooldown > 0.2;
       }
 
+      const custom = ws?.weapon.behaviors;
+      const fireMode = !ws
+        ? ''
+        : custom?.has('cursorSwing')
+          ? 'GOLPE'
+          : custom?.has('shield')
+            ? 'BLOQUEIO'
+            : custom?.has('magicShield')
+              ? 'MAGIA'
+              : FIRE_MODE_LABEL[ws.weapon.fireMode];
+
       const hud: HudState = {
         hp: Math.max(0, Math.ceil(health.hp)),
         maxHp: health.max,
@@ -36,7 +47,9 @@ export function createHudSystem(): RunSystem {
         magazine: ws?.weapon.stats.magazine ?? 0,
         reserve: ws?.reserve ?? 0,
         reloading: (ws?.reloadLeft ?? 0) > 0,
-        fireMode: ws ? FIRE_MODE_LABEL[ws.weapon.fireMode] : '',
+        fireMode,
+        infinite: ws?.weapon.def.infiniteAmmo ?? false,
+        weaponHint: ws?.weapon.def.hint ?? '',
         attachments: ws?.weapon.attachments.map((a) => a.name) ?? [],
         weapons: arsenal.weapons.map((w, i) => ({ name: w.weapon.def.name, active: i === arsenal.active })),
         reload: ws && ws.reloadLeft > 0 ? Math.round((1 - ws.reloadLeft / ws.weapon.stats.reloadTime) * 20) / 20 : 0,

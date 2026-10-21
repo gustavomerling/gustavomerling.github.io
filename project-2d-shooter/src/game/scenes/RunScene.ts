@@ -31,6 +31,7 @@ import { pickupSystem } from '../systems/pickups';
 import { createHudSystem } from '../systems/hud';
 import { playerIntentSystem } from '../systems/intent';
 import { lifecycleSystem } from '../systems/lifecycle';
+import { medievalSystem } from '../systems/medieval';
 import { physicsSystem } from '../systems/physics';
 import { playerMovementSystem } from '../systems/playerMovement';
 import { rigSystem } from '../systems/rig';
@@ -73,6 +74,7 @@ export class RunScene implements Scene {
     playerIntentSystem,
     playerMovementSystem,
     playerMeleeSystem,
+    medievalSystem,
     hordeSystem,
     aiSystem,
     physicsSystem,
@@ -109,7 +111,7 @@ export class RunScene implements Scene {
   enter(): void {
     const { renderer, input, bus, seed, biomeId } = this.deps;
     const mode = RUN_MODES.get(this.deps.mode ?? 'campaign');
-    const base = BIOMES.get(biomeId);
+    const base = BIOMES.get(mode.biomeId ?? biomeId);
     const biome: BiomeDef = mode.enemyPool ? { ...base, enemyPool: mode.enemyPool } : base;
     const level = generateLevel(seed, biome);
     const camera = new Camera(renderer.width, renderer.height);
@@ -134,7 +136,7 @@ export class RunScene implements Scene {
       frameStats: this.deps.frameStats,
     };
 
-    spawnPlayer(this.world, PLAYER_DEF, level.spawn);
+    spawnPlayer(this.world, mode.loadout ? { ...PLAYER_DEF, startingWeapons: mode.loadout } : PLAYER_DEF, level.spawn);
     const facingRng = Rng.fromString(`${seed}:${biome.id}:facing`);
     for (const s of level.enemySpawns) spawnEnemy(this.world, s.enemyId, s.pos, facingRng.chance(0.5) ? 1 : -1);
     camera.snapTo(level.spawn.x, level.spawn.y - 40);
@@ -180,7 +182,7 @@ export class RunScene implements Scene {
     camera.begin(ctx, alpha);
     const view = camera.view;
     camera.end(ctx);
-    drawSky(ctx, view, level.grid.heightPx, clock.realElapsed);
+    drawSky(ctx, view, level.grid.heightPx, clock.realElapsed, biome.sky ?? 'city');
     camera.begin(ctx, alpha);
     drawBackdrop(ctx, level, view);
     drawTiles(ctx, level.grid, biome.palette, view);

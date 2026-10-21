@@ -38,6 +38,31 @@ export function spawnShotFx(world: World, x: number, y: number, angle: number, s
   }
 }
 
+/** Sparks when a shield (or the magic bubble) eats a hit. */
+export function spawnShieldFx(world: World, x: number, y: number, angle: number, magic: boolean): void {
+  const color = magic ? '#8ef3ff' : '#ffd27a';
+  for (let i = 0; i < 7; i++) {
+    const a = angle + Math.PI + (Math.random() - 0.5) * 1.8;
+    const speed = 45 + Math.random() * 90;
+    const e = world.create();
+    world.add(e, Fx, {
+      kind: 'spark',
+      x,
+      y,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed,
+      angle: a,
+      size: 1,
+      age: 0,
+      life: 0.1 + Math.random() * 0.12,
+      color,
+    });
+  }
+  if (!magic) return;
+  const e = world.create();
+  world.add(e, Fx, { kind: 'smoke', x, y, vx: 0, vy: -8, angle: 0, size: 1.4, age: 0, life: 0.3, color: '#65d8ef' });
+}
+
 /** Dust kicked up by the feet (landings, slides, wall slides). Visual only. */
 export function spawnDust(world: World, x: number, y: number, count: number, spreadX: number): void {
   for (let i = 0; i < count; i++) {
@@ -103,6 +128,53 @@ export function spawnImpact(world: World, x: number, y: number, angle: number, s
   world.add(decal, Decal, { x: x + Math.cos(angle) * 0.8, y: y + Math.sin(angle) * 0.8, r: 0.55 + Math.random() * 0.25 });
   const decals = [...world.query(Decal)];
   for (let i = 0; i < decals.length - MAX_DECALS; i++) world.destroy(decals[i]![0]);
+}
+
+/** Fireball blast: a quick ball of fire, embers flying out and a puff of smoke. */
+export function spawnExplosion(world: World, x: number, y: number, radius: number): void {
+  const fire = world.create();
+  world.add(fire, Fx, {
+    kind: 'fire',
+    x,
+    y,
+    vx: 0,
+    vy: 0,
+    angle: 0,
+    size: radius / 12,
+    age: 0,
+    life: 0.22,
+  });
+  for (let i = 0; i < 12; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const speed = 90 + Math.random() * 200;
+    const e = world.create();
+    world.add(e, Fx, {
+      kind: 'spark',
+      x,
+      y,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed - 30,
+      angle: a,
+      size: 1,
+      age: 0,
+      life: 0.12 + Math.random() * 0.2,
+      color: Math.random() < 0.5 ? '#ffb347' : '#ff7a2f',
+    });
+  }
+  for (let i = 0; i < 3; i++) {
+    const e = world.create();
+    world.add(e, Fx, {
+      kind: 'smoke',
+      x: x + (Math.random() - 0.5) * radius * 0.5,
+      y: y + (Math.random() - 0.5) * radius * 0.5,
+      vx: (Math.random() - 0.5) * 20,
+      vy: -20 - Math.random() * 20,
+      angle: 0,
+      size: 1.4 + Math.random() * 0.8,
+      age: 0,
+      life: 0.4 + Math.random() * 0.3,
+    });
+  }
 }
 
 /** Debris: gravity, bounces on floors/walls, comes to rest lying flat. Fx: drift, grow, fade. */

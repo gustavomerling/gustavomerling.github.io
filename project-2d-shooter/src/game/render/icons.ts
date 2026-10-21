@@ -7,15 +7,19 @@ export function drawWeaponIcon(ctx: CanvasRenderingContext2D, w: number, h: numb
   const def = GUN_MODELS.tryGet(modelId);
   if (!def) return;
   const gun = withAttachments(def, attachments);
-  // Fit the gun's length (stock to muzzle) into the box.
-  let min = 0;
-  let max = gun.muzzle.x;
+  // Fit the whole silhouette (guns are long, shields are tall) into the box.
+  let minX = 0;
+  let maxX = gun.muzzle.x;
+  let minY = 0;
+  let maxY = 0;
   for (const part of [...gun.parts, ...(gun.mag ? [gun.mag] : [])]) {
     for (let i = 0; i < part.points.length; i += 2) {
-      min = Math.min(min, part.points[i]!);
-      max = Math.max(max, part.points[i]!);
+      minX = Math.min(minX, part.points[i]!);
+      maxX = Math.max(maxX, part.points[i]!);
+      minY = Math.min(minY, part.points[i + 1]!);
+      maxY = Math.max(maxY, part.points[i + 1]!);
     }
   }
-  const scale = Math.min(7, (w - 10) / (max - min));
-  drawGun(ctx, gun, w / 2 - ((min + max) / 2) * scale, h / 2, 1, 0, scale, 0, '#000000', true);
+  const scale = Math.min(7, (w - 10) / (maxX - minX), (h - 8) / Math.max(1, maxY - minY));
+  drawGun(ctx, gun, w / 2 - ((minX + maxX) / 2) * scale, h / 2 - ((minY + maxY) / 2) * scale, 1, 0, scale, 0, '#000000', true);
 }

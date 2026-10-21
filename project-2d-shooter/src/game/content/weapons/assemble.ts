@@ -35,6 +35,7 @@ export function assembleWeapon(def: WeaponDef, attachments: readonly AttachmentD
 
   let fireMode = def.fireMode;
   const behaviors = new Set<WeaponBehavior>();
+  for (const b of def.behaviors ?? []) behaviors.add(b);
   for (const a of attachments) {
     if (a.fireMode) fireMode = a.fireMode;
     for (const b of a.behaviors ?? []) behaviors.add(b);

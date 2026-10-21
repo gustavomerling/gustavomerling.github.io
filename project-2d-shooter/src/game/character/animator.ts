@@ -29,6 +29,8 @@ export interface RigInput {
   reload?: number;
   /** Kick progress 0..1 (absent = not kicking). */
   kick?: number;
+  /** Sword sweep: progress 0..1 and the cursor-motion direction (world radians). */
+  sword?: { progress: number; dir: number };
 }
 
 /**
@@ -185,6 +187,9 @@ export class HumanoidAnimator {
   /** Unarmed attack wind-up progress 0..1 (set by AI each step; arm pulls back). */
   meleeWindup = 0;
   private strike = 0;
+  /** Sword sweep progress 0..1 and its direction (world radians). */
+  private swordProgress = 0;
+  private swordDir = 0;
 
   /** Gun kick (arms snap back towards the shoulder, muzzle climbs), 0..1. */
   kick(amount: number): void {
@@ -193,7 +198,7 @@ export class HumanoidAnimator {
     // Deterministic wander (it moves the muzzle, so it must replay identically).
     this.seed = (this.seed * 16807) % 2147483647;
     this.shake = (this.seed / 2147483647 - 0.5) * 0.12 * k;
-    if (this.gun && !this.gun.pump) this.ejectCasing();
+    if (this.gun && !this.gun.pump && this.gun.role === undefined) this.ejectCasing();
   }
 
   /**
@@ -228,6 +233,8 @@ export class HumanoidAnimator {
     this.headSnap *= Math.exp(-7 * dt);
     this.torsoFlinch *= Math.exp(-7 * dt);
     this.landing = approach(this.landing, 0, dt * 4);
+    this.swordProgress = input.sword?.progress ?? 0;
+    this.swordDir = input.sword?.dir ?? 0;
     const prevPump = 1 - this.cycle;
     this.cycle = input.cycle ?? 0;
     // Pump guns throw the spent shell when the pump is racked back.
@@ -579,7 +586,15 @@ export class HumanoidAnimator {
 
   /** Aim minus the muzzle climb from recoil, plus the tilt while reloading and the dip while switching. */
   private aimedGunAngle(): number {
+    // The shield stays upright in front of the body instead of tracking the cursor.
+    if (this.gun?.role === 'shield') return this.facing > 0 ? 0 : Math.PI;
     let angle = this.aim - this.recoil * 0.3 + this.shake;
+    if (this.gun?.role === 'sword' && this.swordProgress > 0) {
+      // Arc the blade through the cursor's direction: up-strokes sweep the other way.
+      const local = this.facing > 0 ? this.swordDir : Math.PI - this.swordDir;
+      const sign = Math.sin(local) < -0.2 ? -1 : 1;
+      angle += (this.swordProgress - 0.5) * 2.2 * sign;
+    }
     if (this.reload >= 0 && this.gun) {
       const envelope = smoothstep(clamp(this.reload / 0.1, 0, 1)) * smoothstep(clamp((1 - this.reload) / 0.1, 0, 1));
       // Magazine guns cant the muzzle up to show the well; the shotgun rolls down to the loading port.

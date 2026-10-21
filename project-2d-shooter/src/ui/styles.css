@@ -344,6 +344,16 @@ kbd {
   color: var(--danger);
   animation: blink 0.5s steps(2) infinite;
 }
+.hud-ammo.is-infinite {
+  letter-spacing: 0.1em;
+}
+.hud-hint {
+  max-width: 230px;
+  margin-left: auto;
+  color: var(--dim);
+  font-size: 11px;
+  text-align: right;
+}
 .hud-top-center {
   top: 12px;
   left: 50%;

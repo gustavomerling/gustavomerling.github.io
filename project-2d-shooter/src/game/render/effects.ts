@@ -62,9 +62,23 @@ export function drawDecals(ctx: CanvasRenderingContext2D, world: World): void {
 export function drawSmoke(ctx: CanvasRenderingContext2D, world: World): void {
   ctx.lineCap = 'round';
   for (const [, f] of world.query(Fx)) {
+    if (f.kind === 'fire') {
+      const t = f.age / f.life;
+      ctx.globalAlpha = (1 - t) * 0.9;
+      ctx.fillStyle = '#ff7a2f';
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.size * (0.6 + t * 1.6), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffd27a';
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.size * (0.3 + t * 0.8), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      continue;
+    }
     if (f.kind === 'spark') {
       ctx.globalAlpha = 1 - f.age / f.life;
-      ctx.strokeStyle = '#ffd27a';
+      ctx.strokeStyle = f.color ?? '#ffd27a';
       ctx.lineWidth = 0.6;
       ctx.beginPath();
       ctx.moveTo(f.x, f.y);
@@ -75,7 +89,7 @@ export function drawSmoke(ctx: CanvasRenderingContext2D, world: World): void {
     if (f.kind !== 'smoke' && f.kind !== 'dust') continue;
     const t = f.age / f.life;
     ctx.globalAlpha = (f.kind === 'dust' ? 0.45 : 0.32) * (1 - t);
-    ctx.fillStyle = f.kind === 'dust' ? '#8a7f6e' : '#b8bec8';
+    ctx.fillStyle = f.color ?? (f.kind === 'dust' ? '#8a7f6e' : '#b8bec8');
     ctx.beginPath();
     ctx.arc(f.x, f.y, f.size * (1 + t * 2.5), 0, Math.PI * 2);
     ctx.fill();

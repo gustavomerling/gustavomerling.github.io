@@ -15,8 +15,14 @@ export interface GunPart {
   pump?: boolean;
 }
 
+export type GunRole = 'sword' | 'bow' | 'shield' | 'staff';
+
 export interface GunModel {
   readonly id: string;
+  /** How the rig should treat it (sword sweeps, shield faces forward, bows/staves fire). */
+  readonly role?: GunRole;
+  /** Extra rotation on top of the aim (rare; shields read better aligned with it). */
+  readonly hold?: number;
   /**
    * Grip position relative to the near shoulder, along the aim (x) and below it (y).
    * Short = tucked against the chest / stock on the shoulder; long = arms extended.
@@ -174,6 +180,96 @@ export const GUN_MODELS = new Registry<GunModel>('gun model', [
       box('dark', 2.3, -2.3, 10.2, -1.4),
       box('dark', 2.3, -1.4, 8.8, -0.7),
       box('wood', 3.9, -1.7, 6.9, -0.3, true),
+    ],
+  },
+  {
+    id: 'iron-sword',
+    role: 'sword',
+    grip: { x: 4.2, y: 1.0 },
+    support: { x: 3.2, y: 1.2 },
+    muzzle: { x: 16.0, y: -1.4 },
+    oneHanded: true,
+    eject: { x: 0, y: 0 },
+    casing: 'brass',
+    kick: { strength: 0.5, recover: 18 },
+    flash: 0,
+    parts: [
+      poly('light', 1.2, -1.9, 12.6, -1.5, 15.6, -1.1, 12.6, -0.7, 1.2, -0.3),
+      poly('metal', 2.0, -1.4, 11.5, -1.2, 2.0, -1.0),
+      box('brass', 0.3, -3.0, 1.5, 0.1),
+      box('wood', -2.8, -1.6, 0.1, -0.1),
+      box('brass', -3.4, -1.8, -2.6, -0.2),
+    ],
+  },
+  {
+    id: 'shortbow',
+    role: 'bow',
+    grip: { x: 4.6, y: 0.8 },
+    support: { x: 4.0, y: 0.6 },
+    muzzle: { x: 9.2, y: -1.2 },
+    oneHanded: true,
+    eject: { x: 0, y: 0 },
+    casing: 'brass',
+    kick: { strength: 0.4, recover: 20 },
+    flash: 0.2,
+    parts: [
+      poly('light', 6.3, -6.4, 4.0, -0.6, 6.3, 4.4, 6.05, 4.4, 3.75, -0.6, 6.05, -6.4),
+      poly('wood', 4.2, -1.2, 5.6, -4.0, 6.5, -6.5, 6.9, -6.4, 6.2, -3.9, 4.8, -1.0),
+      poly('wood', 4.2, -1.2, 5.6, 1.6, 6.5, 4.4, 6.9, 4.3, 6.2, 1.5, 4.8, -1.0),
+      box('dark', 3.7, -1.4, 4.7, 1.4),
+      box('brass', 4.4, -1.4, 5.0, -0.9),
+    ],
+  },
+  {
+    id: 'kite-shield',
+    role: 'shield',
+    grip: { x: 4.0, y: 0.5 },
+    support: { x: 2.6, y: 0.6 },
+    muzzle: { x: 6.8, y: 0 },
+    oneHanded: true,
+    eject: { x: 0, y: 0 },
+    casing: 'brass',
+    kick: { strength: 0.2, recover: 14 },
+    flash: 0,
+    parts: [
+      poly('metal', 2.4, -6.4, 6.2, -6.4, 7.0, -4.4, 7.0, 4.4, 6.2, 6.4, 2.4, 6.4, 1.6, 4.4, 1.6, -4.4),
+      box('shell', 1.9, -0.7, 6.9, 0.7),
+      box('shell', 4.1, -6.2, 4.9, 6.2),
+      poly('brass', 3.6, -1.4, 5.0, -1.4, 5.7, -0.5, 5.7, 0.9, 5.0, 1.8, 3.6, 1.8, 2.9, 0.9, 2.9, -0.5),
+    ],
+  },
+  {
+    id: 'fire-staff',
+    role: 'staff',
+    grip: { x: 5.4, y: 1.0 },
+    support: { x: 8.0, y: 0.8 },
+    muzzle: { x: 16.5, y: -1.2 },
+    eject: { x: 0, y: 0 },
+    casing: 'brass',
+    kick: { strength: 0.7, recover: 16 },
+    flash: 1.0,
+    parts: [
+      box('wood', -4.0, -1.5, 13.0, -0.3),
+      box('brass', 4.4, -1.7, 5.2, -0.1),
+      poly('brass', 13.4, -2.4, 14.4, -3.0, 15.4, -2.4, 15.4, -0.6, 14.4, 0.0, 13.4, -0.6),
+      poly('shell', 14.0, -2.4, 14.9, -3.0, 15.6, -2.2, 15.4, -0.8, 14.4, -0.2),
+    ],
+  },
+  {
+    id: 'ward-staff',
+    role: 'staff',
+    grip: { x: 5.4, y: 1.0 },
+    support: { x: 8.0, y: 0.8 },
+    muzzle: { x: 16.5, y: -1.2 },
+    eject: { x: 0, y: 0 },
+    casing: 'brass',
+    kick: { strength: 0.3, recover: 20 },
+    flash: 0.8,
+    parts: [
+      box('wood', -4.0, -1.5, 13.0, -0.3),
+      box('brass', 4.4, -1.7, 5.2, -0.1),
+      poly('brass', 13.4, -2.4, 14.4, -3.0, 15.4, -2.4, 15.4, -0.6, 14.4, 0.0, 13.4, -0.6),
+      poly('light', 14.0, -2.4, 14.9, -3.0, 15.6, -2.2, 15.4, -0.8, 14.4, -0.2),
     ],
   },
 ]);

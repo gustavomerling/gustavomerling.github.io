@@ -13,9 +13,10 @@ export const playerIntentSystem: RunSystem = {
       }
       intent.fireHeld = input.isDown('fire');
       intent.firePressed = input.pressed('fire');
+      intent.blockHeld = input.isDown('block');
       intent.reload = input.pressed('reload');
       intent.switchBy = (input.pressed('nextWeapon') ? 1 : 0) - (input.pressed('prevWeapon') ? 1 : 0);
-      const slot = (['weapon1', 'weapon2', 'weapon3', 'weapon4'] as const).findIndex((action) => input.pressed(action));
+      const slot = (['weapon1', 'weapon2', 'weapon3', 'weapon4', 'weapon5'] as const).findIndex((action) => input.pressed(action));
       intent.select = slot;
     }
   },

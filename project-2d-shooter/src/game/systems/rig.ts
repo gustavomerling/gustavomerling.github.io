@@ -1,10 +1,10 @@
 import { clamp } from '@engine/math/math';
 import type { RigInput } from '../character/animator';
-import { KICK, PLAYER_TUNING as T } from '../config';
+import { AI, KICK, PLAYER_TUNING as T } from '../config';
 import { ENEMIES } from '../content/enemies/catalog';
 import { WEAPONS } from '../content/weapons/catalog';
 import { GUN_MODELS, withAttachments, type GunModel } from '../content/weapons/models';
-import { Aim, Arsenal, Body, Brain, Npc, PlayerControl, Position, Rig, Velocity } from '../world/components';
+import { Aim, Arsenal, Body, Brain, Npc, PlayerControl, Position, Rig, SwordState, Velocity } from '../world/components';
 import type { RunSystem } from './context';
 import { spawnDebris } from './effects';
 
@@ -61,6 +61,12 @@ export const rigSystem: RunSystem = {
         cycle: ws ? clamp(ws.cooldown * ws.weapon.stats.fireRate, 0, 1) : 0,
         reload: ws && ws.reloadLeft > 0 ? 1 - ws.reloadLeft / ws.weapon.stats.reloadTime : undefined,
       };
+      if (brain && brain.windupLeft > 0 && ws?.weapon.behaviors.has('cursorSwing')) {
+        input.sword = {
+          progress: clamp(1 - brain.windupLeft / AI.melee.windup, 0, 1),
+          dir: facing > 0 ? 0 : Math.PI,
+        };
+      }
       if (pc) {
         const feetX = pos.x + body.w / 2;
         const feetY = pos.y + body.h;
@@ -71,6 +77,10 @@ export const rigSystem: RunSystem = {
         }
         if (pc.state === 'roll') input.progress = 1 - pc.rollLeft / T.rollTime;
         if (pc.kickLeft > 0) input.kick = 1 - pc.kickLeft / KICK.time;
+        const sword = world.get(e, SwordState);
+        if (sword && sword.swingLeft > 0) {
+          input.sword = { progress: 1 - sword.swingLeft / Math.max(sword.swingTotal, 0.01), dir: sword.swingAngle };
+        }
         if (pc.state === 'mantle') {
           input.progress = pc.mantleTotal > 0 ? 1 - pc.mantleLeft / pc.mantleTotal : 1;
           input.ledge = { x: pc.mantleLedgeX - feetX, y: pc.mantleLedgeY - feetY };

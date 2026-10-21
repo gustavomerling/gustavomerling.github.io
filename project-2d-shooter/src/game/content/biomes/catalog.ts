@@ -28,6 +28,8 @@ export interface BiomeDef {
   readonly exitLabel: string;
   /** Empty = peaceful biome. */
   readonly enemyPool: readonly { readonly id: string; readonly weight: number }[];
+  /** Skybox painted behind the level (defaults to the city). */
+  readonly sky?: 'city' | 'castle';
 }
 
 export const BIOMES = new Registry<BiomeDef>('biome', [
@@ -50,6 +52,25 @@ export const BIOMES = new Registry<BiomeDef>('biome', [
       { id: 'janitor', weight: 2 },
       { id: 'auditor', weight: 1 },
     ],
+  },
+  // Prototype: a flat, straight castle field for the medieval kit (not part of BIOME_ORDER).
+  {
+    id: 'castle',
+    name: 'Castelo',
+    floorLabel: 'PÁTIO',
+    description: 'Um pátio reto de pedra para testar lâminas, flechas e magia.',
+    palette: { sky: '#33405a', solid: '#4a4f5a', solidEdge: '#a7b0be', oneWay: '#b08d57', ladder: '#8a7a5a', accent: '#ffd23f' },
+    rooms: { min: 4, max: 4 },
+    roomTags: ['castle'],
+    startTemplate: 'castle-gate',
+    endTemplate: 'castle-bridge',
+    exitLabel: 'PORTÃO',
+    enemyPool: [
+      { id: 'skeleton-archer', weight: 3 },
+      { id: 'skeleton-knight', weight: 2 },
+      { id: 'skeleton-mage', weight: 1 },
+    ],
+    sky: 'castle',
   },
 ]);
 

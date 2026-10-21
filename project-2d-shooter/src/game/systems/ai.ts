@@ -9,6 +9,7 @@ import {
   Aim,
   Body,
   Brain,
+  Guard,
   Health,
   Intent,
   Npc,
@@ -69,6 +70,8 @@ export const aiSystem: RunSystem = {
       Object.assign(intent, emptyIntent());
       const def = ENEMIES.get(npc.defId);
       const animator = world.get(e, Rig)?.animator;
+      const guard = world.get(e, Guard);
+      if (guard) guard.raised = false;
       brain.cooldownLeft = Math.max(0, brain.cooldownLeft - dt);
       if (health.hp <= 0) continue;
 
@@ -292,6 +295,11 @@ function melee(
   aim.angle = brain.facing > 0 ? 0 : Math.PI;
   if (animator && brain.windupLeft <= 0) animator.meleeWindup = 0;
 
+  const arsenal = world.get(e, Arsenal);
+  const ws = arsenal?.weapons[arsenal.active];
+  const sword = ws?.weapon.behaviors.has('cursorSwing') ? ws : null;
+  const guard = world.get(e, Guard);
+
   if (brain.windupLeft > 0) {
     vel.x = 0;
     brain.windupLeft -= dt;
@@ -301,8 +309,10 @@ function melee(
     animator?.punch();
     brain.cooldownLeft = M.cooldown;
     const angle = brain.facing > 0 ? -0.3 : Math.PI + 0.3;
-    if (player && Math.abs(player.center.x - me.x) <= M.reach && Math.abs(player.center.y - me.y) <= 20) {
-      applyDamage(world, ctx, player.e, { amount: M.damage, zone: 'torso', at: player.center, angle, from: me, by: 'enemy', knockback: M.knockback });
+    const reach = sword ? sword.weapon.stats.range : M.reach;
+    const damage = sword ? sword.weapon.stats.damage : M.damage;
+    if (player && Math.abs(player.center.x - me.x) <= reach && Math.abs(player.center.y - me.y) <= 20) {
+      applyDamage(world, ctx, player.e, { amount: damage, zone: 'torso', at: player.center, angle, from: me, by: 'enemy', knockback: M.knockback });
     }
     return;
   }
@@ -313,6 +323,7 @@ function melee(
     return;
   }
   const dx = target.x - me.x;
+  if (guard) guard.raised = sees && !brain.downed;
   const close = sees && player && Math.abs(dx) <= M.range && Math.abs(target.y - me.y) <= 20;
   if (close) {
     // In reach of the player: wind up a punch.

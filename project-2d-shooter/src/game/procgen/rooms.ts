@@ -1,4 +1,5 @@
 import { ALLEY_CHUNKS } from './chunks/alley';
+import { CASTLE_CHUNKS } from './chunks/castle';
 
 /**
  * Hand-made room (chunk) templates, assembled procedurally (the Dead Cells / Spelunky approach:
@@ -61,10 +62,12 @@ export interface RoomTemplate {
   readonly style?: RoomStyle;
   /** Open-air chunk (alley): no back wall, the sky shows behind it. */
   readonly outdoor?: boolean;
+  /** Single-storey chunk: the generator only carves the ground door (no side windows/sills). */
+  readonly noUpperDoors?: boolean;
   readonly rows: readonly string[];
 }
 
-export const ROOM_TEMPLATES: readonly RoomTemplate[] = [...ALLEY_CHUNKS];
+export const ROOM_TEMPLATES: readonly RoomTemplate[] = [...ALLEY_CHUNKS, ...CASTLE_CHUNKS];
 
 /** Every character a room template may use. */
 export const TEMPLATE_CHARS = '#=.PXEWH';

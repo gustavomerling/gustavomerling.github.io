@@ -12,7 +12,7 @@ import { assembleWeapon } from './content/weapons/assemble';
 import { WEAPONS } from './content/weapons/catalog';
 import { Arsenal, Body, Debris, Health, Npc, Pickup, PlayerControl, Position, Projectile, Velocity } from './world/components';
 import { spawnPickup } from './systems/pickups';
-import { spawnEnemy, spawnProjectile } from './world/prefabs';
+import { spawnEnemy, spawnProjectile, weaponState } from './world/prefabs';
 
 function makeScene(seed: string) {
   const input = new Input(DEFAULT_BINDINGS);
@@ -359,13 +359,14 @@ describe('map traversal', () => {
     for (let i = 0; i < 60; i++) step();
     expect([...scene.world.query(Pickup)].map(([, g]) => g.weapon.def.id)).toEqual(['glock']);
 
-    // Full inventory (4): taking a bizon swaps out the gun in hand, which lands on the floor.
+    // Full inventory (5): taking a bizon swaps out the gun in hand, which lands on the floor.
     for (const [e] of [...scene.world.query(Pickup)]) scene.world.destroy(e);
+    arsenal.weapons.push(weaponState(assembleWeapon(WEAPONS.get('sniper'))));
     arsenal.active = 1;
     spawnPickup(scene.world, assembleWeapon(WEAPONS.get('bizon')), pos.x + body.w / 2, pos.y + body.h - 2, 0, 0);
     for (let i = 0; i < 20; i++) step();
     step(['KeyF']);
-    expect(arsenal.weapons.map((w) => w.weapon.def.id)).toEqual(['glock', 'bizon', 'shotgun', 'ak47']);
+    expect(arsenal.weapons.map((w) => w.weapon.def.id)).toEqual(['glock', 'bizon', 'shotgun', 'ak47', 'sniper']);
     for (let i = 0; i < 60; i++) step();
     expect([...scene.world.query(Pickup)].map(([, g]) => g.weapon.def.id)).toEqual(['uzi']);
   });

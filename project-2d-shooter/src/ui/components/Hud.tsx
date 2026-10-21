@@ -65,13 +65,16 @@ export function Hud({ hud, replaying, modeTag }: { hud: HudState | null; replayi
             <div className="hud-reload-bar" style={{ width: `${hud.reload * 100}%` }} />
             <span>RECARREGANDO</span>
           </div>
+        ) : hud.infinite ? (
+          <div className="hud-ammo is-infinite">∞</div>
         ) : (
           <div className={hud.ammo === 0 ? 'hud-ammo is-empty' : 'hud-ammo'}>
             {hud.ammo} / {hud.magazine}
             {Number.isFinite(hud.reserve) && <small className={hud.reserve === 0 ? 'hud-reserve is-empty' : 'hud-reserve'}> +{hud.reserve}</small>}
           </div>
         )}
-        {pips && (
+        {hud.weaponHint && <div className="hud-hint">{hud.weaponHint}</div>}
+        {pips && !hud.infinite && (
           <div className="hud-pips">
             {Array.from({ length: hud.magazine }, (_, i) => (
               <i key={i} className={i < hud.ammo && hud.reload === 0 ? 'is-full' : ''} />
@@ -92,9 +95,11 @@ export function Controls() {
     ['Espaço / W', 'pular (de novo na parede: walljump)'],
     ['S', 'agachar · correndo: slide'],
     ['W / S na escada', 'subir / descer'],
-    ['Mouse', 'mirar · clique: atirar'],
+    ['Mouse', 'mirar · clique: atirar/golpear'],
+    ['Mouse rápido', 'golpe de espada (direção do movimento)'],
+    ['Botão direito', 'levantar escudo'],
     ['R', 'recarregar'],
-    ['1-4 · roda', 'trocar de arma'],
+    ['1-5 · roda', 'trocar de arma'],
     ['F', 'pegar arma do chão · usar saída'],
     ['Q', 'chute'],
     ['E', 'câmera lenta'],

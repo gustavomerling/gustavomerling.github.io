@@ -1,5 +1,6 @@
-export type WeaponClass = 'pistol' | 'smg' | 'rifle' | 'shotgun';
+export type WeaponClass = 'pistol' | 'smg' | 'rifle' | 'shotgun' | 'bow' | 'sword' | 'shield' | 'magic';
 export type FireMode = 'semi' | 'burst' | 'auto';
+export type ProjectileKind = 'bullet' | 'arrow' | 'fireball';
 
 /** Numbers an attachment can modify. */
 export interface WeaponStats {
@@ -38,7 +39,11 @@ export type WeaponBehavior =
   | 'laserSight' // visible aim line, reveals intent to enemies
   | 'ricochet' // bullets bounce off walls once
   | 'pierce' // armour piercing: extra penetration (see the ap-rounds modifiers)
-  | 'knockback'; // pushes enemies
+  | 'knockback' // pushes enemies
+  | 'cursorSwing' // melee swing driven by how fast the cursor moves
+  | 'shield' // blocks damage from the front while held
+  | 'magicShield' // click casts a temporary bubble that blocks every direction
+  | 'explosive'; // the projectile explodes on impact
 
 export type AttachmentSlot = 'muzzle' | 'underbarrel' | 'magazine' | 'ammo' | 'conversion';
 
@@ -55,4 +60,14 @@ export interface WeaponDef {
   readonly burstCount?: number;
   readonly stats: WeaponStats;
   readonly slots: readonly AttachmentSlot[];
+  /** Gameplay flags baked into the weapon itself (attachments add more). */
+  readonly behaviors?: readonly WeaponBehavior[];
+  /** What leaves the weapon; omitted = bullet. */
+  readonly projectileKind?: ProjectileKind;
+  /** Fireball blast radius (px). Only used with the explosive behaviour. */
+  readonly explosionRadius?: number;
+  /** No magazine/reserve bookkeeping (bows, blades, staves). */
+  readonly infiniteAmmo?: boolean;
+  /** Short control hint shown in the HUD. */
+  readonly hint?: string;
 }

@@ -112,10 +112,19 @@ export interface IntentData {
   switchBy: number;
   /** Direct weapon slot (0-based), -1 = none. */
   select: number;
+  /** Shield up (right mouse button). */
+  blockHeld: boolean;
 }
 export const Intent = defineComponent<IntentData>('Intent');
 
-export const emptyIntent = (): IntentData => ({ fireHeld: false, firePressed: false, reload: false, switchBy: 0, select: -1 });
+export const emptyIntent = (): IntentData => ({
+  fireHeld: false,
+  firePressed: false,
+  reload: false,
+  switchBy: 0,
+  select: -1,
+  blockHeld: false,
+});
 
 /** Where the entity aims, world units. */
 export const Aim = defineComponent<{ x: number; y: number; angle: number }>('Aim');
@@ -143,6 +152,34 @@ export const Arsenal = defineComponent<ArsenalData>('Arsenal');
 export type Team = 'player' | 'enemy';
 export const Faction = defineComponent<{ team: Team }>('Faction');
 
+/** Shield/ward state: a raised physical shield, a temporary bubble, and the hit flash. */
+export interface GuardData {
+  raised: boolean;
+  /** Seconds left on the shield's hit flash (visual). */
+  flash: number;
+  /** Seconds of magic bubble left; 0 = down. */
+  magicLeft: number;
+  magicMax: number;
+  magicCooldownLeft: number;
+}
+export const Guard = defineComponent<GuardData>('Guard');
+
+/** Cursor-driven sword swing state (world-unit cursor samples + swing timing). */
+export interface SwordStateData {
+  lastX: number;
+  lastY: number;
+  /** Cursor speed measured this step (px/s). */
+  speed: number;
+  cooldownLeft: number;
+  swingLeft: number;
+  swingTotal: number;
+  /** Direction of the slash (world radians), from the cursor movement. */
+  swingAngle: number;
+  /** Every enemy already hit by the current swing. */
+  hit: Set<number>;
+}
+export const SwordState = defineComponent<SwordStateData>('SwordState');
+
 export interface HealthData {
   hp: number;
   max: number;
@@ -153,10 +190,15 @@ export interface HealthData {
 }
 export const Health = defineComponent<HealthData>('Health');
 
+export type ProjectileKind = 'bullet' | 'arrow' | 'fireball';
+
 export interface ProjectileData {
   team: Team;
   damage: number;
   distanceLeft: number;
+  kind: ProjectileKind;
+  /** Blast radius (px) for explosive projectiles; 0 = none. */
+  explosionRadius: number;
   behaviors: ReadonlySet<WeaponBehavior>;
   bouncesLeft: number;
   /** Ricochet ammo: bounces at any angle. */
@@ -230,7 +272,7 @@ export const Debris = defineComponent<DebrisData>('Debris');
 
 /** Gunshot visuals: a muzzle flash (a few frames) or a smoke puff (rises, grows, fades). */
 export interface FxData {
-  kind: 'flash' | 'smoke' | 'spark' | 'dust';
+  kind: 'flash' | 'smoke' | 'spark' | 'dust' | 'fire';
   x: number;
   y: number;
   vx: number;
@@ -239,6 +281,8 @@ export interface FxData {
   size: number;
   age: number;
   life: number;
+  /** Overrides the default colour (shield sparks, magic). */
+  color?: string;
 }
 export const Fx = defineComponent<FxData>('Fx');
 

@@ -37,6 +37,10 @@ export interface EnemyDef {
   readonly headshotOnly?: boolean;
   /** A leg hit knocks it down; it drags itself along the floor from then on. */
   readonly crawlsWhenLegShot?: boolean;
+  /** Skull face and pale bones (medieval skeletons). */
+  readonly skeleton?: boolean;
+  /** Carries a shield that blocks damage from the front. */
+  readonly shield?: boolean;
 }
 
 export const ENEMIES = new Registry<EnemyDef>('enemy', [
@@ -159,5 +163,47 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     weaponId: 'ak47',
     sightRange: 260,
     color: '#ff6b6b',
+  },
+  // Medieval skeletons (modo medieval): one per weapon family.
+  {
+    id: 'skeleton-archer',
+    name: 'Esqueleto arqueiro',
+    description: 'Deve ter morrido esperando o alvará. Atira flechas com paciência eterna.',
+    brain: 'shooter',
+    hp: 32,
+    moveSpeed: 60,
+    size: { w: 10, h: 23 },
+    weaponId: 'shortbow',
+    sightRange: 280,
+    color: '#ddd6c2',
+    skeleton: true,
+  },
+  {
+    id: 'skeleton-knight',
+    name: 'Esqueleto cavaleiro',
+    description: 'A armadura ficou, a carne não. Avança de escudo e espada.',
+    brain: 'melee',
+    hp: 80,
+    moveSpeed: 72,
+    size: { w: 12, h: 24 },
+    weaponId: 'iron-sword',
+    sightRange: 220,
+    color: '#cfc8b4',
+    skeleton: true,
+    shield: true,
+  },
+  {
+    id: 'skeleton-mage',
+    name: 'Esqueleto mago',
+    description: 'Estudou demais. Agora lança bolas de fogo com sotaque antigo.',
+    brain: 'shooter',
+    hp: 40,
+    moveSpeed: 52,
+    size: { w: 10, h: 24 },
+    weaponId: 'fire-staff',
+    sightRange: 300,
+    color: '#d8d0bb',
+    skeleton: true,
+    reaction: 0.7,
   },
 ]);

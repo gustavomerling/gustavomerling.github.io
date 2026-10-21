@@ -11,8 +11,12 @@ export interface HudState {
   reserve: number;
   reloading: boolean;
   fireMode: string;
+  /** Infinite ammo (sword, bow, shield, staves): the HUD shows ∞ instead of a magazine. */
+  infinite: boolean;
+  /** Short tip for the held weapon ("Mova o mouse rápido para golpear"). */
+  weaponHint: string;
   attachments: string[];
-  /** Every gun carried, in slot order (keys 1-4); `active` marks the one in hand. */
+  /** Every weapon carried, in slot order (keys 1-5); `active` marks the one in hand. */
   weapons: { name: string; active: boolean }[];
   /** Reload progress 0..1 (rounded), 0 when not reloading. */
   reload: number;

@@ -33,10 +33,21 @@ const SKYLINES: readonly SkylineLayer[] = [
  * `view` is the visible world rect; `worldHeight` is the level height (the ground line), used to
  * anchor the skylines: with the camera at the bottom their bases sit at the bottom of the screen.
  */
-export function drawSky(ctx: CanvasRenderingContext2D, view: Rect, worldHeight: number, time: number): void {
+export function drawSky(
+  ctx: CanvasRenderingContext2D,
+  view: Rect,
+  worldHeight: number,
+  time: number,
+  style: 'city' | 'castle' = 'city',
+): void {
   const { w, h } = view;
   // How far the camera is above its lowest position (world units).
   const rise = Math.max(0, worldHeight - h - view.y);
+
+  if (style === 'castle') {
+    drawCastleSky(ctx, view, rise, time);
+    return;
+  }
 
   const grad = ctx.createLinearGradient(0, 0, 0, h);
   grad.addColorStop(0, '#070a14');
@@ -86,6 +97,110 @@ export function drawSky(ctx: CanvasRenderingContext2D, view: Rect, worldHeight: 
   }
 
   for (const layer of SKYLINES) drawSkyline(ctx, layer, view, rise);
+}
+
+/** Dusk over the castle: mountains, a low sun and a crenellated silhouette with banners. */
+function drawCastleSky(ctx: CanvasRenderingContext2D, view: Rect, rise: number, time: number): void {
+  const { w, h } = view;
+
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#121a2e');
+  grad.addColorStop(0.55, '#33405a');
+  grad.addColorStop(0.82, '#7a5866');
+  grad.addColorStop(1, '#c98a5c');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Fewer, warmer stars.
+  const starP = 0.03;
+  const sx = view.x * starP;
+  ctx.fillStyle = '#f4e7cf';
+  for (let i = Math.floor(sx / 31) - 1; i * 31 - sx < w; i++) {
+    const x = i * 31 - sx + noise(i, 31) * 31;
+    const y = noise(i, 32) * h * 0.45 + rise * starP;
+    ctx.globalAlpha = 0.2 + 0.4 * noise(i, 33);
+    ctx.fillRect(x, y, 0.9, 0.9);
+  }
+  ctx.globalAlpha = 1;
+
+  const mx = w * 0.28 - view.x * 0.02;
+  const my = h * 0.56 + rise * 0.02;
+  ctx.fillStyle = 'rgba(255,206,140,0.16)';
+  ctx.beginPath();
+  ctx.arc(mx, my, 30, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffd9a0';
+  ctx.beginPath();
+  ctx.arc(mx, my, 13, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Clouds: slow violet bands.
+  const drift = time * 3;
+  const slot = 170;
+  const cx0 = view.x * 0.06 - drift;
+  ctx.fillStyle = 'rgba(210,180,190,0.10)';
+  for (let i = Math.floor(cx0 / slot) - 1; i * slot - cx0 < w + slot; i++) {
+    const x = i * slot - cx0 + noise(i, 5) * 70;
+    const y = h * (0.14 + noise(i, 6) * 0.3) + rise * 0.06;
+    const r = 12 + noise(i, 7) * 12;
+    ctx.beginPath();
+    ctx.ellipse(x, y, r * 3.2, r, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + r * 1.8, y - r * 0.4, r * 2, r * 0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Mountains.
+  const mp = 0.1;
+  const base = h + rise * mp;
+  const peakSlot = 210;
+  const mo = view.x * mp;
+  ctx.fillStyle = '#2c3448';
+  ctx.beginPath();
+  ctx.moveTo(-40, base);
+  for (let i = Math.floor(mo / peakSlot) - 1; i * peakSlot - mo < w + peakSlot; i++) {
+    const x = i * peakSlot - mo;
+    const peak = base - 70 - noise(i, 41) * 110;
+    ctx.lineTo(x + peakSlot * 0.5, peak);
+    ctx.lineTo(x + peakSlot + 40, base);
+  }
+  ctx.lineTo(w + 40, h);
+  ctx.lineTo(-40, h);
+  ctx.closePath();
+  ctx.fill();
+
+  // Castle silhouette: towers with crenellations, window slits and banners.
+  const cp = 0.26;
+  const cbase = h + rise * cp;
+  const towerSlot = 120;
+  const co = view.x * cp;
+  ctx.fillStyle = '#1c2233';
+  for (let i = Math.floor(co / towerSlot) - 1; i * towerSlot - co < w + towerSlot; i++) {
+    const x = i * towerSlot - co;
+    const tw = 46 + noise(i, 51) * 46;
+    const th = 90 + noise(i, 52) * 160;
+    const top = cbase - th;
+    ctx.fillRect(x, top, tw, th);
+    const merlon = 9;
+    for (let mx2 = x; mx2 < x + tw - 2; mx2 += merlon * 2) ctx.fillRect(mx2, top - merlon, merlon, merlon);
+    if (noise(i, 53) < 0.55) {
+      ctx.fillRect(x + tw * 0.5 - 0.7, top - 34, 1.4, 26);
+      ctx.fillStyle = '#a63d4f';
+      ctx.beginPath();
+      ctx.moveTo(x + tw * 0.5 + 0.6, top - 34);
+      ctx.lineTo(x + tw * 0.5 + 15, top - 29);
+      ctx.lineTo(x + tw * 0.5 + 0.6, top - 22);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#1c2233';
+    }
+    ctx.fillStyle = 'rgba(255,206,140,0.35)';
+    for (let wy = top + 14; wy < cbase - 14; wy += 24) {
+      for (let wx = x + 9; wx < x + tw - 9; wx += 14) {
+        if (noise(i * 733 + wx + wy, 54) < 0.18) ctx.fillRect(wx, wy, 2.4, 5);
+      }
+    }
+    ctx.fillStyle = '#1c2233';
+  }
 }
 
 function drawSkyline(ctx: CanvasRenderingContext2D, layer: SkylineLayer, view: Rect, rise: number): void {

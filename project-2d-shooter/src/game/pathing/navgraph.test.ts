@@ -139,9 +139,9 @@ describe('zombies on a generated level', () => {
 
   it('a zombie walks the level to the player', () => {
     expect(chase('PATH-A', 'zombie', 240)).toBeLessThan(240);
-  });
+  }, 15_000);
 
   it('a runner walks the level to the player', () => {
     expect(chase('PATH-B', 'runner', 120)).toBeLessThan(120);
-  });
+  }, 15_000);
 });

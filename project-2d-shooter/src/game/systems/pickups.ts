@@ -7,8 +7,8 @@ import { bodyCenter } from '../world/geometry';
 import { weaponState } from '../world/prefabs';
 import type { RunSystem } from './context';
 
-/** Most guns the player carries (keys 1-4). */
-export const MAX_SLOTS = 4;
+/** Most weapons the player carries (keys 1-5). */
+export const MAX_SLOTS = 5;
 /** How close (px, centre to gun) the player must be to pick a gun up. */
 export const PICKUP_RANGE = 14;
 const MAX_PICKUPS = 24;

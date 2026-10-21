@@ -9,10 +9,19 @@ export interface RigStyle {
   backColor: string;
   /** Thin dark rim around every part (keeps overlapping limbs readable). */
   outline: string;
+  /** Skull instead of a face (skeleton enemies). */
+  skeleton?: boolean;
+  /** Kite shield strapped to the back (skeleton knight). */
+  shield?: boolean;
 }
 
-export function rigStyle(color: string): RigStyle {
-  return { color, backColor: mix(color, '#000000', 0.45), outline: '#07080a' };
+export function rigStyle(color: string, opts: { skeleton?: boolean; shield?: boolean } = {}): RigStyle {
+  return {
+    color,
+    backColor: opts.skeleton ? '#a9a28f' : mix(color, '#000000', 0.45),
+    outline: '#07080a',
+    ...opts,
+  };
 }
 
 /** Flat gun colours: mid greys and wood, light enough to read on the dark backdrop. */
@@ -71,6 +80,21 @@ export function drawHumanoid(
     const c = boneAt(bones[HB.head]!, p.neck + p.head / 2);
     const hc = toWorld(c.x, c.y);
     drawDisc(ctx, hc.x, hc.y, p.head / 2 + 0.4, style.color, style.outline);
+    if (!style.skeleton) return;
+    // Skull: a dark socket towards the facing side and a jaw line.
+    drawDisc(ctx, hc.x + f * 1.1, hc.y - 0.4, 1.25, '#15161a', style.outline);
+    ctx.strokeStyle = style.outline;
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(hc.x + f * -2.2, hc.y + 2.1);
+    ctx.lineTo(hc.x + f * 2.2, hc.y + 2.1);
+    ctx.stroke();
+  };
+  const backShield = () => {
+    if (!style.shield) return;
+    const torso = bones[HB.torso]!;
+    const mid = toWorld((torso.x0 + torso.x1) / 2, (torso.y0 + torso.y1) / 2);
+    drawKiteShield(ctx, mid.x - f * 2.4, mid.y + 1.5, f, style.outline);
   };
 
   if (animator.backView > 0.5) {
@@ -94,6 +118,7 @@ export function drawHumanoid(
     arm(HB.armBackUpper, HB.armBackLower, side);
     arm(HB.armFrontUpper, HB.armFrontLower, style.color);
     limb(HB.torso, p.torsoWidth, style.color);
+    backShield();
     if (animator.gun) {
       // Slung diagonally across the back, barrel up.
       const torso = bones[HB.torso]!;
@@ -125,6 +150,7 @@ export function drawHumanoid(
   limb(HB.legBackUpper, p.upperLegWidth, style.backColor);
   limb(HB.legBackLower, p.lowerLegWidth, style.backColor);
   limb(HB.torso, p.torsoWidth, style.color);
+  backShield();
   head();
   if (animator.reloading) backArm();
   limb(HB.legFrontUpper, p.upperLegWidth, style.color);
@@ -158,7 +184,7 @@ export function drawGun(
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(facing * scale, scale);
-  ctx.rotate(angle);
+  ctx.rotate(angle + (gun.hold ?? 0));
   drawParts(ctx, withMag && gun.mag ? [gun.mag, ...gun.parts] : gun.parts, scale, pump, outline);
   ctx.restore();
 }
@@ -203,6 +229,29 @@ export function drawCapsule(ctx: CanvasRenderingContext2D, x0: number, y0: numbe
   ctx.lineWidth = width;
   ctx.stroke();
   ctx.lineCap = 'butt';
+}
+
+/** A small kite shield on the back (skeleton knight), facing mirrored with the rig. */
+function drawKiteShield(ctx: CanvasRenderingContext2D, x: number, y: number, facing: 1 | -1, outline: string): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(facing, 1);
+  const shape = [-1.8, -6, 1.8, -6, 2.2, -4, 2.2, 3.5, 0, 5.5, -2.2, 3.5, -2.2, -4];
+  const path = (pts: readonly number[]) => {
+    ctx.beginPath();
+    for (let i = 0; i < pts.length; i += 2) ctx.lineTo(pts[i]!, pts[i + 1]!);
+    ctx.closePath();
+  };
+  path(shape);
+  ctx.strokeStyle = outline;
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.fillStyle = GUN_TONES.metal;
+  ctx.fill();
+  ctx.fillStyle = GUN_TONES.shell;
+  ctx.fillRect(-0.45, -5.5, 0.9, 9.6);
+  ctx.fillRect(-1.9, -0.6, 3.8, 0.9);
+  ctx.restore();
 }
 
 export function drawDisc(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, outline: string): void {

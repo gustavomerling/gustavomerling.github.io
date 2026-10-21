@@ -22,6 +22,12 @@ export const MENU_ICONS: Record<string, ReactNode> = {
       <path d="M9 19v2M15 19v2" />
     </>,
   ),
+  medieval: frame(
+    <>
+      <path d="M4 4h8v5c0 3.5-2.4 5.6-4 6.6C6.4 14.6 4 12.5 4 9z" />
+      <path d="M20.5 3.5l-9 9M12 7.5l4.5 4.5M10.5 12l2.5 2.5" />
+    </>,
+  ),
   controls: frame(
     <>
       <rect x="2.5" y="6.5" width="19" height="11" rx="2" />

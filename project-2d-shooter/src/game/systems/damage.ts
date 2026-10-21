@@ -2,7 +2,7 @@ import type { Entity, World } from '@engine/ecs/world';
 import type { Vec2 } from '@engine/math/vec2';
 import { AI, FOCUS, IMPACT, type HitZone } from '../config';
 import { ENEMIES } from '../content/enemies/catalog';
-import { Body, Brain, Focus, Health, Npc, PlayerControl, Position, Rig, Velocity, type Team } from '../world/components';
+import { Body, Brain, Focus, Guard, Health, Npc, PlayerControl, Position, Rig, Velocity, type Team } from '../world/components';
 import type { RunContext } from './context';
 
 export interface DamageInfo {
@@ -20,7 +20,7 @@ export interface DamageInfo {
   knockback?: number;
 }
 
-export type DamageResult = 'hit' | 'killed' | 'dodged' | 'none';
+export type DamageResult = 'hit' | 'killed' | 'dodged' | 'blocked' | 'none';
 
 /**
  * Single entry point for hurting anyone (bullets, melee). Applies damage and its consequences:
@@ -36,6 +36,22 @@ export function applyDamage(world: World, ctx: RunContext, target: Entity, info:
   const brain = world.get(target, Brain);
 
   if (health.invulnLeft > 0 || (isPlayer && ctx.debug.god)) return 'dodged';
+
+  // Shields: a magic bubble blocks every direction; a raised shield blocks what comes from the front.
+  const guard = world.get(target, Guard);
+  if (guard) {
+    guard.flash = Math.max(guard.flash, 0.18);
+    if (guard.magicLeft > 0) return 'blocked';
+    const body = world.get(target, Body);
+    const pos = world.get(target, Position);
+    if (guard.raised && body && pos) {
+      const center = { x: pos.x + body.w / 2, y: pos.y + body.h / 2 };
+      const facing = world.get(target, PlayerControl)?.facing ?? brain?.facing ?? 1;
+      let source: Vec2 | null = info.from ? { ...info.from } : null;
+      if (!source && info.angle !== undefined) source = { x: center.x - Math.cos(info.angle), y: center.y - Math.sin(info.angle) };
+      if (source && (source.x - center.x) * facing > -1 && Math.abs(source.y - center.y) < body.h) return 'blocked';
+    }
+  }
 
   // Undead: only the head is lethal. Every other hit stops at the last point of health.
   if (def?.headshotOnly) health.hp = info.zone === 'head' ? 0 : Math.max(1, health.hp - info.amount);

@@ -3,8 +3,55 @@ import type { Vec2 } from '@engine/math/vec2';
 import type { Feedback } from '../systems/context';
 import type { TileGrid } from '@engine/physics/tilegrid';
 import { ENEMIES } from '../content/enemies/catalog';
-import { Aim, Arsenal, Body, Brain, Npc, PlayerControl, Position } from '../world/components';
-import { shoulder } from '../world/geometry';
+import { Aim, Arsenal, Body, Brain, Guard, Npc, PlayerControl, Position, SwordState } from '../world/components';
+import { bodyCenter, shoulder } from '../world/geometry';
+
+/** Magic bubbles, raised-shield glints and the sword's sweep trail. */
+function drawMedievalFx(ctx: CanvasRenderingContext2D, world: World, time: number): void {
+  for (const [, pos, body, guard] of world.query(Position, Body, Guard)) {
+    const center = bodyCenter(pos, body);
+    if (guard.magicLeft > 0) {
+      const fade = Math.min(1, guard.magicLeft / 0.35, (guard.magicMax - guard.magicLeft) / 0.15 + 0.3);
+      const r = Math.max(body.w, body.h) * 0.62 + 2 + Math.sin(time * 7) * 1.2;
+      ctx.globalAlpha = 0.32 * fade;
+      ctx.fillStyle = '#65d8ef';
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.85 * fade;
+      ctx.strokeStyle = '#8ef3ff';
+      ctx.lineWidth = 1.1;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    if (guard.flash > 0) {
+      ctx.globalAlpha = Math.min(1, guard.flash * 5) * 0.7;
+      ctx.strokeStyle = guard.magicLeft > 0 ? '#8ef3ff' : '#ffd27a';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, Math.max(body.w, body.h) * 0.62 + 3, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  const sword = world.first(Position, Body, SwordState, PlayerControl);
+  if (!sword) return;
+  const [, pos, body, state] = sword;
+  if (state.swingLeft <= 0) return;
+  const center = bodyCenter(pos, body);
+  const t = 1 - state.swingLeft / Math.max(state.swingTotal, 0.01);
+  const base = state.swingAngle;
+  const arc = 0.85;
+  const sweep = base + (t * 2 - 1) * arc;
+  ctx.globalAlpha = (1 - t) * 0.75;
+  ctx.strokeStyle = '#e9f0ff';
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  ctx.arc(center.x, center.y, 26, sweep - arc * 0.9, sweep + arc * 0.35);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
 
 /** Enemy lasers: a thin red line along the aim, up to the first wall, while they see the player. */
 function drawEnemyLasers(ctx: CanvasRenderingContext2D, world: World, grid: TileGrid, time: number): void {
@@ -29,6 +76,7 @@ function drawEnemyLasers(ctx: CanvasRenderingContext2D, world: World, grid: Tile
 
 /** World-space extras drawn after characters (laser sights). */
 export function drawWorldOverlay(ctx: CanvasRenderingContext2D, world: World, grid: TileGrid, time: number): void {
+  drawMedievalFx(ctx, world, time);
   drawEnemyLasers(ctx, world, grid, time);
   const row = world.first(Position, Body, Aim, Arsenal, PlayerControl);
   if (!row) return;

@@ -27,6 +27,8 @@ export interface PlacedRoom {
   style: RoomStyle;
   /** Open-air chunk: no back wall. */
   outdoor: boolean;
+  /** Only the ground door is carved (flat single-storey chunk). */
+  noUpperDoors: boolean;
   cell: Cell;
   /** Room rect in world units. */
   rect: Rect;
@@ -109,6 +111,7 @@ export function generateLevel(seed: string, biome: BiomeDef, templates: readonly
       name: template.name ?? template.id,
       style: template.style ?? DEFAULT_ROOM_STYLE,
       outdoor: template.outdoor === true,
+      noUpperDoors: template.noUpperDoors === true,
       cell,
       rect: { x: cell.cx * ROOM_COLS * TILE, y: 0, w: ROOM_COLS * TILE, h: ROOM_ROWS * TILE },
       connections,
@@ -211,6 +214,7 @@ function carveConnections(grid: TileGrid, room: PlacedRoom): void {
     const col = dir === 'left' ? originCol(room) : originCol(room) + ROOM_COLS - 1;
     const inward = dir === 'left' ? 1 : -1;
     grid.fill(col, DOOR_ROWS.from, 1, doorH, Tile.Empty);
+    if (room.noUpperDoors) continue;
     for (const slab of SLAB_ROWS) {
       const rows = sideWindowRows(slab);
       // Solid wall from the slab up to the sill, then the opening.

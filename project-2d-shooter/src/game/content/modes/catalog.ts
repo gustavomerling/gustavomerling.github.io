@@ -1,6 +1,11 @@
 import { Registry } from '@engine/content/registry';
 
-export type RunModeId = 'campaign' | 'zombie';
+export type RunModeId = 'campaign' | 'zombie' | 'medieval';
+
+export interface StartingWeapon {
+  readonly weaponId: string;
+  readonly attachments: readonly string[];
+}
 
 export interface WeightedEnemy {
   readonly id: string;
@@ -31,6 +36,10 @@ export interface RunModeDef {
   /** Replaces the biome's enemy pool for the enemies placed in the level. */
   readonly enemyPool?: readonly WeightedEnemy[];
   readonly horde?: HordeDef;
+  /** Overrides the campaign's biome (e.g. the flat castle test field). */
+  readonly biomeId?: string;
+  /** Overrides the player's starting kit (keys 1-5). */
+  readonly loadout?: readonly StartingWeapon[];
 }
 
 const ZOMBIES: readonly WeightedEnemy[] = [
@@ -61,5 +70,25 @@ export const RUN_MODES = new Registry<RunModeDef>('mode', [
       maxDistance: 420,
       pool: ZOMBIES,
     },
+  },
+  {
+    id: 'medieval',
+    name: 'Modo medieval',
+    description: 'Protótipo: pátio reto, esqueletos e armas brancas. Mova o mouse para golpear.',
+    tag: 'MEDIEVAL',
+    deathTitle: 'Você caiu em batalha',
+    biomeId: 'castle',
+    enemyPool: [
+      { id: 'skeleton-archer', weight: 3 },
+      { id: 'skeleton-knight', weight: 2 },
+      { id: 'skeleton-mage', weight: 1 },
+    ],
+    loadout: [
+      { weaponId: 'iron-sword', attachments: [] },
+      { weaponId: 'shortbow', attachments: [] },
+      { weaponId: 'kite-shield', attachments: [] },
+      { weaponId: 'fire-staff', attachments: [] },
+      { weaponId: 'ward-staff', attachments: [] },
+    ],
   },
 ]);

@@ -54,6 +54,56 @@ export function drawProjectiles(ctx: CanvasRenderingContext2D, world: World, alp
     const x = lerp(pos.prevX, pos.x, alpha);
     const y = lerp(pos.prevY, pos.y, alpha);
     const len = Math.hypot(vel.x, vel.y) || 1;
+    const angle = Math.atan2(vel.y, vel.x);
+
+    if (proj.kind === 'arrow') {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.strokeStyle = '#d9b382';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-13, 0);
+      ctx.lineTo(-1, 0);
+      ctx.stroke();
+      ctx.fillStyle = '#dfe6f0';
+      ctx.beginPath();
+      ctx.moveTo(2.6, 0);
+      ctx.lineTo(-1.4, -1.6);
+      ctx.lineTo(-1.4, 1.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = proj.team === 'player' ? '#f3f0d0' : '#c46b6b';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-13, 0);
+      ctx.lineTo(-10, -2.4);
+      ctx.moveTo(-12, 0);
+      ctx.lineTo(-9, 2.4);
+      ctx.stroke();
+      ctx.restore();
+      continue;
+    }
+
+    if (proj.kind === 'fireball') {
+      const pulse = 1 + Math.sin(x * 0.4 + y * 0.3) * 0.12;
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = '#ff9b3d';
+      ctx.beginPath();
+      ctx.arc(x, y, 7 * pulse, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#ff7a2f';
+      ctx.beginPath();
+      ctx.arc(x, y, 3.6 * pulse, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffe08a';
+      ctx.beginPath();
+      ctx.arc(x + Math.cos(angle) * 0.8, y + Math.sin(angle) * 0.8, 1.8 * pulse, 0, Math.PI * 2);
+      ctx.fill();
+      continue;
+    }
+
     ctx.strokeStyle = proj.team === 'player' ? '#fff6a0' : '#ff7a7a';
     ctx.lineWidth = 1.5;
     ctx.beginPath();

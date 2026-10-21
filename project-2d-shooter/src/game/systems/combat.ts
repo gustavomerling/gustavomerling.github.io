@@ -1,5 +1,5 @@
 import type { Entity } from '@engine/ecs/world';
-import { DEG2RAD } from '@engine/math/math';
+import { clamp, DEG2RAD } from '@engine/math/math';
 import { segmentDistance } from '@engine/math/segment';
 import type { Rect } from '@engine/math/rect';
 import type { Vec2 } from '@engine/math/vec2';
@@ -7,13 +7,13 @@ import type { TileGrid } from '@engine/physics/tilegrid';
 import type { HumanoidAnimator } from '../character/animator';
 import { raycastParts, rigHitParts, type HitPart } from '../character/hitbox';
 import { AI, BALLISTICS, HIT_ZONES, IMPACT, RICOCHET, type HitZone } from '../config';
-import { Aim, Arsenal, Body, Brain, Faction, Health, Intent, PlayerControl, Position, Projectile, Ragdoll, Rig, Velocity, type BodyData, type PlayerState } from '../world/components';
+import { Aim, Arsenal, Body, Brain, Faction, Guard, Health, Intent, PlayerControl, Position, Projectile, Ragdoll, Rig, Velocity, type BodyData, type PlayerState, type ProjectileData } from '../world/components';
 import { GUN_MODELS, withAttachments } from '../content/weapons/models';
-import { bodyRect, shoulder } from '../world/geometry';
+import { bodyCenter, bodyRect, shoulder } from '../world/geometry';
 import { spawnProjectile } from '../world/prefabs';
 import type { RunSystem } from './context';
 import { applyDamage } from './damage';
-import { dropSlug, spawnBlood, spawnImpact, spawnShotFx } from './effects';
+import { dropSlug, spawnBlood, spawnExplosion, spawnImpact, spawnShieldFx, spawnShotFx } from './effects';
 
 /** Moves that set the facing themselves (the mouse can't turn the body mid-move). */
 const FACING_LOCKED: ReadonlySet<PlayerState> = new Set(['roll', 'mantle', 'wallSlide']);
@@ -62,6 +62,9 @@ export const weaponSystem: RunSystem = {
       const { stats, fireMode } = ws.weapon;
       ws.cooldown = Math.max(0, ws.cooldown - dt);
       ws.bloom = Math.max(0, ws.bloom - dt * 2.5);
+      // Sword, shield and magic are driven by the medieval system; they never fire bullets here.
+      const { behaviors } = ws.weapon;
+      if (behaviors.has('cursorSwing') || behaviors.has('shield') || behaviors.has('magicShield')) continue;
 
       const startReload = () => {
         if (ws.reserve <= 0 || ws.ammo >= stats.magazine) return;
@@ -195,6 +198,32 @@ export function zoneAt(r: Rect, y: number): HitZone {
   return t < 0.25 ? 'head' : t > 0.65 ? 'leg' : 'torso';
 }
 
+/** Fireball blast: damages everyone but the projectile's team, weaker with distance. */
+function explodeProjectile(world: Parameters<RunSystem['update']>[0], ctx: Parameters<RunSystem['update']>[1], proj: ProjectileData, at: Vec2): void {
+  const radius = proj.explosionRadius;
+  if (radius <= 0) return;
+  spawnExplosion(world, at.x, at.y, radius);
+  for (const [t, tpos, tbody, health, faction] of [...world.query(Position, Body, Health, Faction)]) {
+    if (faction.team === proj.team || health.hp <= 0 || proj.hit.has(t)) continue;
+    const center = bodyCenter(tpos, tbody);
+    const dist = Math.hypot(center.x - at.x, center.y - at.y);
+    if (dist > radius + tbody.w / 2) continue;
+    const falloff = 1 - 0.65 * clamp(dist / radius, 0, 1);
+    const angle = Math.atan2(center.y - at.y, center.x - at.x);
+    const result = applyDamage(world, ctx, t, {
+      amount: proj.damage * falloff,
+      zone: 'torso',
+      at: center,
+      angle,
+      from: { ...at },
+      by: proj.team,
+      knockback: 160 * falloff,
+    });
+    if (result === 'blocked') spawnShieldFx(world, center.x, center.y, angle, (world.get(t, Guard)?.magicLeft ?? 0) > 0);
+    else spawnBlood(world, center.x, center.y, angle, proj.damage * falloff * 0.5, false);
+  }
+}
+
 /**
  * Moves bullets: hits on the rig's bones (or the collider), blood, going through bodies
  * (spending penetration, then dropping), wall impacts, ricochets and range.
@@ -276,21 +305,30 @@ export const projectileSystem: RunSystem = {
               zone === 'head' ? Math.min(IMPACT.maxKnockback, amount * IMPACT.knockbackPerDamage * BALLISTICS.headshotKnock) : undefined,
           });
           if (result === 'dodged') continue; // passes through a dodging target
+          if (result === 'blocked') {
+            spawnShieldFx(world, at.x, at.y, angle, (world.get(t, Guard)?.magicLeft ?? 0) > 0);
+            if (proj.kind === 'fireball') explodeProjectile(world, ctx, proj, at);
+            world.destroy(e);
+            alive = false;
+            break;
+          }
           if (proj.team === 'player' && proj.shot && !proj.shot.hit) {
             proj.shot.hit = true;
             ctx.stats.hits++;
           }
 
           // Through the body: spend penetration; the rest carries on weaker, or the bullet drops.
+          // Arrows and fireballs always stop at the first body.
           proj.power -= cost ?? BALLISTICS.partCost[zone];
-          const through = proj.power > 0;
+          const through = proj.power > 0 && proj.kind === 'bullet';
           spawnBlood(world, at.x, at.y, angle, amount, through);
           if (through) {
             proj.damage *= BALLISTICS.damageKept;
             vel.x *= BALLISTICS.speedKept;
             vel.y *= BALLISTICS.speedKept;
           } else {
-            dropSlug(world, at.x, at.y, vel.x * 0.08, vel.y * 0.08);
+            if (proj.kind === 'fireball') explodeProjectile(world, ctx, proj, at);
+            else if (proj.kind === 'bullet') dropSlug(world, at.x, at.y, vel.x * 0.08, vel.y * 0.08);
             world.destroy(e);
             alive = false;
           }
@@ -326,6 +364,7 @@ export const projectileSystem: RunSystem = {
 
         if (ctx.grid.isSolidAtPixel(nx, ny)) {
           const axis = proj.bouncesLeft > 0 ? ricochetAxis(ctx.grid, pos.x, pos.y, nx, ny, vel.x, vel.y, proj.alwaysRicochet) : null;
+          if (proj.kind === 'fireball') explodeProjectile(world, ctx, proj, { x: pos.x, y: pos.y });
           // Where it struck: the last free point, and the surface it faces.
           const wallX = ctx.grid.isSolidAtPixel(nx, pos.y);
           spawnImpact(world, pos.x, pos.y, angle, wallX ? 'x' : 'y', !axis);
@@ -364,7 +403,8 @@ export const projectileSystem: RunSystem = {
       proj.distanceLeft -= dist;
       // Out of range: the spent bullet falls instead of vanishing.
       if (alive && proj.distanceLeft <= 0) {
-        dropSlug(world, pos.x, pos.y, vel.x * 0.1, vel.y * 0.1);
+        if (proj.kind === 'fireball') explodeProjectile(world, ctx, proj, { x: pos.x, y: pos.y });
+        else if (proj.kind === 'bullet') dropSlug(world, pos.x, pos.y, vel.x * 0.1, vel.y * 0.1);
         world.destroy(e);
       }
     }
