@@ -39,7 +39,7 @@ export const rigSystem: RunSystem = {
       const pc = world.get(e, PlayerControl);
       const brain = world.get(e, Brain);
       const facing: 1 | -1 = pc?.facing ?? brain?.facing ?? rig.animator.facing;
-      const npcState = !body.onGround ? 'air' : brain?.crouching ? 'crouch' : Math.abs(vel.x) > 4 ? 'run' : 'idle';
+      const npcState = !body.onGround ? 'air' : brain?.downed ? 'crawl' : brain?.crouching ? 'crouch' : Math.abs(vel.x) > 4 ? 'run' : 'idle';
 
       const aim = world.get(e, Aim);
       const arsenal = world.get(e, Arsenal);

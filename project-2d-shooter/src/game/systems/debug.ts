@@ -75,7 +75,7 @@ export function drawDebugWorld(ctx2d: CanvasRenderingContext2D, world: World, ct
       ctx2d.stroke();
     }
     ctx2d.fillStyle = '#ff0';
-    const state = brain.staggerLeft > 0 ? 'STAG' : brain.windupLeft > 0 ? 'WIND' : brain.seeTime > 0 ? 'SEE' : brain.alert > 0 ? `ALR ${brain.alert.toFixed(1)}` : 'calm';
+    const state = brain.downed ? 'DOWN' : brain.staggerLeft > 0 ? 'STAG' : brain.windupLeft > 0 ? 'WIND' : brain.seeTime > 0 ? 'SEE' : brain.alert > 0 ? `ALR ${brain.alert.toFixed(1)}` : 'calm';
     ctx2d.fillText(`${state}${brain.crouching ? ' C' : ''}`, pos.x - 4, pos.y - 8);
   }
 }

@@ -132,6 +132,8 @@ export const AI = {
   burstPause: { min: 0.6, max: 1.3 },
   /** Enemy bullets deal this fraction of the gun's damage. */
   damageScale: 0.5,
+  /** Downed enemies dragging themselves along the floor move at this fraction of their speed. */
+  crawlSpeed: 0.45,
   melee: { range: 14, reach: 20, windup: 0.32, damage: 12, cooldown: 0.9, knockback: 220, jumpSpeed: 300 },
 } as const;
 

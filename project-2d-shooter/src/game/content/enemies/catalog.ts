@@ -33,6 +33,10 @@ export interface EnemyDef {
    * see pathing/navgraph.ts. Only melee enemies use it.
    */
   readonly pathing?: boolean;
+  /** Only a headshot can kill it: any other hit stops at 1 HP. */
+  readonly headshotOnly?: boolean;
+  /** A leg hit knocks it down; it drags itself along the floor from then on. */
+  readonly crawlsWhenLegShot?: boolean;
 }
 
 export const ENEMIES = new Registry<EnemyDef>('enemy', [
@@ -105,12 +109,14 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     description: 'Anda torto e não para. Sente o cheiro de longe.',
     brain: 'melee',
     hp: 35,
-    moveSpeed: 55,
+    moveSpeed: 38,
     size: { w: 10, h: 22 },
     sightRange: 230,
     color: '#8fbf7a',
     omniscient: true,
     pathing: true,
+    headshotOnly: true,
+    crawlsWhenLegShot: true,
   },
   {
     id: 'runner',
@@ -118,12 +124,14 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     description: 'Ainda tem fôlego. Pouco. Chega antes de você ouvir.',
     brain: 'melee',
     hp: 22,
-    moveSpeed: 125,
+    moveSpeed: 95,
     size: { w: 10, h: 22 },
     sightRange: 300,
     color: '#d9a56b',
     omniscient: true,
     pathing: true,
+    headshotOnly: true,
+    crawlsWhenLegShot: true,
   },
   {
     id: 'bloater',
@@ -131,12 +139,14 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     description: 'Lento e difícil de derrubar. Cada tiro só o faz cambalear.',
     brain: 'melee',
     hp: 120,
-    moveSpeed: 38,
+    moveSpeed: 28,
     size: { w: 16, h: 28 },
     sightRange: 200,
     color: '#7f9a6e',
     omniscient: true,
     pathing: true,
+    headshotOnly: true,
+    crawlsWhenLegShot: true,
   },
   {
     id: 'manager',

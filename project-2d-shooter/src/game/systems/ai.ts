@@ -41,6 +41,13 @@ const ADVANCE_SPEED = 0.7;
 const BACK_OFF_DISTANCE = 48;
 /** How far (tiles) a shooter looks for cover towards the player. */
 const COVER_SEARCH_TILES = 4;
+/**
+ * Enemies only turn when the target is clearly to a side. Without this, a target straight
+ * above/below makes the facing flip back and forth every step (the "spinning in place" bug).
+ */
+const FACE_DEADZONE = 2;
+/** Melee chase stops this close to the target's x: no pacing back and forth when it can't be reached. */
+const CHASE_DEADZONE = 4;
 
 /**
  * Enemy behaviour. Perception (sight cone + line of sight through walls, hearing
@@ -84,7 +91,7 @@ export const aiSystem: RunSystem = {
         brain.alert = AI.memory;
         brain.lastSeen = { ...player.center };
       }
-      if (brain.alert > 0 && brain.lastSeen) brain.facing = brain.lastSeen.x < eye.x ? -1 : 1;
+      if (brain.alert > 0 && brain.lastSeen) faceTarget(brain, eye.x, brain.lastSeen.x);
 
       if (brain.alert <= 0) {
         patrol(ctx, brain, pos, vel, body, def, dt);
@@ -319,6 +326,11 @@ function melee(
     brain.lastSeen = null;
     return;
   }
+  if (brain.downed) {
+    // Legs are gone: drag straight towards the target at a crawl, no jumps or routes.
+    vel.x = Math.abs(dx) <= CHASE_DEADZONE ? 0 : Math.sign(dx) * def.moveSpeed * AI.crawlSpeed;
+    return;
+  }
   if (def.pathing) {
     // Follow the route over the floor: walk, jump up where it says so, drop off ledges.
     const feet = { x: me.x, y: pos.y + body.h };
@@ -332,9 +344,15 @@ function melee(
     }
   }
 
-  vel.x = Math.sign(dx) * def.moveSpeed;
+  vel.x = Math.abs(dx) <= CHASE_DEADZONE ? 0 : Math.sign(dx) * def.moveSpeed;
   // Bumped into an obstacle: hop over it.
-  if (body.onGround && body.hitWall) vel.y = -M.jumpSpeed;
+  if (vel.x !== 0 && body.onGround && body.hitWall) vel.y = -M.jumpSpeed;
+}
+
+/** Turns towards a target, ignoring tiny offsets (straight above/below is not a side to face). */
+function faceTarget(brain: BrainData, x: number, targetX: number): void {
+  const dx = targetX - x;
+  if (Math.abs(dx) > FACE_DEADZONE) brain.facing = dx < 0 ? -1 : 1;
 }
 
 const feetRow = (pos: Pos, body: BodyData) => Math.floor((pos.y + body.h - 1) / TILE);

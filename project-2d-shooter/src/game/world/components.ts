@@ -51,7 +51,9 @@ export type PlayerState =
   /** Landing roll after a long fall. */
   | 'roll'
   | 'climb'
-  | 'mantle';
+  | 'mantle'
+  /** Legs destroyed: dragging the body along the floor. */
+  | 'crawl';
 
 export interface PlayerControlData {
   state: PlayerState;
@@ -191,6 +193,8 @@ export interface BrainData {
   staggerLeft: number;
   /** Ducking behind cover (shooters, between bursts). */
   crouching: boolean;
+  /** Legs destroyed: the body is low and it can only drag itself towards the target. */
+  downed: boolean;
   /** Patrol: seconds left standing still before walking again. */
   idleLeft: number;
 }

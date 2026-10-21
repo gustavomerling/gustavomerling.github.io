@@ -113,7 +113,7 @@ describe('assembleWeapon', () => {
 });
 
 describe('humanoid rig', () => {
-  const states = ['idle', 'run', 'sprint', 'crouch', 'slide', 'takeoff', 'air', 'wallSlide', 'wallJump', 'roll', 'climb', 'mantle'] as const;
+  const states = ['idle', 'run', 'sprint', 'crouch', 'slide', 'takeoff', 'air', 'wallSlide', 'wallJump', 'roll', 'climb', 'mantle', 'crawl'] as const;
   const gun = (id: string) => GUN_MODELS.get(id);
 
   it('produces finite poses in every state, armed and unarmed, both facings', () => {
@@ -148,6 +148,15 @@ describe('humanoid rig', () => {
     for (let i = 0; i < 120; i++) anim.update(1 / 60, { state: 'crouch', vx: 0, vy: 0, facing: 1, aimAngle: 0, gun: null });
     const head = anim.sample(1)[HB.head]!;
     expect(Math.min(head.y0, head.y1)).toBeGreaterThan(-18);
+  });
+
+  it('crawling keeps the body low, on the floor', () => {
+    const anim = new HumanoidAnimator(22);
+    for (let i = 0; i < 120; i++) anim.update(1 / 60, { state: 'crawl', vx: 20, vy: 0, facing: 1, aimAngle: 0, gun: null });
+    const bones = anim.sample(1);
+    const head = bones[HB.head]!;
+    expect(Math.min(head.y0, head.y1)).toBeGreaterThan(-16);
+    expect(bones[HB.torso]!.y0).toBeGreaterThan(-5);
   });
 
   it('the gun points where the character aims, muzzle ahead of the hand', () => {

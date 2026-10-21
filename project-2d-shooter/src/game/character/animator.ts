@@ -84,7 +84,7 @@ const LIMB_BONES = {
 type Limb = keyof typeof LIMB_BONES;
 
 const AIRBORNE: ReadonlySet<PlayerState> = new Set(['air', 'wallJump', 'wallSlide']);
-const GROUNDED: ReadonlySet<PlayerState> = new Set(['idle', 'run', 'sprint', 'crouch', 'takeoff', 'slide']);
+const GROUNDED: ReadonlySet<PlayerState> = new Set(['idle', 'run', 'sprint', 'crouch', 'takeoff', 'slide', 'crawl']);
 
 /** Hip half-spread seen from behind (reference px): legs close enough to overlap. */
 const LADDER_HIP = 0.7;
@@ -377,6 +377,25 @@ export class HumanoidAnimator {
       }
       case 'climb':
         return this.climbTargets(dt, input.vy);
+      case 'crawl': {
+        // Dragging itself: hips almost on the floor, torso flat, hands pulling the body along.
+        const moving = Math.abs(localVx) > 4;
+        if (moving) this.phase += ((localVx * dt) / (7 * s)) * Math.PI;
+        const swing = moving ? Math.sin(this.phase) : 0;
+        const swipe = this.strike > 0 ? this.strike * 5 * s : -this.meleeWindup * 2 * s;
+        return {
+          hipHeight: 2.4 * s,
+          lean: 1.05,
+          back: { x: (-6.5 + swing * 1.5) * s, y: 0 },
+          front: { x: (-3.5 - swing * 1.5) * s, y: 0 },
+          hands: {
+            back: () => ({ x: (4.5 - swing * 1.5) * s, y: -0.8 * s }),
+            front: () => ({ x: (8.5 + swing * 1.5) * s + swipe, y: -0.8 * s }),
+          },
+          rate: 22,
+          footRate: 18,
+        };
+      }
       case 'mantle':
         return this.mantleTargets(p, input.ledge ?? { x: 6 * s * input.facing, y: -16 * s });
       default: {
