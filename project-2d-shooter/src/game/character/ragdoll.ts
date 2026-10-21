@@ -2,7 +2,7 @@ import { VerletBody } from '@engine/physics/verlet';
 import type { BoneTransform } from '@engine/rig/skeleton';
 import type { HitZone } from '../config';
 import type { HumanoidAnimator } from './animator';
-import { drawBox, mix, type RigStyle } from './draw';
+import { drawCapsule, drawDisc, mix, type RigStyle } from './draw';
 import { HB, type HumanoidProportions } from './humanoid';
 
 /** Ragdoll point indices. */
@@ -87,20 +87,14 @@ export function drawRagdoll(ctx: CanvasRenderingContext2D, body: VerletBody, p: 
   const y = body.y;
   const back = mix(style.backColor, '#000000', 0.2);
   ctx.globalAlpha = fade;
-  const seg = (a: number, b: number, width: number, color: string) => drawBox(ctx, x[a]!, y[a]!, x[b]!, y[b]!, width, color, style.fill);
+  const seg = (a: number, b: number, width: number, color: string) => drawCapsule(ctx, x[a]!, y[a]!, x[b]!, y[b]!, width, color, style.outline);
 
   seg(P.shoulder, P.backElbow, p.upperArmWidth, back);
   seg(P.backElbow, P.backHand, p.lowerArmWidth, back);
   seg(P.hip, P.backKnee, p.upperLegWidth, back);
   seg(P.backKnee, P.backFoot, p.lowerLegWidth, back);
   seg(P.hip, P.neck, p.torsoWidth, style.color);
-  // Head square centred on the head point, oriented along the neck.
-  const dx = x[P.head]! - x[P.neck]!;
-  const dy = y[P.head]! - y[P.neck]!;
-  const len = Math.hypot(dx, dy) || 1;
-  const hx = (dx / len) * (p.head / 2);
-  const hy = (dy / len) * (p.head / 2);
-  drawBox(ctx, x[P.head]! - hx, y[P.head]! - hy, x[P.head]! + hx, y[P.head]! + hy, p.head, style.color, style.fill);
+  drawDisc(ctx, x[P.head]!, y[P.head]!, p.head / 2 + 0.4, style.color, style.outline);
   seg(P.hip, P.frontKnee, p.upperLegWidth, style.color);
   seg(P.frontKnee, P.frontFoot, p.lowerLegWidth, style.color);
   seg(P.shoulder, P.frontElbow, p.upperArmWidth, style.color);

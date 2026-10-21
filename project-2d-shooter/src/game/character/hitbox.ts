@@ -30,7 +30,7 @@ export interface HitPart {
 const BULLET_RADIUS = 0.75;
 
 /**
- * Hit capsules matching the drawn rig boxes, from the current (simulation) pose.
+ * Hit capsules matching the drawn rig, from the current (simulation) pose.
  * `originX/Y` = feet (collider bottom-centre) in world pixels.
  */
 export function rigHitParts(animator: HumanoidAnimator, originX: number, originY: number): HitPart[] {
@@ -48,7 +48,7 @@ export function rigHitParts(animator: HumanoidAnimator, originX: number, originY
     let x1 = t.x1;
     let y1 = t.y1;
     if (zone === 'head') {
-      // Square head after the neck gap: a circle-ish capsule centred on it.
+      // Round head after the neck gap: a circle centred on it.
       const dx = Math.cos(t.angle);
       const dy = Math.sin(t.angle);
       const c = p.neck + p.head / 2;

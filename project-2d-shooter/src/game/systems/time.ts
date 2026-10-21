@@ -30,10 +30,8 @@ export const slowmoSystem: RunSystem = {
     if (input.pressed('slowmo')) {
       if (active) {
         clock.targetScale = 1;
-        ctx.sfx.slowmo(false);
       } else if (!focus || focus.value >= FOCUS.minToActivate) {
         clock.targetScale = SLOWMO.worldScale;
-        ctx.sfx.slowmo(true);
       }
     }
 
@@ -43,8 +41,7 @@ export const slowmoSystem: RunSystem = {
         if (focus.value <= 0) {
           focus.value = 0;
           clock.targetScale = 1;
-          ctx.sfx.slowmo(false);
-        }
+          }
       } else {
         focus.value = Math.min(1, focus.value + FOCUS.regenPerSecond * clock.realDt);
       }

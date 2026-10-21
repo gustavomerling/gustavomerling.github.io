@@ -1,9 +1,7 @@
 import type { Entity, World } from '@engine/ecs/world';
 import { DEG2RAD } from '@engine/math/math';
-import { segmentDistance } from '@engine/math/segment';
 import type { Vec2 } from '@engine/math/vec2';
 import { isBlocking, Tile, type TileGrid } from '@engine/physics/tilegrid';
-import { lerpAngle } from '@engine/rig/skeleton';
 import { ENEMIES, type EnemyDef } from '../content/enemies/catalog';
 import { AI, TILE } from '../config';
 import {
@@ -17,7 +15,6 @@ import {
   PlayerControl,
   Position,
   Rig,
-  Smoke,
   Velocity,
   emptyIntent,
   type BodyData,
@@ -35,7 +32,6 @@ interface Target {
 }
 
 type Pos = { x: number; y: number };
-type SmokeCloud = { x: number; y: number; radius: number };
 
 /** Alerting nearby allies when spotting the player. */
 const SHOUT_RADIUS = 140;
@@ -45,7 +41,7 @@ const ADVANCE_SPEED = 0.7;
 const COVER_SEARCH_TILES = 4;
 
 /**
- * Enemy behaviour. Perception (sight cone + line of sight through walls and smoke, hearing
+ * Enemy behaviour. Perception (sight cone + line of sight through walls, hearing
  * shots, being hit, allies shouting) feeds a small memory (Brain); the enemy's `brain`
  * type decides what to do. Output is Intent/Aim/Velocity, so weapons and physics treat
  * enemies like the player.
@@ -58,7 +54,6 @@ export const aiSystem: RunSystem = {
     const p = world.first(Position, Body, PlayerControl, Health);
     const player: Target | null =
       p && p[4].hp > 0 ? { e: p[0], center: bodyCenter(p[1], p[2]), head: { x: p[1].x + p[2].w / 2, y: p[1].y + 3 } } : null;
-    const smokes: SmokeCloud[] = [...world.query(Position, Smoke)].map(([, pos, s]) => ({ x: pos.x, y: pos.y, radius: s.radius }));
     const shouts: Vec2[] = [];
 
     for (const [e, pos, vel, body, npc, brain, intent, aim, health] of world.query(Position, Velocity, Body, Npc, Brain, Intent, Aim, Health)) {
@@ -66,11 +61,11 @@ export const aiSystem: RunSystem = {
       const def = ENEMIES.get(npc.defId);
       const animator = world.get(e, Rig)?.animator;
       brain.cooldownLeft = Math.max(0, brain.cooldownLeft - dt);
+      if (health.hp <= 0) continue;
 
-      // Flashbanged: blind and helpless. Staggered by a hit: can't act, slides with the knockback.
-      if (health.stunLeft > 0 || brain.staggerLeft > 0) {
+      // Staggered by a hit: can't act, slides with the knockback.
+      if (brain.staggerLeft > 0) {
         brain.staggerLeft = Math.max(0, brain.staggerLeft - dt);
-        if (health.stunLeft > 0) brain.seeTime = 0;
         brain.windupLeft = 0;
         brain.crouching = false;
         if (animator) animator.meleeWindup = 0;
@@ -79,7 +74,7 @@ export const aiSystem: RunSystem = {
 
       const eye = { x: pos.x + body.w / 2, y: pos.y + (brain.crouching ? 12 : 4) };
       const wasSeeing = brain.seeTime > 0;
-      perceive(ctx, def, brain, eye, player, smokes, dt);
+      perceive(ctx, def, brain, eye, player, dt);
       const sees = brain.seeTime > 0;
       if (sees && !wasSeeing && player) shouts.push(player.center);
       if (brain.alert > 0 && brain.lastSeen) brain.facing = brain.lastSeen.x < eye.x ? -1 : 1;
@@ -116,10 +111,10 @@ export const aiSystem: RunSystem = {
   },
 };
 
-function perceive(ctx: RunContext, def: EnemyDef, brain: BrainData, eye: Vec2, player: Target | null, smokes: SmokeCloud[], dt: number): void {
+function perceive(ctx: RunContext, def: EnemyDef, brain: BrainData, eye: Vec2, player: Target | null, dt: number): void {
   brain.alert = Math.max(0, brain.alert - dt);
 
-  // Hearing: gunshots (the silencer shrinks this radius a lot) and explosions.
+  // Hearing: gunshots (the silencer shrinks this radius a lot).
   for (const n of ctx.noises) {
     if (Math.hypot(n.x - eye.x, n.y - eye.y) <= n.radius) {
       brain.alert = AI.memory;
@@ -135,8 +130,8 @@ function perceive(ctx: RunContext, def: EnemyDef, brain: BrainData, eye: Vec2, p
     sees =
       dist <= def.sightRange &&
       inFront &&
-      (lineOfSight(ctx.grid, eye.x, eye.y, player.center.x, player.center.y, smokes) ||
-        lineOfSight(ctx.grid, eye.x, eye.y, player.head.x, player.head.y, smokes));
+      (lineOfSight(ctx.grid, eye.x, eye.y, player.center.x, player.center.y) ||
+        lineOfSight(ctx.grid, eye.x, eye.y, player.head.x, player.head.y));
   }
 
   if (sees && player) {
@@ -191,7 +186,7 @@ function shooter(
   // Track the target at a limited turn rate (and slower in bullet time, since dt is world time).
   const maxTurn = AI.turnRate * dt;
   const diff = Math.atan2(Math.sin(desired - aim.angle), Math.cos(desired - aim.angle));
-  aim.angle = Math.abs(diff) <= maxTurn ? desired : lerpAngle(aim.angle, desired, maxTurn / Math.abs(diff));
+  aim.angle = Math.abs(diff) <= maxTurn ? desired : aim.angle + Math.sign(diff) * maxTurn;
   aim.x = eye.x + Math.cos(aim.angle) * 64;
   aim.y = eye.y + Math.sin(aim.angle) * 64;
   vel.x = 0;
@@ -261,7 +256,6 @@ function melee(
   const animator = world.get(e, Rig)?.animator;
   aim.angle = brain.facing > 0 ? 0 : Math.PI;
   if (animator && brain.windupLeft <= 0) animator.meleeWindup = 0;
-  const blocker = body.hitWall ? breakableAhead(ctx, pos, body, brain.facing) : undefined;
 
   if (brain.windupLeft > 0) {
     vel.x = 0;
@@ -270,13 +264,10 @@ function melee(
     if (brain.windupLeft > 0) return;
     // Strike.
     animator?.punch();
-    ctx.sfx.punch();
     brain.cooldownLeft = M.cooldown;
     const angle = brain.facing > 0 ? -0.3 : Math.PI + 0.3;
     if (player && Math.abs(player.center.x - me.x) <= M.reach && Math.abs(player.center.y - me.y) <= 20) {
       applyDamage(world, ctx, player.e, { amount: M.damage, zone: 'torso', at: player.center, angle, from: me, by: 'enemy', knockback: M.knockback });
-    } else if (blocker !== undefined) {
-      applyDamage(world, ctx, blocker, { amount: M.damage, zone: 'torso', at: { x: me.x + brain.facing * 8, y: me.y }, by: 'enemy' });
     }
     return;
   }
@@ -288,8 +279,8 @@ function melee(
   }
   const dx = target.x - me.x;
   const close = sees && player && Math.abs(dx) <= M.range && Math.abs(target.y - me.y) <= 20;
-  if (close || blocker !== undefined) {
-    // In reach of the player, or a door/crate in the way: punch it.
+  if (close) {
+    // In reach of the player: wind up a punch.
     vel.x = 0;
     if (brain.cooldownLeft <= 0) brain.windupLeft = M.windup;
     return;
@@ -334,17 +325,8 @@ function findCoverAhead(grid: TileGrid, pos: Pos, body: BodyData, facing: 1 | -1
   return null;
 }
 
-/** Breakable prop directly in front (crate/door), so a melee enemy can punch through. */
-function breakableAhead(ctx: RunContext, pos: Pos, body: BodyData, facing: 1 | -1): Entity | undefined {
-  const x = facing > 0 ? pos.x + body.w + 2 : pos.x - 2;
-  const y = pos.y + body.h / 2;
-  if (ctx.grid.atPixel(x, y) !== Tile.Breakable) return undefined;
-  return ctx.breakables.get(ctx.grid.index(Math.floor(x / TILE), Math.floor(y / TILE)));
-}
-
-/** Tile ray (one-way platforms don't block) that also fails through smoke clouds. */
-export function lineOfSight(grid: TileGrid, x0: number, y0: number, x1: number, y1: number, smokes: readonly SmokeCloud[] = []): boolean {
-  for (const s of smokes) if (segmentDistance(x0, y0, x1, y1, s.x, s.y, s.x, s.y).dist < s.radius) return false;
+/** Tile ray: walls block sight, one-way platforms and ladders don't. */
+export function lineOfSight(grid: TileGrid, x0: number, y0: number, x1: number, y1: number): boolean {
   const dist = Math.hypot(x1 - x0, y1 - y0);
   const steps = Math.max(1, Math.ceil(dist / 4));
   for (let i = 1; i < steps; i++) {

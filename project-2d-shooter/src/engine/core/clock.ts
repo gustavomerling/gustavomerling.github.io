@@ -1,7 +1,7 @@
 import { approach } from '../math/math';
 
 /**
- * Game clock with smoothly ramped time scale (slow motion / hit-stop).
+ * Game clock with smoothly ramped time scale (slow motion).
  * Systems read `dt` (scaled world time) and may opt into their own scale.
  */
 export class Clock {
@@ -23,22 +23,10 @@ export class Clock {
   /** Simulation steps since start. */
   tick = 0;
 
-  private hitStopSeconds = 0;
-
-  /** Freezes the world for a few real-time seconds (impact feel). */
-  hitStop(seconds: number): void {
-    this.hitStopSeconds = Math.max(this.hitStopSeconds, seconds);
-  }
-
   step(realDt: number): void {
     this.scale = approach(this.scale, this.targetScale, this.rampPerSecond * realDt);
     this.realDt = realDt;
-    if (this.hitStopSeconds > 0) {
-      this.hitStopSeconds = Math.max(0, this.hitStopSeconds - realDt);
-      this.dt = 0;
-    } else {
-      this.dt = realDt * this.scale;
-    }
+    this.dt = realDt * this.scale;
     this.elapsed += this.dt;
     this.realElapsed += realDt;
     this.tick++;

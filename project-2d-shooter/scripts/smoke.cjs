@@ -1,5 +1,5 @@
 // Smoke test of the built game: `npm run smoke` (after `npm run build`).
-// Opens dist/ in Electron, drives intro -> menu -> run with synthetic input,
+// Opens dist/ in Electron, drives menu -> run with synthetic input,
 // saves screenshots to smoke/ and fails on any renderer error.
 const { app, BrowserWindow } = require('electron');
 const fs = require('node:fs');
@@ -40,18 +40,12 @@ async function main() {
   const mouse = (type, x, y, button = 'left') => wc.sendInputEvent({ type, x, y, button, clickCount: 1 });
 
   await wait(800);
-  await shot('01-intro-credit');
-  await tap('Enter');
-  await wait(900);
-  await shot('02-intro-title');
-  await tap('Enter');
-  await wait(400);
-  await shot('03-menu');
-  await tap('Enter'); // "Nova run"
+  await shot('01-menu');
+  await tap('Enter'); // "Jogar"
   await wait(1200);
   mouse('mouseMove', 900, 300);
   await wait(100);
-  await shot('04-run-start');
+  await shot('02-run-start');
 
   await tap('D', 700);
   await tap('Space', 250);
@@ -62,14 +56,13 @@ async function main() {
     mouse('mouseUp', 900, 300);
     await wait(120);
   }
-  await shot('05-run-moved-shooting');
+  await shot('03-run-moved-shooting');
 
-  // Combat via debug keys: spawn enemies in front, drop items, shoot them down.
+  // Combat via debug keys: spawn enemies in front, shoot them down.
   mouse('mouseMove', 760, 560);
   await wait(50);
   await tap('F6');
   await tap('F6');
-  await tap('F7');
   await wait(300);
   for (let i = 0; i < 10; i++) {
     mouse('mouseDown', 760, 540 - (i % 3) * 14);
@@ -77,9 +70,9 @@ async function main() {
     mouse('mouseUp', 760, 540 - (i % 3) * 14);
     await wait(90);
   }
-  await shot('05b-combat');
+  await shot('04-combat');
   await wait(700);
-  await shot('05c-after-combat');
+  await shot('05-after-combat');
 
   await tap('E');
   await wait(600);

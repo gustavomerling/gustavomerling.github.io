@@ -1,13 +1,10 @@
-import type { AudioMixer } from '@engine/audio/audio';
 import type { Clock } from '@engine/core/clock';
 import type { EventBus } from '@engine/core/events';
-import type { Entity, System } from '@engine/ecs/world';
-import type { ParticleSystem } from '@engine/fx/particles';
+import type { System } from '@engine/ecs/world';
 import type { Input } from '@engine/input/input';
 import type { Rng } from '@engine/math/rng';
 import type { TileGrid } from '@engine/physics/tilegrid';
 import type { Camera } from '@engine/render/camera';
-import type { Sfx } from '../audio/sfx';
 import type { BiomeDef } from '../content/biomes/catalog';
 import type { GameEvents } from '../events';
 import type { Action } from '../input/actions';
@@ -19,17 +16,13 @@ export interface Feedback {
   hitMarker: number;
   hitKill: boolean;
   hitHead: boolean;
-  /** Directions (world angle from the player) damage came from, with seconds left. */
-  damageDirs: { angle: number; life: number }[];
-  /** "[F] AK-47" next to a weapon on the floor. */
-  prompt: { text: string; x: number; y: number } | null;
-  /** F was used this step (so it doesn't also trigger the exit). */
-  interactUsed: boolean;
 }
 
 /** Debug toggles (F-keys), see systems/debug.ts. */
 export interface DebugState {
   overlay: boolean;
+  /** Measuring grid over the world (F2). */
+  grid: boolean;
   god: boolean;
   stepMode: boolean;
   stepOnce: boolean;
@@ -47,16 +40,11 @@ export interface RunContext {
   level: LevelData;
   biome: BiomeDef;
   bus: EventBus<GameEvents>;
-  audio: AudioMixer;
-  sfx: Sfx;
-  particles: ParticleSystem;
-  /** Gameplay randomness (spread, drops). Separate stream from level generation. */
+  /** Gameplay randomness (spread, AI). Separate stream from level generation. */
   rng: Rng;
   debug: DebugState;
   feedback: Feedback;
-  /** Breakable tile index -> owning prop entity. */
-  breakables: Map<number, Entity>;
-  /** Sounds enemies can hear (gunshots, explosions); the AI system consumes them on the next step. */
+  /** Sounds enemies can hear (gunshots); the AI system consumes them on the next step. */
   noises: { x: number; y: number; radius: number }[];
   /** Render-side timing, owned by the session (debug overlay). */
   frameStats: { fps: number; steps: number };

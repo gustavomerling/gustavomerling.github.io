@@ -15,10 +15,8 @@ export interface EnemyDef {
   readonly weaponId?: string;
   /** Distance (px) at which it notices the player. */
   readonly sightRange: number;
-  /** Wireframe color until sprites exist. */
-  readonly debugColor: string;
-  /** What it leaves behind. Money is a [min, max] coin count. */
-  readonly drops: { readonly money: readonly [number, number]; readonly healthChance: number; readonly ammoChance: number; readonly weaponChance: number };
+  /** Body colour (flat shapes for now). */
+  readonly color: string;
 }
 
 export const ENEMIES = new Registry<EnemyDef>('enemy', [
@@ -31,8 +29,7 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     moveSpeed: 120,
     size: { w: 10, h: 20 },
     sightRange: 180,
-    debugColor: '#7fd1ff',
-    drops: { money: [1, 3], healthChance: 0.35, ammoChance: 0.2, weaponChance: 0 },
+    color: '#7fd1ff',
   },
   {
     id: 'security',
@@ -44,8 +41,7 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     size: { w: 12, h: 24 },
     weaponId: 'glock',
     sightRange: 240,
-    debugColor: '#ffb347',
-    drops: { money: [2, 4], healthChance: 0.15, ammoChance: 0.5, weaponChance: 0.6 },
+    color: '#ffb347',
   },
   {
     id: 'it-guy',
@@ -57,8 +53,7 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     size: { w: 10, h: 24 },
     weaponId: 'uzi',
     sightRange: 220,
-    debugColor: '#9cff8a',
-    drops: { money: [2, 5], healthChance: 0.15, ammoChance: 0.5, weaponChance: 0.6 },
+    color: '#9cff8a',
   },
   {
     id: 'manager',
@@ -70,7 +65,6 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     size: { w: 16, h: 28 },
     weaponId: 'ak47',
     sightRange: 260,
-    debugColor: '#ff6b6b',
-    drops: { money: [5, 9], healthChance: 0.6, ammoChance: 0.8, weaponChance: 1 },
+    color: '#ff6b6b',
   },
 ]);

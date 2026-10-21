@@ -1,9 +1,9 @@
 {
   "name": "project-2d-shooter",
-  "productName": "Lasanha",
+  "productName": "Project Shooter 2D",
   "version": "0.1.0",
   "private": true,
-  "description": "Roguelite 2D de tiro com geração procedural. Roubaram sua lasanha.",
+  "description": "Shooter 2D de plataforma com geração procedural.",
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {
@@ -19,8 +19,8 @@
     "preview": "vite preview"
   },
   "build": {
-    "appId": "io.github.gustavomerling.lasanha",
-    "productName": "Lasanha",
+    "appId": "io.github.gustavomerling.project-shooter-2d",
+    "productName": "Project Shooter 2D",
     "directories": {
       "output": "release"
     },

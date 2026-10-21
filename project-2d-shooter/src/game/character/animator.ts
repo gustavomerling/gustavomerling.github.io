@@ -47,7 +47,9 @@ export class HumanoidAnimator {
   private readonly scratch: Pose;
   private readonly transforms: BoneTransform[];
   private phase = 0;
+  private climbPhase = 0;
   private time = 0;
+  private state: PlayerState = 'idle';
   private recoil = 0;
   private hipHeight: number;
   private lean = 0.05;
@@ -115,6 +117,7 @@ export class HumanoidAnimator {
     if (input.facing !== this.facing) this.prevAim = toLocalAim(input.aimAngle, input.facing);
     this.facing = input.facing;
     this.weaponClass = input.weaponClass;
+    this.state = input.state;
     this.aim = toLocalAim(input.aimAngle, input.facing);
 
     const t = this.targets(dt, input);
@@ -179,6 +182,19 @@ export class HumanoidAnimator {
         return { hipHeight: 4 * s, lean: 0.75, back: { x: -2.5 * s, y: 0 }, front: { x: 3.5 * s, y: 0 } };
       case 'slide':
         return { hipHeight: 3.5 * s, lean: -0.9, back: { x: -1 * s, y: 0 }, front: { x: 9 * s, y: 0 } };
+      case 'climb': {
+        // Alternating limbs driven by how fast the body moves up/down the rungs.
+        this.climbPhase += dt * (2 + Math.abs(input.vy) / 35) * Math.PI;
+        const swing = Math.sin(this.climbPhase);
+        return {
+          hipHeight: L * 0.82,
+          lean: 0.04,
+          back: { x: -2.5 * s, y: -4 * s - swing * 2 * s },
+          front: { x: 2.5 * s, y: -1 * s + swing * 2 * s },
+        };
+      }
+      case 'mantle':
+        return { hipHeight: L * 0.76, lean: 0.32, back: { x: -3 * s, y: -3 * s }, front: { x: 3 * s, y: -5 * s } };
       case 'air': {
         // Feet are relative to the collider bottom, which is in the air with us.
         const rising = input.vy < 0;
@@ -222,7 +238,16 @@ export class HumanoidAnimator {
     const armLength = p.upperArm + p.lowerArm;
     let frontHand: Vec2;
     let backHand: Vec2;
-    if (this.weaponClass) {
+    if (this.state === 'climb') {
+      // One hand reaches for the next rung while the other pulls down.
+      const swing = Math.sin(this.climbPhase);
+      frontHand = { x: shoulder.x + 2 * s + swing * 1.5 * s, y: shoulder.y - armLength * 0.85 - swing * 2 * s };
+      backHand = { x: shoulder.x - 2 * s - swing * 1.5 * s, y: shoulder.y - armLength * 0.35 + swing * 2 * s };
+    } else if (this.state === 'mantle') {
+      // Both hands planted on the lip while the body pulls itself up.
+      frontHand = { x: shoulder.x + 3 * s, y: shoulder.y - armLength * 0.75 };
+      backHand = { x: shoulder.x - 1 * s, y: shoulder.y - armLength * 0.7 };
+    } else if (this.weaponClass) {
       const style = HOLD_STYLES[this.weaponClass];
       const dir = { x: Math.cos(this.aim), y: Math.sin(this.aim) };
       const reach = armLength * style.reach - this.recoil * 1.5 * s;

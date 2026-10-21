@@ -6,17 +6,16 @@ import { defineComponent, World } from './ecs/world';
 import { Input, key, mouse, wheel } from './input/input';
 import { Rng } from './math/rng';
 import { boxFits, moveAndCollide } from './physics/collide';
-import { Tile, TileGrid } from './physics/tilegrid';
-import { ParticleSystem } from './fx/particles';
 import { VerletBody } from './physics/verlet';
 import { solveTwoBone } from './rig/ik';
 import { PoseBuilder, Skeleton } from './rig/skeleton';
+import { Tile, TileGrid } from './physics/tilegrid';
 import { MemoryBackend, StoredDocument } from './storage/storage';
 
 describe('Rng', () => {
   it('is deterministic per seed', () => {
-    const a = Rng.fromString('lasanha');
-    const b = Rng.fromString('lasanha');
+    const a = Rng.fromString('shooter');
+    const b = Rng.fromString('shooter');
     expect(Array.from({ length: 5 }, () => a.next())).toEqual(Array.from({ length: 5 }, () => b.next()));
   });
 
@@ -62,16 +61,13 @@ describe('GameLoop', () => {
 });
 
 describe('Clock', () => {
-  it('ramps the time scale and applies hit-stop', () => {
+  it('ramps the time scale', () => {
     const c = new Clock();
     c.targetScale = 0.5;
     c.rampPerSecond = 100;
     c.step(1 / 60);
     expect(c.scale).toBe(0.5);
     expect(c.dt).toBeCloseTo(0.5 / 60);
-    c.hitStop(0.05);
-    c.step(1 / 60);
-    expect(c.dt).toBe(0);
   });
 });
 
@@ -231,6 +227,7 @@ describe('rig', () => {
   });
 });
 
+
 describe('verlet', () => {
   it('falls, lands on the floor and keeps stick lengths', () => {
     const body = new VerletBody(
@@ -248,22 +245,6 @@ describe('verlet', () => {
   });
 });
 
-describe('particles', () => {
-  it('expire and respect the pool limit', () => {
-    const ps = new ParticleSystem(3);
-    for (let i = 0; i < 10; i++) ps.emit({ x: 0, y: 0, life: 0.1, color: '#fff' });
-    expect(ps.active).toBe(3);
-    ps.update(0.2);
-    expect(ps.active).toBe(0);
-  });
-
-  it('bouncing particles stay out of solids', () => {
-    const ps = new ParticleSystem(10, (_x, y) => y >= 100);
-    ps.emit({ x: 0, y: 90, vy: 300, life: 2, color: '#fff', gravity: 500, bounce: 0.5 });
-    for (let i = 0; i < 60; i++) ps.update(1 / 60);
-    expect(ps.active).toBe(1);
-  });
-});
 
 describe('input recording', () => {
   it('capture -> inject reproduces the same tick state', () => {
@@ -279,19 +260,6 @@ describe('input recording', () => {
     expect(b.pressed('jump')).toBe(true);
     expect(b.isDown('fire')).toBe(true);
     expect(b.pointer.x).toBe(12);
-  });
-});
-
-describe('breakable tiles', () => {
-  it('block like solid until cleared', () => {
-    const g = new TileGrid(10, 6, 16);
-    g.fill(0, 5, 10, 1, Tile.Solid);
-    g.set(5, 4, Tile.Breakable);
-    const box = { x: 20, y: 60, w: 10, h: 20 };
-    expect(moveAndCollide(box, 200, 0, g).hitRight).toBe(true);
-    expect(g.isSolidAtPixel(85, 70)).toBe(true);
-    g.set(5, 4, Tile.Empty);
-    expect(g.isSolidAtPixel(85, 70)).toBe(false);
   });
 });
 

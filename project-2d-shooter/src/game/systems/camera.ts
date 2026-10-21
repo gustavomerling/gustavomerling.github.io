@@ -14,6 +14,5 @@ export const cameraSystem: RunSystem = {
       const lean = aim ? { x: (aim.x - c.x) * target.lookahead, y: (aim.y - c.y) * target.lookahead } : { x: 0, y: 0 };
       ctx.camera.follow({ x: c.x + lean.x, y: c.y + lean.y }, ctx.clock.realDt, 8);
     }
-    ctx.camera.updateShake(ctx.clock.realDt);
   },
 };

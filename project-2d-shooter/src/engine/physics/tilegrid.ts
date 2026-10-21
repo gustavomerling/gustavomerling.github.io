@@ -3,14 +3,14 @@ export const Tile = {
   Solid: 1,
   /** Platform you can jump through from below and drop through with down+jump. */
   OneWay: 2,
-  /** Blocks like Solid, but belongs to a destructible object (crate, door...) and can be cleared. */
-  Breakable: 3,
+  /** Non-blocking climbable ladder: hold up/down while overlapping it. */
+  Ladder: 3,
 } as const;
 
 export type TileKind = (typeof Tile)[keyof typeof Tile];
 
 /** Tiles that block movement, bullets and line of sight. */
-export const isBlocking = (t: TileKind): boolean => t === Tile.Solid || t === Tile.Breakable;
+export const isBlocking = (t: TileKind): boolean => t === Tile.Solid;
 
 /** Collision grid. Rendering of tiles is a separate concern (see game tilesets). */
 export class TileGrid {
@@ -61,7 +61,7 @@ export class TileGrid {
     return this.get(Math.floor(x / this.tileSize), Math.floor(y / this.tileSize));
   }
 
-  /** Blocking (solid or breakable) at this pixel. */
+  /** Blocking (solid) at this pixel. */
   isSolidAtPixel(x: number, y: number): boolean {
     return isBlocking(this.atPixel(x, y));
   }

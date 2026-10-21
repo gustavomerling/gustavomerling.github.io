@@ -1,4 +1,4 @@
-/* Wireframe phase: monochrome, monospace, thin lines. Real art direction comes later. */
+/* Blank-canvas phase: monochrome, flat, thin lines. Real art direction comes later. */
 :root {
   --bg: #000;
   --fg: #e8e8e8;
@@ -7,7 +7,8 @@
   --accent: #ffd23f;
   --danger: #ff5050;
   --slowmo: #78b4ff;
-  --font: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  --font: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
   color-scheme: dark;
 }
 
@@ -52,68 +53,11 @@ button {
   background-position: center;
 }
 
-/* ---- intro ---- */
-.intro {
-  background-image: none;
-  text-align: center;
-}
-.intro-credit {
-  color: var(--dim);
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  font-size: 14px;
-}
-.logo {
+.title {
   margin: 0;
-  font-size: clamp(48px, 10vw, 120px);
-  letter-spacing: 0.15em;
-  font-weight: 700;
-  border: 2px solid var(--fg);
-  padding: 0.1em 0.4em;
-}
-.logo.small {
-  font-size: clamp(40px, 7vw, 84px);
-}
-.tagline {
-  color: var(--dim);
-  margin: 16px 0 0;
-}
-.press-any {
-  margin-top: 64px;
-  color: var(--accent);
-  font-size: 14px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-}
-
-.fade-in {
-  animation: fade-in 0.8s ease-out both;
-}
-.fade-in-out {
-  animation: fade-in-out 2.2s ease-in-out both;
-}
-.blink {
-  animation: blink 1.2s steps(2, start) infinite;
-}
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-}
-@keyframes fade-in-out {
-  0%,
-  100% {
-    opacity: 0;
-  }
-  25%,
-  75% {
-    opacity: 1;
-  }
-}
-@keyframes blink {
-  to {
-    visibility: hidden;
-  }
+  font-size: clamp(32px, 6vw, 64px);
+  font-weight: 600;
+  letter-spacing: 0.08em;
 }
 
 /* ---- menus ---- */
@@ -156,39 +100,10 @@ button {
   font-size: 12px;
 }
 
-/* ---- options ---- */
-.options h2,
 .pause-overlay h2 {
   margin: 0;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-}
-.options-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 420px;
-  border: 1px solid var(--line);
-  padding: 16px;
-  background: var(--bg);
-}
-.option-row {
-  display: grid;
-  grid-template-columns: 1fr 160px 56px;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 0;
-  text-align: left;
-}
-.option-toggle .option-value {
-  grid-column: 3;
-}
-.option-value {
-  text-align: right;
-  color: var(--accent);
-}
-input[type='range'] {
-  accent-color: var(--fg);
 }
 
 /* ---- game ---- */
@@ -203,7 +118,6 @@ input[type='range'] {
   height: 100%;
   display: block;
   outline: none;
-  image-rendering: pixelated;
 }
 .game-canvas.no-cursor {
   cursor: none;
@@ -274,10 +188,6 @@ input[type='range'] {
 .hud-focus-bar.is-active {
   background: var(--slowmo);
 }
-.hud-money {
-  margin-top: 6px;
-  color: var(--accent);
-}
 .hud-reserve {
   color: var(--dim);
   font-size: 14px;
@@ -318,6 +228,7 @@ input[type='range'] {
   margin: 0;
   padding: 8px;
   font-size: 11px;
+  font-family: var(--mono);
   background: rgba(0, 0, 0, 0.7);
   border: 1px solid #f0f;
   color: #f8f;

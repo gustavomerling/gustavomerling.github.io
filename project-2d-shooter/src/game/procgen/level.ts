@@ -4,21 +4,40 @@ import type { Vec2 } from '@engine/math/vec2';
 import { Tile, TileGrid, type TileKind } from '@engine/physics/tilegrid';
 import type { BiomeDef } from '../content/biomes/catalog';
 import { TILE } from '../config';
-import { dirBetween, linearPath, type Cell, type Dir } from './layout';
-import { DOOR_ROWS, ROOM_COLS, ROOM_ROWS, ROOM_TEMPLATES, SHAFT_COLS, type RoomTemplate } from './rooms';
+import { linearPath, type Cell, type Dir } from './layout';
+import {
+  DEFAULT_ROOM_STYLE,
+  DOOR_ROWS,
+  ROOM_COLS,
+  ROOM_ROWS,
+  ROOM_TEMPLATES,
+  SIDE_WINDOW_SILL,
+  SLAB_ROWS,
+  sideWindowRows,
+  type RoomStyle,
+  type RoomTemplate,
+} from './rooms';
 
 export interface PlacedRoom {
   index: number;
   templateId: string;
+  /** Display name ("Prédio 1"). */
+  name: string;
+  /** Back-wall colours. */
+  style: RoomStyle;
+  /** Open-air chunk: no back wall. */
+  outdoor: boolean;
   cell: Cell;
-  /** Room rect in world pixels. */
+  /** Room rect in world units. */
   rect: Rect;
   connections: Dir[];
+  /** Window tiles, world tile coordinates. */
+  windows: Cell[];
 }
 
 export interface EnemySpawn {
   enemyId: string;
-  /** Bottom-centre (feet) in world pixels. */
+  /** Bottom-centre (feet) in world units. */
   pos: Vec2;
   roomIndex: number;
 }
@@ -28,29 +47,13 @@ export interface LevelData {
   biomeId: string;
   grid: TileGrid;
   rooms: PlacedRoom[];
-  /** Feet position, world pixels. */
+  /** Feet position, world units. */
   spawn: Vec2;
   exit: Vec2;
   enemySpawns: EnemySpawn[];
-  /** Props to spawn, in world tile coordinates (breakables: bottom-left tile). */
-  props: PropSpawn[];
 }
 
-export type PropKind = 'crate' | 'door' | 'barrel' | 'lamp' | 'extinguisher';
-
-export interface PropSpawn {
-  kind: PropKind;
-  col: number;
-  row: number;
-}
-
-const CHAR_TILE: Record<string, TileKind> = { '#': Tile.Solid, '=': Tile.OneWay };
-
-/** Template characters that place props (see procgen/rooms.ts). */
-export const PROP_CHARS: Record<string, PropKind> = { C: 'crate', D: 'door', B: 'barrel', L: 'lamp', F: 'extinguisher' };
-
-/** Climbing platforms placed in the shaft of the lower room of a vertical connection. */
-const CLIMB_ROWS = [13, 10, 7, 4, 1];
+const CHAR_TILE: Record<string, TileKind> = { '#': Tile.Solid, '=': Tile.OneWay, H: Tile.Ladder };
 
 /**
  * Builds a level for one biome from a seed. Pure and deterministic: same (seed, biome,
@@ -70,122 +73,89 @@ export function generateLevel(seed: string, biome: BiomeDef, templates: readonly
   };
   const fixed = new Set([biome.startTemplate, biome.endTemplate].filter((id): id is string => !!id));
   const tagged = templates.filter((t) => t.tags.some((tag) => biome.roomTags.includes(tag)));
-  // Middle rooms avoid the fixed start/end rooms (no second bedroom mid-level), unless nothing else exists.
+  // Middle rooms avoid the fixed start/end rooms, unless nothing else exists.
   const middle = tagged.filter((t) => !fixed.has(t.id));
   const pool = middle.length > 0 ? middle : tagged;
   if (pool.length === 0) throw new Error(`No room templates for biome ${biome.id}`);
 
   const length = layoutRng.int(biome.rooms.min, biome.rooms.max);
   const path = linearPath(length);
+  // Rhythm: building, alley, building, alley... (an alley always sits between two buildings, so
+  // the room before a fixed end building stays indoor), and never the same chunk twice in a row.
+  const wantsOutdoor = (index: number) => index % 2 === 1 && index < length - 1;
+  const picked: RoomTemplate[] = [];
   const pickTemplate = (index: number): RoomTemplate => {
     if (index === 0 && biome.startTemplate) return byId(biome.startTemplate);
     if (index === length - 1 && biome.endTemplate) return byId(biome.endTemplate);
-    return roomRng.pick(pool);
+    const prev = picked[index - 1];
+    const next = index === length - 2 && biome.endTemplate ? byId(biome.endTemplate) : undefined;
+    const fresh = pool.filter((t) => t.id !== prev?.id && t.id !== next?.id);
+    const kind = fresh.filter((t) => !!t.outdoor === wantsOutdoor(index));
+    return roomRng.pick(kind.length > 0 ? kind : fresh.length > 0 ? fresh : pool);
   };
 
-  // Crop the world to the used cells.
-  const minCx = Math.min(...path.map((c) => c.cx));
-  const minCy = Math.min(...path.map((c) => c.cy));
-  const spanX = Math.max(...path.map((c) => c.cx)) - minCx + 1;
-  const spanY = Math.max(...path.map((c) => c.cy)) - minCy + 1;
-  const grid = new TileGrid(spanX * ROOM_COLS, spanY * ROOM_ROWS, TILE);
+  const grid = new TileGrid(length * ROOM_COLS, ROOM_ROWS, TILE);
   grid.data.fill(Tile.Solid);
 
   const rooms: PlacedRoom[] = path.map((cell, index) => {
     const connections: Dir[] = [];
-    if (index > 0) connections.push(dirBetween(cell, path[index - 1]!));
-    if (index < path.length - 1) connections.push(dirBetween(cell, path[index + 1]!));
-    const local = { cx: cell.cx - minCx, cy: cell.cy - minCy };
+    if (index > 0) connections.push('left');
+    if (index < length - 1) connections.push('right');
+    const template = pickTemplate(index);
+    picked.push(template);
     return {
       index,
-      templateId: pickTemplate(index).id,
-      cell: local,
-      rect: { x: local.cx * ROOM_COLS * TILE, y: local.cy * ROOM_ROWS * TILE, w: ROOM_COLS * TILE, h: ROOM_ROWS * TILE },
+      templateId: template.id,
+      name: template.name ?? template.id,
+      style: template.style ?? DEFAULT_ROOM_STYLE,
+      outdoor: template.outdoor === true,
+      cell,
+      rect: { x: cell.cx * ROOM_COLS * TILE, y: 0, w: ROOM_COLS * TILE, h: ROOM_ROWS * TILE },
       connections,
+      windows: [],
     };
   });
 
   const markers = new Map<number, ReturnType<typeof stamp>>();
   for (const room of rooms) {
-    markers.set(room.index, stamp(grid, room, byId(room.templateId)));
+    const found = stamp(grid, room, byId(room.templateId));
+    markers.set(room.index, found);
+    room.windows = found.windows.map((w) => ({ cx: originCol(room) + w.cx, cy: w.cy }));
   }
   for (const room of rooms) carveConnections(grid, room);
 
   const first = rooms[0]!;
   const last = rooms[rooms.length - 1]!;
-  const spawn = pickStandable(grid, first, markers.get(first.index)!.spawn, 7);
-  const exit = pickStandable(grid, last, markers.get(last.index)!.exit, 25);
+  const spawn = pickStandable(grid, first, markers.get(first.index)!.spawn, 3);
+  const exit = pickStandable(grid, last, markers.get(last.index)!.exit, ROOM_COLS - 4);
 
   const enemySpawns: EnemySpawn[] = [];
   for (const room of rooms) {
-    // A quiet first room; peaceful biomes (the apartment) have no enemy pool.
+    // A quiet first room; peaceful biomes have no enemy pool.
     if (room.index === 0 || biome.enemyPool.length === 0) continue;
     for (const m of markers.get(room.index)!.enemy) {
-      const pos = standableBelow(grid, originCol(room) + m.cx, originRow(room) + m.cy);
-      if (pos) enemySpawns.push({ enemyId: spawnRng.weighted(biome.enemyPool.map((e) => ({ item: e.id, weight: e.weight }))), pos, roomIndex: room.index });
+      const pos = standableBelow(grid, originCol(room) + m.cx, m.cy);
+      if (pos) {
+        const weighted = biome.enemyPool.map((e) => ({ item: e.id, weight: e.weight }));
+        enemySpawns.push({ enemyId: spawnRng.weighted(weighted), pos, roomIndex: room.index });
+      }
     }
   }
 
-  const props: PropSpawn[] = rooms.flatMap((room) =>
-    markers.get(room.index)!.props.map((p) => ({ kind: p.kind, col: originCol(room) + p.cx, row: originRow(room) + p.cy })),
-  );
-
-  return { seed, biomeId: biome.id, grid, rooms, spawn, exit, enemySpawns, props };
+  return { seed, biomeId: biome.id, grid, rooms, spawn, exit, enemySpawns };
 }
 
 const originCol = (room: PlacedRoom) => room.cell.cx * ROOM_COLS;
-const originRow = (room: PlacedRoom) => room.cell.cy * ROOM_ROWS;
-
-function stamp(grid: TileGrid, room: PlacedRoom, template: RoomTemplate) {
-  const found = { spawn: [] as Cell[], exit: [] as Cell[], enemy: [] as Cell[], props: [] as { kind: PropKind; cx: number; cy: number }[] };
-  template.rows.forEach((line, r) => {
-    for (let c = 0; c < line.length; c++) {
-      const ch = line[c]!;
-      grid.set(originCol(room) + c, originRow(room) + r, CHAR_TILE[ch] ?? Tile.Empty);
-      if (ch === 'P') found.spawn.push({ cx: c, cy: r });
-      else if (ch === 'X') found.exit.push({ cx: c, cy: r });
-      else if (ch === 'E') found.enemy.push({ cx: c, cy: r });
-      else if (PROP_CHARS[ch]) found.props.push({ kind: PROP_CHARS[ch], cx: c, cy: r });
-    }
-  });
-  return found;
-}
-
-function carveConnections(grid: TileGrid, room: PlacedRoom): void {
-  const oc = originCol(room);
-  const or = originRow(room);
-  const doorH = DOOR_ROWS.to - DOOR_ROWS.from + 1;
-  const shaftW = SHAFT_COLS.to - SHAFT_COLS.from + 1;
-  for (const dir of room.connections) {
-    switch (dir) {
-      case 'left':
-        grid.fill(oc, or + DOOR_ROWS.from, 3, doorH, Tile.Empty);
-        break;
-      case 'right':
-        grid.fill(oc + ROOM_COLS - 3, or + DOOR_ROWS.from, 3, doorH, Tile.Empty);
-        break;
-      case 'down':
-        // Floor becomes a drop-through platform; the room below provides the climb.
-        grid.fill(oc + SHAFT_COLS.from, or + 1, shaftW, ROOM_ROWS - 2, Tile.Empty);
-        grid.fill(oc + SHAFT_COLS.from, or + ROOM_ROWS - 1, shaftW, 1, Tile.OneWay);
-        break;
-      case 'up':
-        grid.fill(oc + SHAFT_COLS.from, or, shaftW, ROOM_ROWS - 1, Tile.Empty);
-        for (const r of CLIMB_ROWS) grid.fill(oc + SHAFT_COLS.from, or + r, shaftW, 1, Tile.OneWay);
-        break;
-    }
-  }
-}
 
 /** Feet position on the first marker that has floor under it, or a fallback column. */
 function pickStandable(grid: TileGrid, room: PlacedRoom, candidates: Cell[], fallbackCol: number): Vec2 {
   for (const m of candidates) {
-    const pos = standableBelow(grid, originCol(room) + m.cx, originRow(room) + m.cy);
+    const pos = standableBelow(grid, originCol(room) + m.cx, m.cy);
     if (pos) return pos;
   }
   for (let dc = 0; dc < ROOM_COLS; dc++) {
     const col = originCol(room) + ((fallbackCol + dc) % (ROOM_COLS - 2)) + 1;
-    const pos = standableBelow(grid, col, originRow(room) + 1);
+    const pos = standableBelow(grid, col, DOOR_ROWS.from);
     if (pos) return pos;
   }
   throw new Error(`Room ${room.index} has no standable spot`);
@@ -199,4 +169,45 @@ function standableBelow(grid: TileGrid, col: number, row: number): Vec2 | null {
     if (free && (below === Tile.Solid || below === Tile.OneWay)) return { x: (col + 0.5) * TILE, y: (r + 1) * TILE };
   }
   return null;
+}
+
+function stamp(grid: TileGrid, room: PlacedRoom, template: RoomTemplate) {
+  const found = { spawn: [] as Cell[], exit: [] as Cell[], enemy: [] as Cell[], windows: [] as Cell[] };
+  template.rows.forEach((line, r) => {
+    for (let c = 0; c < line.length; c++) {
+      const ch = line[c]!;
+      grid.set(originCol(room) + c, r, CHAR_TILE[ch] ?? Tile.Empty);
+      if (ch === 'P') found.spawn.push({ cx: c, cy: r });
+      else if (ch === 'X') found.exit.push({ cx: c, cy: r });
+      else if (ch === 'E') found.enemy.push({ cx: c, cy: r });
+      else if (ch === 'W') found.windows.push({ cx: c, cy: r });
+    }
+  });
+  return found;
+}
+
+/**
+ * Openings between neighbours. One border column per room, so the two together make a
+ * 2-tile-thick passage: the ground-floor door, plus a side window centred in the wall of every
+ * upper storey (you vault onto its 1-tile sill). Next to each window there is always a floor at the
+ * slab: the slab itself inside a building, or a one-way landing (alleys, double-height halls).
+ */
+function carveConnections(grid: TileGrid, room: PlacedRoom): void {
+  const doorH = DOOR_ROWS.to - DOOR_ROWS.from + 1;
+  for (const dir of room.connections) {
+    const col = dir === 'left' ? originCol(room) : originCol(room) + ROOM_COLS - 1;
+    const inward = dir === 'left' ? 1 : -1;
+    grid.fill(col, DOOR_ROWS.from, 1, doorH, Tile.Empty);
+    for (const slab of SLAB_ROWS) {
+      const rows = sideWindowRows(slab);
+      // Solid wall from the slab up to the sill, then the opening.
+      grid.fill(col, rows[rows.length - 1]! + 1, 1, slab - rows[rows.length - 1]!, Tile.Solid);
+      for (const r of rows) grid.set(col, r, Tile.Empty);
+      for (let i = 1; i <= SIDE_WINDOW_SILL; i++) {
+        const c = col + inward * i;
+        if (grid.get(c, slab) !== Tile.Empty) break;
+        grid.set(c, slab, Tile.OneWay);
+      }
+    }
+  }
 }

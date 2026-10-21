@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { AudioMixer } from '@engine/audio/audio';
 import { EventBus } from '@engine/core/events';
 import { Input, type InputFrame } from '@engine/input/input';
 import type { Renderer } from '@engine/render/renderer';
 import type { GameEvents } from './events';
 import { DEFAULT_BINDINGS } from './input/actions';
 import { RunScene } from './scenes/RunScene';
-import { Arsenal, Breakable, Health, Npc, PlayerControl, Position } from './world/components';
+import { Health, Npc, PlayerControl, Position, Projectile, Ragdoll, Rig } from './world/components';
 
 /** Headless scene: the simulation never touches the renderer outside `render()`. */
 function makeScene(seed: string) {
@@ -14,12 +13,12 @@ function makeScene(seed: string) {
   const scene = new RunScene({
     renderer: { width: 480, height: 270 } as Renderer,
     input,
-    audio: new AudioMixer(),
     bus: new EventBus<GameEvents>(),
     seed,
     biomeId: 'alleys',
     frameStats: { fps: 0, steps: 0 },
     debugOverlay: false,
+    grid: false,
     onExit: () => undefined,
     onReplay: () => undefined,
   });
@@ -41,17 +40,19 @@ function scriptedFrame(i: number): InputFrame {
 
 function run(seed: string, steps: number) {
   const { scene, input } = makeScene(seed);
+  let bullets = 0;
   for (let i = 0; i < steps; i++) {
     input.beginTick();
     input.inject(scriptedFrame(i));
     scene.update(1 / 60);
+    bullets = Math.max(bullets, [...scene.world.query(Projectile)].length);
   }
   const w = scene.world;
-  const player = w.first(Position, Health, PlayerControl, Arsenal)!;
+  const player = w.first(Position, Health, PlayerControl)!;
   return {
-    player: { x: player[1].x, y: player[1].y, hp: player[2].hp, ammo: player[4].weapons.map((ws) => [ws.ammo, ws.reserve]) },
+    player: { x: player[1].x, y: player[1].y, hp: player[2].hp },
     enemies: [...w.query(Npc, Health, Position)].map(([, npc, h, p]) => [npc.defId, h.hp, Math.round(p.x), Math.round(p.y)]),
-    breakables: [...w.query(Breakable, Health)].map(([, b, h]) => [b.kind, h.hp]),
+    bullets,
     entities: w.entityCount,
   };
 }
@@ -67,12 +68,20 @@ describe('simulation', () => {
     const r = run('DET-0002', 600);
     const start = makeScene('DET-0002').scene.world.first(Position, PlayerControl)!;
     expect(r.player.x).toBeGreaterThan(start[1].x);
-    const fired = r.player.ammo.some(([ammo, reserve]) => ammo! + reserve! < 17 * 4);
-    expect(fired).toBe(true);
+    expect(r.bullets).toBeGreaterThan(0);
   });
 
-  it('spawns props from the templates', () => {
-    const { scene } = makeScene('DET-0003');
-    expect([...scene.world.query(Breakable)].length).toBeGreaterThan(0);
+  it('a killed enemy turns into a ragdoll and is removed', () => {
+    const { scene, input } = makeScene('RAGDOLL-1');
+    const [enemy, , health] = scene.world.first(Npc, Health, Position)!;
+    expect(scene.world.has(enemy, Rig)).toBe(true);
+    health.hp = 0;
+    health.lastHit = { vx: 200, vy: -80, zone: 'head' };
+    for (let i = 0; i < 30; i++) {
+      input.beginTick();
+      scene.update(1 / 60);
+    }
+    expect(scene.world.isAlive(enemy)).toBe(false);
+    expect([...scene.world.query(Ragdoll)].length).toBe(1);
   });
 });

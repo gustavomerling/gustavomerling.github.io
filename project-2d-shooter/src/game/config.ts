@@ -1,7 +1,10 @@
-/** Virtual resolution: everything is drawn at this size and integer-upscaled (480x270 -> 1920x1080 at 4x). */
+/**
+ * The view is always `height` world units tall (4x at 1080p) and as wide as the window's aspect
+ * ratio allows, never narrower than `width` (16:9 shows 480).
+ */
 export const VIEW = { width: 480, height: 270 } as const;
 
-/** Tile size in pixels. */
+/** Tile size in world units. */
 export const TILE = 16;
 
 /** Player movement tuning (pixels, seconds). Tweak here, not in systems. */
@@ -34,14 +37,31 @@ export const PLAYER_TUNING = {
   slideCooldown: 0.3,
   /** Minimum horizontal speed to start a slide instead of crouching. */
   slideMinSpeed: 80,
+
+  /** Vertical ladder speed. */
+  climbSpeed: 70,
+  /** While climbing, the body drifts to the ladder's centre line this fast. */
+  climbSnapSpeed: 180,
+
+  /** Wall jump: launch away from the wall with this vertical / horizontal speed. */
+  wallJumpSpeed: 340,
+  wallJumpSpeedX: 210,
+  /** After a wall jump, air control is disabled this long so the impulse reads. */
+  wallJumpLock: 0.16,
+  /** Falling speed while pressing into a wall. */
+  wallSlideSpeed: 110,
+
+  /** Ledge mantle/vault: scripted pull-up duration and re-trigger cooldown. */
+  mantleTime: 0.22,
+  mantleCooldown: 0.18,
 } as const;
 
-/** Damage multiplier and floating-number colour per body region (hit-tested on the rig bones). */
+/** Damage multiplier per body region (hit-tested on the rig bones, see character/hitbox.ts). */
 export const HIT_ZONES = {
-  head: { multiplier: 2, color: '#ff4a4a' },
-  torso: { multiplier: 1, color: '#ffffff' },
-  arm: { multiplier: 0.75, color: '#c8c8c8' },
-  leg: { multiplier: 0.6, color: '#9a9a9a' },
+  head: { multiplier: 2 },
+  torso: { multiplier: 1 },
+  arm: { multiplier: 0.75 },
+  leg: { multiplier: 0.6 },
 } as const;
 
 export type HitZone = keyof typeof HIT_ZONES;
@@ -82,9 +102,6 @@ export const IMPACT = {
   /** Enemy can't shoot/run/punch for this long after a hit (+ extra on headshot). */
   stagger: 0.28,
   headshotStagger: 0.2,
-  /** Real-time freeze on headshot / kill. */
-  headshotHitStop: 0.035,
-  killHitStop: 0.06,
   /** Player: invulnerability after taking damage, and from the start of a slide (dodge). */
   playerIFrames: 0.35,
   slideIFrames: 0.3,
@@ -98,30 +115,6 @@ export const FOCUS = {
   perHeadshot: 0.05,
   perKill: 0.15,
   perHeadshotKill: 0.25,
-} as const;
-
-/** Drops and pickups. */
-export const PICKUPS = {
-  magnetRadius: 48,
-  magnetSpeed: 260,
-  /** Weapons need F within this distance. */
-  interactRadius: 18,
-  health: 20,
-  /** Ammo pickup refills this many magazines of every gun you carry. */
-  ammoMagazines: 1,
-  /** Magazines in reserve when you get a gun. */
-  startingReserveMagazines: 3,
-  maxWeapons: 2,
-  despawnSeconds: 30,
-} as const;
-
-/** Destructible props placed by room templates. */
-export const PROPS = {
-  crate: { hp: 30, w: 1, h: 1, color: '#b08850' },
-  door: { hp: 70, w: 1, h: 3, color: '#8a6a4a' },
-  barrel: { hp: 18, w: 1, h: 1, color: '#d94a3a', radius: 60, damage: 70 },
-  lamp: { hp: 8, damage: 45 },
-  extinguisher: { hp: 6, smokeRadius: 44, smokeSeconds: 7 },
 } as const;
 
 /** Bullet time ("E"). The player is slowed less than the world, so they feel fast. */

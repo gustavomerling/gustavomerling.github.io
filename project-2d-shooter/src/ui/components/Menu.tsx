@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { uiSound } from '../services';
 
 export interface MenuItem {
   id: string;
@@ -24,16 +23,12 @@ export function Menu({ items, onBack }: Props) {
       if (e.repeat) return;
       if (e.code === 'KeyW' || e.code === 'ArrowUp') {
         setIndex((i) => (i - 1 + visible.length) % visible.length);
-        uiSound.move();
       } else if (e.code === 'KeyS' || e.code === 'ArrowDown') {
         setIndex((i) => (i + 1) % visible.length);
-        uiSound.move();
       } else if (e.code === 'Enter' || e.code === 'Space') {
         e.preventDefault();
-        uiSound.select();
         visible[index]?.onSelect();
       } else if (e.code === 'Escape' && onBack) {
-        uiSound.back();
         onBack();
       }
     };
@@ -48,14 +43,8 @@ export function Menu({ items, onBack }: Props) {
           <button
             role="menuitem"
             className={i === index ? 'menu-item is-active' : 'menu-item'}
-            onMouseEnter={() => {
-              if (i !== index) uiSound.move();
-              setIndex(i);
-            }}
-            onClick={() => {
-              uiSound.select();
-              item.onSelect();
-            }}
+            onMouseEnter={() => setIndex(i)}
+            onClick={() => item.onSelect()}
           >
             {item.label}
           </button>

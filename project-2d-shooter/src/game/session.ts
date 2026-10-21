@@ -1,10 +1,9 @@
-import type { AudioMixer } from '@engine/audio/audio';
 import { EventBus } from '@engine/core/events';
 import { GameLoop } from '@engine/core/loop';
 import { SceneManager } from '@engine/core/scene';
 import { Input, type InputFrame } from '@engine/input/input';
 import { randomSeedString } from '@engine/math/rng';
-import { Renderer, type ScaleMode } from '@engine/render/renderer';
+import { Renderer } from '@engine/render/renderer';
 import { BIOME_ORDER } from './content/biomes/catalog';
 import { VIEW } from './config';
 import type { GameEvents } from './events';
@@ -13,9 +12,7 @@ import { RunScene } from './scenes/RunScene';
 
 export interface SessionOptions {
   seed?: string;
-  audio: AudioMixer;
   debug?: boolean;
-  scaleMode?: ScaleMode;
 }
 
 /**
@@ -42,11 +39,10 @@ export class GameSession {
 
   constructor(
     canvas: HTMLCanvasElement,
-    private readonly options: SessionOptions,
+    private readonly options: SessionOptions = {},
   ) {
     this.seed = options.seed ?? randomSeedString();
-    this.renderer = new Renderer(canvas, VIEW.width, VIEW.height);
-    this.renderer.setScaleMode(options.scaleMode ?? 'fit');
+    this.renderer = new Renderer(canvas, VIEW.height, VIEW.width);
     this.input.attach(canvas, (x, y) => this.renderer.clientToVirtual(x, y));
     this.loop = new GameLoop({
       update: (dt) => {
@@ -81,10 +77,6 @@ export class GameSession {
 
   get isPaused(): boolean {
     return this.paused;
-  }
-
-  setScaleMode(mode: ScaleMode): void {
-    this.renderer.setScaleMode(mode);
   }
 
   pause(): void {
@@ -134,16 +126,17 @@ export class GameSession {
     this.recording = [];
     const previous = this.scenes.current;
     const debug = previous instanceof RunScene ? previous.debugOverlay : (this.options.debug ?? false);
+    const grid = previous instanceof RunScene ? previous.gridVisible : true;
     this.scenes.switchTo(
       new RunScene({
         renderer: this.renderer,
         input: this.input,
-        audio: this.options.audio,
         bus: this.bus,
         seed: this.seed,
         biomeId: BIOME_ORDER[index % BIOME_ORDER.length]!,
         frameStats: this.frameStats,
         debugOverlay: debug,
+        grid,
         // Defer the switch: we're inside the scene's update.
         onExit: () => queueMicrotask(() => !this.disposed && this.enterBiome(this.biomeIndex + 1)),
         onReplay: () => {

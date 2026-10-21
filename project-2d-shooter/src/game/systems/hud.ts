@@ -1,7 +1,6 @@
 import { containsPoint } from '@engine/math/rect';
-import { ITEMS } from '../content/items/catalog';
 import type { HudState } from '../events';
-import { Arsenal, Body, Focus, Health, PlayerControl, Position, Wallet } from '../world/components';
+import { Arsenal, Body, Focus, Health, PlayerControl, Position } from '../world/components';
 import { bodyCenter } from '../world/geometry';
 import type { RunContext, RunSystem } from './context';
 
@@ -18,7 +17,6 @@ export function createHudSystem(): RunSystem {
       const [e, pos, body, health, arsenal, pc] = player;
       const ws = arsenal.weapons[arsenal.active];
       const other = arsenal.weapons.find((_, i) => i !== arsenal.active);
-      const item = arsenal.items[arsenal.activeItem];
 
       const hud: HudState = {
         hp: Math.max(0, Math.ceil(health.hp)),
@@ -31,15 +29,14 @@ export function createHudSystem(): RunSystem {
         fireMode: ws ? FIRE_MODE_LABEL[ws.weapon.fireMode] : '',
         attachments: ws?.weapon.attachments.map((a) => a.name) ?? [],
         otherWeapon: other?.weapon.def.name ?? null,
-        itemName: item ? ITEMS.get(item.itemId).name : '-',
-        itemCount: item?.count ?? 0,
-        money: world.get(e, Wallet)?.money ?? 0,
         focus: Math.round((world.get(e, Focus)?.value ?? 0) * 100) / 100,
         slowmo: ctx.clock.targetScale < 1,
         biomeName: ctx.biome.name,
         floorLabel: ctx.biome.floorLabel,
+        roomName: currentRoom(ctx, bodyCenter(pos, body))?.name ?? '-',
         seed: ctx.level.seed,
         god: ctx.debug.god,
+        grid: ctx.debug.grid,
         frozen: ctx.debug.stepMode,
       };
       const json = JSON.stringify(hud);
@@ -53,18 +50,21 @@ export function createHudSystem(): RunSystem {
           fps: ctx.frameStats.fps,
           steps: ctx.frameStats.steps,
           entities: world.entityCount,
-          particles: ctx.particles.active,
           timeScale: Math.round(ctx.clock.scale * 100) / 100,
           playerState: pc.state,
           playerPos: `${Math.round(pos.x)},${Math.round(pos.y)}`,
-          room: currentRoom(ctx, bodyCenter(pos, body)),
+          room: currentRoomDebug(ctx, bodyCenter(pos, body)),
         });
       }
     },
   };
 }
 
-function currentRoom(ctx: RunContext, p: { x: number; y: number }): string {
-  const room = ctx.level.rooms.find((r) => containsPoint(r.rect, p.x, p.y));
-  return room ? `${room.index + 1}/${ctx.level.rooms.length} ${room.templateId}` : '-';
+function currentRoom(ctx: RunContext, p: { x: number; y: number }) {
+  return ctx.level.rooms.find((r) => containsPoint(r.rect, p.x, p.y));
+}
+
+function currentRoomDebug(ctx: RunContext, p: { x: number; y: number }): string {
+  const room = currentRoom(ctx, p);
+  return room ? `${room.index + 1}/${ctx.level.rooms.length} ${room.name}` : '-';
 }

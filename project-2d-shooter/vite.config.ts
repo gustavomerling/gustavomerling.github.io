@@ -27,8 +27,8 @@ function cspOnBuild(): Plugin {
 }
 
 export default defineConfig({
-  // Relative base: the packaged game loads index.html from disk (file://), not from a server.
-  base: '/project-2d-shooter/dist/',
+  // Relative base: works both for the packaged game (file://) and under the GitHub Pages subpath.
+  base: './',
   plugins: [react(), cspOnBuild()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
@@ -50,6 +50,16 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     target: 'chrome120',
+    minify: 'esbuild',
+    cssCodeSplit: true,
+    assetsInlineLimit: 400,
+    chunkSizeWarningLimit: 500,
+    rollupOptions: {
+      output: {
+        // Function form: the object form is not in the installed Rollup types.
+        manualChunks: (id) => (id.includes('node_modules/react') || id.includes('node_modules/scheduler') ? 'vendor' : undefined),
+      },
+    },
   },
   test: {
     include: ['src/**/*.test.ts'],

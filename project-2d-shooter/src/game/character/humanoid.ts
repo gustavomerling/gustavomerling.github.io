@@ -13,7 +13,7 @@ const BASE = {
   lowerArm: 4.2,
   /** Shoulders sit this far up the torso (0 = hips, 1 = neck). */
   shoulderAt: 0.88,
-  /** Box widths (wireframe thickness) per part. */
+  /** Capsule thickness per part. */
   torsoWidth: 5,
   upperLegWidth: 3,
   lowerLegWidth: 3,

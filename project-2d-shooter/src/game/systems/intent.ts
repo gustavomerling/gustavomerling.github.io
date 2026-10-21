@@ -15,8 +15,6 @@ export const playerIntentSystem: RunSystem = {
       intent.firePressed = input.pressed('fire');
       intent.reload = input.pressed('reload');
       intent.switchBy = (input.pressed('nextWeapon') ? 1 : 0) - (input.pressed('prevWeapon') ? 1 : 0);
-      intent.throwPressed = input.pressed('throw');
-      intent.nextItem = input.pressed('nextItem');
     }
   },
 };

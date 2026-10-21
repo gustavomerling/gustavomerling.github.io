@@ -1,33 +1,16 @@
 import type { Entity } from '@engine/ecs/world';
 import { DEG2RAD } from '@engine/math/math';
+import type { Rect } from '@engine/math/rect';
 import type { Vec2 } from '@engine/math/vec2';
-import { Tile, type TileGrid } from '@engine/physics/tilegrid';
+import type { TileGrid } from '@engine/physics/tilegrid';
 import type { HumanoidAnimator } from '../character/animator';
 import { raycastParts, rigHitParts, type HitPart } from '../character/hitbox';
-import { ITEMS } from '../content/items/catalog';
 import { AI, HIT_ZONES, RICOCHET, type HitZone } from '../config';
-import { fx } from '../fx/emitters';
-import {
-  Aim,
-  Arsenal,
-  Body,
-  CameraTarget,
-  Faction,
-  Health,
-  Intent,
-  PlayerControl,
-  Position,
-  Projectile,
-  Rig,
-  Thrown,
-  Velocity,
-  type BodyData,
-} from '../world/components';
-import { bodyCenter, bodyRect, shoulder } from '../world/geometry';
-import { spawnEffect, spawnProjectile, spawnThrown } from '../world/prefabs';
+import { Aim, Arsenal, Body, Faction, Health, Intent, PlayerControl, Position, Projectile, Rig, Velocity, type BodyData } from '../world/components';
+import { bodyRect, shoulder } from '../world/geometry';
+import { spawnProjectile } from '../world/prefabs';
 import type { RunSystem } from './context';
 import { applyDamage } from './damage';
-import { explode } from './explosions';
 
 /** Mouse aim -> the player's Aim component and facing. */
 export const aimSystem: RunSystem = {
@@ -58,7 +41,6 @@ export const weaponSystem: RunSystem = {
       if (intent.switchBy !== 0 && n > 1) {
         arsenal.weapons[arsenal.active]!.reloadLeft = 0;
         arsenal.active = (arsenal.active + intent.switchBy + n) % n;
-        ctx.sfx.switchWeapon();
       }
 
       const ws = arsenal.weapons[arsenal.active]!;
@@ -69,7 +51,6 @@ export const weaponSystem: RunSystem = {
       const startReload = () => {
         if (ws.reserve <= 0 || ws.ammo >= stats.magazine) return;
         ws.reloadLeft = stats.reloadTime;
-        if (isPlayer) ctx.sfx.reloadStart();
       };
 
       if (ws.reloadLeft > 0) {
@@ -79,7 +60,6 @@ export const weaponSystem: RunSystem = {
           const take = Math.min(stats.magazine - ws.ammo, ws.reserve);
           ws.ammo += take;
           ws.reserve -= take;
-          if (isPlayer) ctx.sfx.reloadEnd();
         }
       } else if (intent.reload) {
         startReload();
@@ -92,8 +72,7 @@ export const weaponSystem: RunSystem = {
       if (ws.ammo <= 0) {
         ws.burstLeft = 0;
         ws.cooldown = 0.25;
-        if (isPlayer) ctx.sfx.dryFire();
-        startReload(); // auto-reload on empty click (if there's reserve)
+        startReload(); // auto-reload on empty click
         continue;
       }
 
@@ -110,26 +89,15 @@ export const weaponSystem: RunSystem = {
       for (let i = 0; i < stats.pellets; i++) {
         spawnProjectile(world, faction.team, ws.weapon, muzzle, toAim + ctx.rng.range(-spread, spread), isPlayer ? 1 : AI.damageScale);
       }
-
-      // Feel: flash, smoke, brass, sound, kick.
-      const silenced = ws.weapon.behaviors.has('silenced');
-      const cls = ws.weapon.def.weaponClass;
-      fx.muzzleFlash(ctx.particles, muzzle, toAim, cls, silenced);
-      const sh = shoulder(pos, body);
-      fx.casing(ctx.particles, { x: (sh.x + muzzle.x) / 2, y: (sh.y + muzzle.y) / 2 - 1 }, animator?.facing ?? (Math.cos(toAim) >= 0 ? 1 : -1));
-      ctx.sfx.gunshot(cls, silenced, isPlayer, ctx.clock.scale);
       ws.bloom = Math.min(1, ws.bloom + stats.recoil);
       animator?.kick(stats.recoil);
-      if (world.has(e, CameraTarget)) {
-        ctx.camera.addTrauma(stats.recoil * 0.6);
-        ctx.camera.kick(-Math.cos(toAim) * stats.recoil * 6, -Math.sin(toAim) * stats.recoil * 6);
-      }
+      // Enemies hear the shot (the silencer shrinks `noise` in its stats).
       if (isPlayer) ctx.noises.push({ x: muzzle.x, y: muzzle.y, radius: stats.noise });
     }
   },
 };
 
-/** Bullets leave from the rig's gun barrel when there is one, else from the shoulder. */
+/** Bullets leave from the rig's gun barrel when there is one, else from just in front of the shoulder. */
 function muzzlePoint(animator: HumanoidAnimator | undefined, pos: { x: number; y: number }, body: BodyData, angle: number): Vec2 {
   const local = animator?.muzzleLocal();
   if (animator && local) return { x: pos.x + body.w / 2 + animator.facing * local.x, y: pos.y + body.h + local.y };
@@ -164,7 +132,40 @@ export function ricochetAxis(
   return always || grazeDeg < RICOCHET.maxGrazeDeg ? axis : null;
 }
 
-/** Moves bullets: body-part hits on rigs, props, breakables, ricochets, pierce and range. */
+/**
+ * Where the segment (x0,y0)->(x1,y1) first enters the rect, as a 0..1 fraction of the segment,
+ * or null if it misses (slab method).
+ */
+export function segmentEntersRect(x0: number, y0: number, x1: number, y1: number, r: Rect): number | null {
+  let t0 = 0;
+  let t1 = 1;
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  for (const [p, d, lo, hi] of [
+    [x0, dx, r.x, r.x + r.w],
+    [y0, dy, r.y, r.y + r.h],
+  ] as const) {
+    if (d === 0) {
+      if (p < lo || p > hi) return null;
+      continue;
+    }
+    let a = (lo - p) / d;
+    let b = (hi - p) / d;
+    if (a > b) [a, b] = [b, a];
+    t0 = Math.max(t0, a);
+    t1 = Math.min(t1, b);
+    if (t0 > t1) return null;
+  }
+  return t0;
+}
+
+/** Fallback for bodies without a rig: region by height inside the collider (top 25% head, bottom 35% legs). */
+export function zoneAt(r: Rect, y: number): HitZone {
+  const t = (y - r.y) / r.h;
+  return t < 0.25 ? 'head' : t > 0.65 ? 'leg' : 'torso';
+}
+
+/** Moves bullets: hits on the rig's bones (or the collider), ricochets, pierce and range. */
 export const projectileSystem: RunSystem = {
   name: 'projectiles',
   update(world, ctx) {
@@ -193,17 +194,16 @@ export const projectileSystem: RunSystem = {
         const ny = pos.y + (vel.y * dt) / steps;
         const angle = Math.atan2(vel.y, vel.x);
 
-        // Characters/props first (a bullet grazing a wall can still hit someone standing at it).
+        // Characters first (a bullet grazing a wall can still hit someone standing at it).
         for (const [t, tpos, tbody, health, faction] of targets) {
           if (faction.team === proj.team || proj.hit.has(t) || health.hp <= 0 || !world.isAlive(t)) continue;
           const r = bodyRect(tpos, tbody);
-          // Broad phase: segment bounds vs a slightly inflated collider (limbs/gun stick out).
+          // Broad phase: the collider, slightly inflated (limbs and the gun stick out).
           const pad = 8;
-          if (Math.max(pos.x, nx) < r.x - pad || Math.min(pos.x, nx) > r.x + r.w + pad) continue;
-          if (Math.max(pos.y, ny) < r.y - pad || Math.min(pos.y, ny) > r.y + r.h + pad) continue;
+          if (segmentEntersRect(pos.x, pos.y, nx, ny, { x: r.x - pad, y: r.y - pad, w: r.w + pad * 2, h: r.h + pad * 2 }) === null) continue;
 
           let zone: HitZone;
-          let s = 1;
+          let s: number;
           const parts = partsOf(t, tpos, tbody);
           if (parts) {
             const hit = raycastParts(parts, pos.x, pos.y, nx, ny);
@@ -211,8 +211,10 @@ export const projectileSystem: RunSystem = {
             zone = hit.zone;
             s = hit.s;
           } else {
-            if (!(nx >= r.x - 1 && nx < r.x + r.w + 1 && ny >= r.y - 1 && ny < r.y + r.h + 1)) continue;
-            zone = 'torso';
+            const enter = segmentEntersRect(pos.x, pos.y, nx, ny, r);
+            if (enter === null) continue;
+            s = enter;
+            zone = zoneAt(r, pos.y + (ny - pos.y) * s);
           }
 
           proj.hit.add(t);
@@ -237,25 +239,13 @@ export const projectileSystem: RunSystem = {
         if (!alive) break;
 
         if (ctx.grid.isSolidAtPixel(nx, ny)) {
-          const breakable = ctx.grid.atPixel(nx, ny) === Tile.Breakable ? ctx.breakables.get(tileIndex(ctx.grid, nx, ny)) : undefined;
-          if (breakable !== undefined) {
-            // Wood soaks the bullet.
-            applyDamage(world, ctx, breakable, { amount: proj.damage, zone: 'torso', at: { x: pos.x, y: pos.y }, angle, by: proj.team });
-            world.destroy(e);
-            alive = false;
-            break;
-          }
           const axis = proj.bouncesLeft > 0 ? ricochetAxis(ctx.grid, pos.x, pos.y, nx, ny, vel.x, vel.y, proj.alwaysRicochet) : null;
           if (axis) {
             if (axis === 'x') vel.x = -vel.x;
             else vel.y = -vel.y;
             proj.bouncesLeft--;
             proj.damage *= RICOCHET.damageKept;
-            fx.ricochet(ctx.particles, pos);
-            ctx.sfx.ricochet(ctx.clock.scale);
           } else {
-            fx.wallImpact(ctx.particles, pos, angle);
-            ctx.sfx.wallHit(ctx.clock.scale);
             world.destroy(e);
             alive = false;
           }
@@ -268,53 +258,6 @@ export const projectileSystem: RunSystem = {
 
       proj.distanceLeft -= dist;
       if (alive && proj.distanceLeft <= 0) world.destroy(e);
-    }
-  },
-};
-
-const tileIndex = (grid: TileGrid, x: number, y: number) => grid.index(Math.floor(x / grid.tileSize), Math.floor(y / grid.tileSize));
-
-/** Throwing (grenade/flashbang), fuses and their effects. */
-export const throwableSystem: RunSystem = {
-  name: 'throwables',
-  update(world, ctx) {
-    for (const [, pos, body, aim, arsenal, intent] of world.query(Position, Body, Aim, Arsenal, Intent)) {
-      if (arsenal.items.length === 0) continue;
-      if (intent.nextItem) arsenal.activeItem = (arsenal.activeItem + 1) % arsenal.items.length;
-      const slot = arsenal.items[arsenal.activeItem]!;
-      if (!intent.throwPressed || slot.count <= 0) continue;
-      slot.count--;
-      const def = ITEMS.get(slot.itemId);
-      const from = shoulder(pos, body);
-      const v = { x: Math.cos(aim.angle) * def.throwSpeed, y: Math.sin(aim.angle) * def.throwSpeed - 60 };
-      spawnThrown(world, def.id, def.fuseSeconds, from, v);
-      ctx.sfx.whoosh();
-    }
-
-    const dt = ctx.clock.dt;
-    const player = world.first(Position, Body, PlayerControl);
-    for (const [e, pos, thrown] of world.query(Position, Thrown)) {
-      thrown.fuseLeft -= dt;
-      if (thrown.fuseLeft > 0) continue;
-      const def = ITEMS.get(thrown.itemId);
-      const center = { x: pos.x + 2, y: pos.y + 2 };
-
-      if (def.effect === 'explosion') {
-        // Grenades don't hurt the player (decision still open, see docs).
-        explode(world, ctx, center, def.radius, def.damage, { hurtsPlayer: false, by: 'player' });
-      } else {
-        for (const [, tpos, tbody, health, faction] of world.query(Position, Body, Health, Faction)) {
-          if (faction.team !== 'enemy') continue;
-          const c = bodyCenter(tpos, tbody);
-          if (Math.hypot(c.x - center.x, c.y - center.y) <= def.radius) health.stunLeft = Math.max(health.stunLeft, def.stunSeconds);
-        }
-        ctx.noises.push({ x: center.x, y: center.y, radius: 400 });
-        spawnEffect(world, 'ring', center, def.radius, 0.25, '#ffffff');
-        const p = player ? bodyCenter(player[1], player[2]) : null;
-        if (p && Math.hypot(p.x - center.x, p.y - center.y) < def.radius * 1.5) spawnEffect(world, 'flash', center, 0, 0.6, '#ffffff');
-        ctx.sfx.flashbang();
-      }
-      world.destroy(e);
     }
   },
 };

@@ -3,7 +3,6 @@ import type { DebugStats, HudState } from '@game/events';
 import { GameSession } from '@game/session';
 import { DebugPanel, Hud } from '../components/Hud';
 import { Menu } from '../components/Menu';
-import { audio, settingsStore } from '../services';
 
 interface Props {
   onQuitRun: () => void;
@@ -22,12 +21,7 @@ export function GameScreen({ onQuitRun }: Props) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const settings = settingsStore.get();
-    const session = new GameSession(canvas, {
-      audio,
-      debug: settings.showDebug,
-      scaleMode: settings.pixelPerfect ? 'integer' : 'fit',
-    });
+    const session = new GameSession(canvas);
     sessionRef.current = session;
     let deathTimer = 0;
     const offs = [
@@ -74,7 +68,6 @@ export function GameScreen({ onQuitRun }: Props) {
       {dead && (
         <div className="pause-overlay">
           <h2>Você morreu</h2>
-          <p className="tagline">a lasanha continua desaparecida.</p>
           <Menu
             items={[
               { id: 'retry', label: 'Tentar de novo', onSelect: retry },

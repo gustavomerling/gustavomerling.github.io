@@ -11,16 +11,17 @@ export interface HudState {
   attachments: string[];
   /** Other gun carried (null if only one). */
   otherWeapon: string | null;
-  itemName: string;
-  itemCount: number;
-  money: number;
   /** Bullet-time meter 0..1 (rounded to 2 decimals to limit updates). */
   focus: number;
   slowmo: boolean;
   biomeName: string;
   floorLabel: string;
+  /** Current chunk/building name ("Prédio 1"). */
+  roomName: string;
   seed: string;
   god: boolean;
+  /** Measuring grid on (F2). */
+  grid: boolean;
   frozen: boolean;
 }
 
@@ -28,7 +29,6 @@ export interface DebugStats {
   fps: number;
   steps: number;
   entities: number;
-  particles: number;
   timeScale: number;
   playerState: string;
   playerPos: string;
