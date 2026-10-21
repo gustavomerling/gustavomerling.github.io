@@ -78,7 +78,10 @@ export const ATTACHMENTS = new Registry<AttachmentDef>('attachment', [
     name: 'Munição perfurante',
     description: 'Atravessa um inimigo. E a divisória do open space.',
     slot: 'ammo',
-    modifiers: [{ stat: 'projectileSpeed', op: 'mul', value: 1.2 }],
+    modifiers: [
+      { stat: 'projectileSpeed', op: 'mul', value: 1.2 },
+      { stat: 'penetration', op: 'add', value: 0.8 },
+    ],
     behaviors: ['pierce'],
   },
 ]);

@@ -16,9 +16,12 @@ Começa no primeiro prédio, atravessa prédios e becos para a direita, chega à
 | Escada | **W / S** | sobe/desce; A/D fica travado e o corpo centraliza na escada |
 | Walljump | **Espaço** no ar junto à parede | segurar contra a parede caindo = *wall slide* |
 | Escalar degrau (vault) | andar contra um degrau de 1 tile | automático; 2 tiles exigem pulo |
+| Rolamento | automático | queda de mais de 4 tiles termina rolando |
 | Câmera lenta | **E** | liga/desliga; gasta foco |
 | Mirar / atirar | **mouse** / **botão esquerdo** | semi/rajada/auto conforme a arma |
-| Trocar arma | **roda** (ou 1 / 2) | |
+| Trocar arma | **1-4** (ou roda) | abaixa uma, levanta a outra; ~0,3 s sem atirar |
+| Pegar arma do chão | **F** perto dela | mesma arma = pente cheio; inventário cheio (4) = troca pela da mão |
+| Chute | **Q** | empurra e atordoa quem está na frente |
 | Recarregar | **R** | recarrega sozinho ao esvaziar |
 | Usar a saída | **W** ou **F** | |
 | Pausa | **Esc** | |

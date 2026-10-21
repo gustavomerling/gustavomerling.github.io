@@ -2,13 +2,15 @@ import { boxFits } from '@engine/physics/collide';
 import { isBlocking, Tile, type TileGrid } from '@engine/physics/tilegrid';
 import { approach, clamp, lerp, sign } from '@engine/math/math';
 import { IMPACT, PLAYER_TUNING as T } from '../config';
-import { Body, Health, PlayerControl, Position, Velocity, type BodyData } from '../world/components';
+import { Body, Health, PlayerControl, Position, Velocity, type BodyData, type PlayerControlData } from '../world/components';
 import type { RunSystem } from './context';
+import { spawnDust } from './effects';
 
 /**
  * Turns input into the player's velocity and stance: walk/sprint, crouch, slide,
- * jump (coyote time + buffer + variable height), ladders, wall jumps, ledge mantles
- * and drop-through. Integration and collision happen afterwards in the physics system.
+ * jump (anticipation + coyote time + buffer + variable height), ladders, wall slides and
+ * wall jumps, ledge mantles, landing rolls and drop-through. Integration and collision
+ * happen afterwards in the physics system.
  */
 export const playerMovementSystem: RunSystem = {
   name: 'playerMovement',
@@ -22,6 +24,8 @@ export const playerMovementSystem: RunSystem = {
       if (health && health.hp <= 0) {
         body.climbing = false;
         body.mantling = false;
+        pc.takeoffLeft = 0;
+        pc.rollLeft = 0;
         vel.x = approach(vel.x, 0, T.groundFriction * dt);
         continue;
       }
@@ -32,10 +36,20 @@ export const playerMovementSystem: RunSystem = {
       const moveX = (input.isDown('right') ? 1 : 0) - (input.isDown('left') ? 1 : 0);
       const grounded = body.onGround;
 
+      // Fall height, measured feet to feet from the highest point since leaving the ground.
+      const feetY = pos.y + body.h;
+      const landed = grounded && !pc.wasGrounded;
+      const fallHeight = landed ? feetY - pc.fallTopY : 0;
+      pc.wasGrounded = grounded;
+      pc.fallTopY = grounded || body.climbing || body.mantling ? feetY : Math.min(pc.fallTopY, feetY);
+      const footX = pos.x + body.w / 2;
+      if (landed && fallHeight > 24) spawnDust(world, footX, feetY, Math.min(8, 2 + Math.round(fallHeight / 24)), 40);
+
       pc.coyoteLeft = grounded ? T.coyoteTime : Math.max(0, pc.coyoteLeft - dt);
       pc.jumpBufferLeft = input.pressed('jump') ? T.jumpBuffer : Math.max(0, pc.jumpBufferLeft - dt);
       pc.slideCooldownLeft = Math.max(0, pc.slideCooldownLeft - dt);
       pc.wallJumpLockLeft = Math.max(0, pc.wallJumpLockLeft - dt);
+      pc.wallKickLeft = Math.max(0, pc.wallKickLeft - dt);
       pc.mantleCooldownLeft = Math.max(0, pc.mantleCooldownLeft - dt);
 
       // Scripted ledge pull-up. Y first, then X, so the body clears the lip before moving in.
@@ -49,6 +63,7 @@ export const playerMovementSystem: RunSystem = {
         vel.x = 0;
         vel.y = 0;
         pc.state = 'mantle';
+        pc.facing = pc.mantleDir;
         if (pc.mantleLeft <= 0) {
           pos.x = pc.mantleToX;
           pos.y = pc.mantleToY;
@@ -56,10 +71,31 @@ export const playerMovementSystem: RunSystem = {
           body.climbing = false;
           body.onGround = true;
           body.onOneWay = false;
+          pc.wasGrounded = true;
           pc.state = 'idle';
           pc.mantleCooldownLeft = T.mantleCooldown;
         }
         continue;
+      }
+
+      // A long fall ends in a forward roll: low, fast and uncontrollable for a moment.
+      if (landed && fallHeight > T.rollMinFall && pc.rollLeft <= 0) {
+        pc.rollLeft = T.rollTime;
+        pc.rollDir = (sign(vel.x) || pc.facing) as 1 | -1;
+        vel.x = pc.rollDir * Math.max(Math.abs(vel.x), T.rollSpeed);
+        pc.takeoffLeft = 0;
+        pc.slideQueued = false;
+        dodge();
+      }
+      if (pc.rollLeft > 0) {
+        pc.rollLeft -= dt;
+        setHeight(pos, body, T.crouchHeight, ctx.grid);
+        vel.x = approach(vel.x, pc.rollDir * T.rollSpeed * 0.5, T.rollFriction * dt);
+        pc.facing = pc.rollDir;
+        pc.state = 'roll';
+        // Rolling off a ledge ends it early; otherwise the player regains control when it finishes.
+        if (pc.rollLeft > 0 && grounded) continue;
+        pc.rollLeft = 0;
       }
 
       // Ladders: overlap + up/down grabs them; releasing the keys keeps the player hanging.
@@ -75,6 +111,7 @@ export const playerMovementSystem: RunSystem = {
         if (center !== null) pos.x = approach(pos.x, center - body.w / 2, T.climbSnapSpeed * dt);
         pc.coyoteLeft = 0;
         pc.jumpBufferLeft = 0;
+        pc.takeoffLeft = 0;
         pc.state = 'climb';
         // Space (or W after releasing up) jumps off the ladder.
         if (input.pressed('jump') && !input.isDown('up')) {
@@ -85,20 +122,30 @@ export const playerMovementSystem: RunSystem = {
         continue;
       }
 
-      // Wall contact: used for wall slides, wall jumps and ledge detection.
-      const wallSide = airborneWallSide(ctx.grid, pos, body, grounded ? 0 : moveX);
+      // Wall contact (for slides and jumps), with a short grace period after letting go.
+      const wallNow = grounded ? 0 : airborneWallSide(ctx.grid, pos, body, moveX);
+      if (wallNow !== 0) {
+        pc.wallSide = wallNow;
+        pc.wallCoyoteLeft = T.wallCoyoteTime;
+      } else {
+        pc.wallCoyoteLeft = grounded ? 0 : Math.max(0, pc.wallCoyoteLeft - dt);
+      }
+      const wallSide = wallNow !== 0 ? wallNow : pc.wallCoyoteLeft > 0 ? pc.wallSide : 0;
 
       // Jumping while airborne next to a wall kicks away from it.
-      if (!grounded && wallSide !== 0 && pc.jumpBufferLeft > 0 && pc.wallJumpLockLeft <= 0) {
+      if (!grounded && wallSide !== 0 && pc.jumpBufferLeft > 0 && pc.wallJumpLockLeft <= 0 && pc.takeoffLeft <= 0) {
         vel.y = -T.wallJumpSpeed;
         vel.x = -wallSide * T.wallJumpSpeedX;
         pc.jumpBufferLeft = 0;
         pc.coyoteLeft = 0;
+        pc.wallCoyoteLeft = 0;
         pc.slideQueued = false;
         pc.wallJumpLockLeft = T.wallJumpLock;
+        pc.wallKickLeft = T.wallKickTime;
         pc.wallJumpDir = -wallSide as 1 | -1;
         pc.facing = pc.wallJumpDir;
-        pc.state = 'air';
+        pc.fallTopY = feetY;
+        pc.state = 'wallJump';
         continue;
       }
 
@@ -141,6 +188,7 @@ export const playerMovementSystem: RunSystem = {
       let low: boolean;
       if (pc.state === 'slide') {
         pc.slideLeft -= dt;
+        if (grounded && ctx.clock.tick % 4 === 0) spawnDust(world, footX + pc.slideDir * 4, feetY, 1, 15);
         vel.x = approach(vel.x, 0, T.slideFriction * dt);
         if (pc.slideLeft <= 0 || !grounded || Math.abs(vel.x) < T.crouchSpeed) {
           pc.state = grounded ? 'crouch' : 'air';
@@ -148,8 +196,8 @@ export const playerMovementSystem: RunSystem = {
         }
         low = true;
       } else {
-        const crouching = grounded && input.isDown('crouch');
-        const speed = crouching ? T.crouchSpeed : input.isDown('sprint') ? T.sprintSpeed : T.walkSpeed;
+        const crouching = grounded && input.isDown('crouch') && pc.takeoffLeft <= 0;
+        const speed = crouching ? T.crouchSpeed : input.isDown('sprint') ? T.sprintSpeed : grounded ? T.walkSpeed : T.airSpeed;
         const accel = !grounded ? T.airAccel : moveX !== 0 ? T.groundAccel : T.groundFriction;
         // After a wall jump the impulse owns horizontal motion for a moment.
         const control = pc.wallJumpLockLeft > 0 ? 0 : moveX;
@@ -158,26 +206,45 @@ export const playerMovementSystem: RunSystem = {
         low = crouching;
       }
 
-      // Pressing into a wall while falling slows the descent.
-      if (!grounded && wallSide !== 0 && moveX === wallSide && vel.y > 0) {
+      // Pressing into a wall while falling: slide down it, facing away (ready to kick off).
+      const wallSliding = wallNow !== 0 && moveX === wallNow && vel.y > 0;
+      if (wallSliding) {
         vel.y = Math.min(vel.y, T.wallSlideSpeed);
+        if (ctx.clock.tick % 6 === 0) spawnDust(world, footX + wallNow * (body.w / 2), pos.y + body.h * 0.6, 1, 6);
+        pc.facing = -wallNow as 1 | -1;
+        pc.fallTopY = feetY;
       }
 
       // Can't stand up under a low ceiling: stay crouched.
       if (!setHeight(pos, body, low ? T.crouchHeight : T.standHeight, ctx.grid)) low = true;
 
-      if (pc.jumpBufferLeft > 0 && pc.coyoteLeft > 0) {
+      // Ground jump: a short anticipation crouch, then launch (a slide-jump launches at once).
+      const launch = () => {
+        vel.y = -T.jumpSpeed * (pc.takeoffCut ? T.jumpCutMultiplier : 1);
+        pc.takeoffLeft = 0;
+        pc.takeoffCut = false;
+        pc.coyoteLeft = 0;
+      };
+      if (pc.takeoffLeft <= 0 && pc.jumpBufferLeft > 0 && pc.coyoteLeft > 0) {
         // Jumping stands up first; a slide-jump keeps the slide's momentum.
         if (!low || setHeight(pos, body, T.standHeight, ctx.grid)) {
-          vel.y = -T.jumpSpeed;
           pc.jumpBufferLeft = 0;
-          pc.coyoteLeft = 0;
+          pc.takeoffCut = false;
+          low = false;
           if (pc.state === 'slide') {
             pc.state = 'air';
             pc.slideCooldownLeft = T.slideCooldown;
+            launch();
+          } else if (T.takeoffTime > 0 && grounded) {
+            pc.takeoffLeft = T.takeoffTime;
+          } else {
+            launch();
           }
-          low = false;
         }
+      } else if (pc.takeoffLeft > 0) {
+        if (input.released('jump')) pc.takeoffCut = true;
+        pc.takeoffLeft -= dt;
+        if (pc.takeoffLeft <= 0 || !grounded) launch();
       }
       if (input.released('jump') && vel.y < 0) vel.y *= T.jumpCutMultiplier;
 
@@ -185,39 +252,55 @@ export const playerMovementSystem: RunSystem = {
       if (pc.state !== 'slide' && !input.isDown('down') && moveX !== 0 && pc.mantleCooldownLeft <= 0) {
         const target = ledgeTarget(ctx.grid, pos, body, moveX as 1 | -1);
         if (target) {
+          startMantle(pc, pos, moveX as 1 | -1, target);
           body.mantling = true;
           body.climbing = false;
           body.onGround = false;
           body.onOneWay = false;
           vel.x = 0;
           vel.y = 0;
-          pc.mantleFromX = pos.x;
-          pc.mantleFromY = pos.y;
-          pc.mantleToX = target.x;
-          pc.mantleToY = target.y;
-          pc.mantleTotal = T.mantleTime;
-          pc.mantleLeft = T.mantleTime;
-          pc.jumpBufferLeft = 0;
-          pc.slideQueued = false;
-          pc.state = 'mantle';
           continue;
         }
       }
 
       if (pc.state !== 'slide') {
-        pc.state = !grounded
-          ? 'air'
-          : low
-            ? 'crouch'
-            : Math.abs(vel.x) < 1
-              ? 'idle'
-              : Math.abs(vel.x) > T.walkSpeed + 1
-                ? 'sprint'
-                : 'run';
+        pc.state =
+          pc.takeoffLeft > 0
+            ? 'takeoff'
+            : !grounded
+              ? pc.wallKickLeft > 0
+                ? 'wallJump'
+                : wallSliding
+                  ? 'wallSlide'
+                  : 'air'
+              : low
+                ? 'crouch'
+                : Math.abs(vel.x) < 1
+                  ? 'idle'
+                  : Math.abs(vel.x) > T.walkSpeed + 1
+                    ? 'sprint'
+                    : 'run';
       }
     }
   },
 };
+
+function startMantle(pc: PlayerControlData, pos: { x: number; y: number }, dir: 1 | -1, target: LedgeTarget): void {
+  pc.mantleFromX = pos.x;
+  pc.mantleFromY = pos.y;
+  pc.mantleToX = target.x;
+  pc.mantleToY = target.y;
+  pc.mantleLedgeX = target.lipX;
+  pc.mantleLedgeY = target.lipY;
+  pc.mantleDir = dir;
+  pc.facing = dir;
+  pc.mantleTotal = T.mantleTime;
+  pc.mantleLeft = T.mantleTime;
+  pc.jumpBufferLeft = 0;
+  pc.takeoffLeft = 0;
+  pc.slideQueued = false;
+  pc.state = 'mantle';
+}
 
 const smoothstep = (t: number): number => t * t * (3 - 2 * t);
 
@@ -245,14 +328,22 @@ function ladderCenterX(grid: TileGrid, pos: { x: number; y: number }, body: Body
   return best;
 }
 
-/** -1/1 when a wall is within a couple of pixels on that side. `bias` picks a side when both are close. */
+/** -1/1 when a wall is within a few pixels on that side. `bias` picks a side when both are close. */
 function airborneWallSide(grid: TileGrid, pos: { x: number; y: number }, body: BodyData, bias: number): -1 | 0 | 1 {
-  const left = !boxFits({ x: pos.x - 2, y: pos.y, w: body.w, h: body.h }, grid);
-  const right = !boxFits({ x: pos.x + 2, y: pos.y, w: body.w, h: body.h }, grid);
+  const left = !boxFits({ x: pos.x - T.wallProbe, y: pos.y, w: body.w, h: body.h }, grid);
+  const right = !boxFits({ x: pos.x + T.wallProbe, y: pos.y, w: body.w, h: body.h }, grid);
   if (left && right) return bias < 0 ? -1 : 1;
   if (left) return -1;
   if (right) return 1;
   return 0;
+}
+
+/** Where the body ends up after a mantle, and the lip corner the hands grab. */
+interface LedgeTarget {
+  x: number;
+  y: number;
+  lipX: number;
+  lipY: number;
 }
 
 /**
@@ -264,7 +355,7 @@ function ledgeTarget(
   pos: { x: number; y: number },
   body: BodyData,
   dir: 1 | -1,
-): { x: number; y: number } | null {
+): LedgeTarget | null {
   const ts = grid.tileSize;
   const col = dir > 0 ? Math.floor((pos.x + body.w + 1.5) / ts) : Math.floor((pos.x - 1.5) / ts);
   if (!grid.inBounds(col, 0)) return null;
@@ -281,7 +372,7 @@ function ledgeTarget(
 
     const target = { x: col * ts + (ts - body.w) / 2, y: surfaceY - body.h };
     if (!clearPullUp(grid, pos, body, target)) continue;
-    return target;
+    return { ...target, lipX: dir > 0 ? col * ts : (col + 1) * ts, lipY: surfaceY };
   }
   return null;
 }

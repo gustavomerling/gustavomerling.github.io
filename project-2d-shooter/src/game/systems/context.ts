@@ -16,6 +16,22 @@ export interface Feedback {
   hitMarker: number;
   hitKill: boolean;
   hitHead: boolean;
+  /** Radius (px at the cursor) the next shot may land in: the crosshair opens this far. */
+  spread: number;
+  /** Gun not ready (reloading / swapping): crosshair dims. */
+  busy: boolean;
+}
+
+/** Score for this attempt (HUD, death screen). */
+export interface RunStats {
+  kills: number;
+  headshots: number;
+  /** Trigger pulls (a shotgun blast counts once). */
+  shots: number;
+  /** Shots that hurt someone (once per shot, however many pellets or bodies). */
+  hits: number;
+  /** Seconds alive in this scenario. */
+  time: number;
 }
 
 /** Debug toggles (F-keys), see systems/debug.ts. */
@@ -44,6 +60,7 @@ export interface RunContext {
   rng: Rng;
   debug: DebugState;
   feedback: Feedback;
+  stats: RunStats;
   /** Sounds enemies can hear (gunshots); the AI system consumes them on the next step. */
   noises: { x: number; y: number; radius: number }[];
   /** Render-side timing, owned by the session (debug overlay). */

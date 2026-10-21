@@ -47,6 +47,8 @@ export const BIOMES = new Registry<BiomeDef>('biome', [
       { id: 'intern', weight: 3 },
       { id: 'it-guy', weight: 2 },
       { id: 'manager', weight: 1 },
+      { id: 'janitor', weight: 2 },
+      { id: 'auditor', weight: 1 },
     ],
   },
 ]);

@@ -5,7 +5,7 @@ import type { Renderer } from '@engine/render/renderer';
 import type { GameEvents } from './events';
 import { DEFAULT_BINDINGS } from './input/actions';
 import { RunScene } from './scenes/RunScene';
-import { Health, Npc, PlayerControl, Position, Projectile, Ragdoll, Rig } from './world/components';
+import { Health, Npc, PlayerControl, Position, Projectile, Ragdoll, Rig, Debris, Decal, Fx } from './world/components';
 
 /** Headless scene: the simulation never touches the renderer outside `render()`. */
 function makeScene(seed: string) {
@@ -53,7 +53,8 @@ function run(seed: string, steps: number) {
     player: { x: player[1].x, y: player[1].y, hp: player[2].hp },
     enemies: [...w.query(Npc, Health, Position)].map(([, npc, h, p]) => [npc.defId, h.hp, Math.round(p.x), Math.round(p.y)]),
     bullets,
-    entities: w.entityCount,
+    // Visual effects (blood, smoke, casings...) are random on purpose; gameplay entities aren't.
+    entities: w.entityCount - [Debris, Fx, Decal].reduce((n, c) => n + [...w.query(c)].length, 0),
   };
 }
 

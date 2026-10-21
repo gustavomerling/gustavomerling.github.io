@@ -3,14 +3,23 @@ export interface HudState {
   hp: number;
   maxHp: number;
   weaponName: string;
+  /** Gun model id + attachment ids, for the HUD icon. */
+  weaponModel: string;
+  weaponAttachments: string[];
   ammo: number;
   magazine: number;
   reserve: number;
   reloading: boolean;
   fireMode: string;
   attachments: string[];
-  /** Other gun carried (null if only one). */
-  otherWeapon: string | null;
+  /** Every gun carried, in slot order (keys 1-4); `active` marks the one in hand. */
+  weapons: { name: string; active: boolean }[];
+  /** Reload progress 0..1 (rounded), 0 when not reloading. */
+  reload: number;
+  kills: number;
+  headshots: number;
+  /** Whole seconds in this scenario. */
+  time: number;
   /** Bullet-time meter 0..1 (rounded to 2 decimals to limit updates). */
   focus: number;
   slowmo: boolean;
@@ -23,6 +32,14 @@ export interface HudState {
   /** Measuring grid on (F2). */
   grid: boolean;
   frozen: boolean;
+}
+
+export interface RunSummary {
+  kills: number;
+  headshots: number;
+  shots: number;
+  hits: number;
+  time: number;
 }
 
 export interface DebugStats {
@@ -40,9 +57,10 @@ export type GameEvents = {
   hud: HudState;
   debug: DebugStats | null;
   'ui:pause': undefined;
-  'level:exit': undefined;
-  /** The player died. */
-  'run:over': undefined;
+  /** Reached the exit (with the score so far); the next scenario loads right after. */
+  'level:exit': RunSummary;
+  /** The player died (with the attempt's score). */
+  'run:over': RunSummary;
   /** A replay (F10) started (true) or finished (false). */
   replay: boolean;
 };

@@ -12,6 +12,7 @@ import { PLAYER_DEF } from '../content/characters/player';
 import type { GameEvents } from '../events';
 import type { Action } from '../input/actions';
 import { generateLevel, type LevelData } from '../procgen/level';
+import { drawDebris, drawDecals, drawFlashes, drawPickups, drawSmoke } from '../render/effects';
 import { drawCharacters, drawProjectiles, drawRagdolls } from '../render/entities';
 import { drawScreenOverlay, drawWorldOverlay } from '../render/overlay';
 import { drawSky } from '../render/sky';
@@ -21,6 +22,9 @@ import { cameraSystem } from '../systems/camera';
 import { aimSystem, projectileSystem, weaponSystem } from '../systems/combat';
 import type { RunContext, RunSystem } from '../systems/context';
 import { drawDebugWorld, handleDebugKeys } from '../systems/debug';
+import { effectsSystem } from '../systems/effects';
+import { playerMeleeSystem } from '../systems/melee';
+import { pickupSystem } from '../systems/pickups';
 import { createHudSystem } from '../systems/hud';
 import { playerIntentSystem } from '../systems/intent';
 import { lifecycleSystem } from '../systems/lifecycle';
@@ -63,12 +67,15 @@ export class RunScene implements Scene {
     aimSystem,
     playerIntentSystem,
     playerMovementSystem,
+    playerMeleeSystem,
     aiSystem,
     physicsSystem,
     weaponSystem,
     projectileSystem,
     lifecycleSystem,
     rigSystem,
+    effectsSystem,
+    pickupSystem,
     cameraSystem,
     createHudSystem(),
   ];
@@ -111,7 +118,8 @@ export class RunScene implements Scene {
       bus,
       rng: Rng.fromString(`${seed}:${biome.id}:gameplay`),
       debug: { overlay: this.deps.debugOverlay, grid: this.deps.grid, god: false, stepMode: false, stepOnce: false, spawnIndex: 0 },
-      feedback: { hitMarker: 0, hitKill: false, hitHead: false },
+      feedback: { hitMarker: 0, hitKill: false, hitHead: false, spread: 0, busy: false },
+      stats: { kills: 0, headshots: 0, shots: 0, hits: 0, time: 0 },
       noises: [],
       frameStats: this.deps.frameStats,
     };
@@ -139,6 +147,7 @@ export class RunScene implements Scene {
     this.ctx.clock.step(realDt);
     for (const system of this.systems) system.update(this.world, this.ctx);
     this.world.flush();
+    if (!this.dead) this.ctx.stats.time += this.ctx.clock.realDt;
     this.checkDeath();
     this.checkExit();
   }
@@ -149,7 +158,7 @@ export class RunScene implements Scene {
     if (!player || player[1].hp > 0) return;
     this.dead = true;
     this.ctx.clock.targetScale = 0.2;
-    this.ctx.bus.emit('run:over', undefined);
+    this.ctx.bus.emit('run:over', { ...this.ctx.stats });
   }
 
   render(alpha: number): void {
@@ -167,10 +176,15 @@ export class RunScene implements Scene {
     drawTiles(ctx, level.grid, biome.palette, view);
     if (debug.grid) drawGrid(ctx, level.grid, view);
     drawExit(ctx, level, biome.palette, biome.exitLabel, clock.realElapsed);
+    drawDecals(ctx, this.world);
     drawRagdolls(ctx, this.world);
+    drawDebris(ctx, this.world, alpha);
+    drawPickups(ctx, this.world, clock.realElapsed);
     drawCharacters(ctx, this.world, alpha, clock.realElapsed, debug.overlay);
+    drawSmoke(ctx, this.world);
     drawProjectiles(ctx, this.world, alpha);
-    drawWorldOverlay(ctx, this.world);
+    drawFlashes(ctx, this.world);
+    drawWorldOverlay(ctx, this.world, level.grid, clock.realElapsed);
     if (debug.overlay) drawDebugWorld(ctx, this.world, this.ctx);
     camera.end(ctx);
 
@@ -193,7 +207,7 @@ export class RunScene implements Scene {
     const wantsExit = this.ctx.input.pressed('interact') || this.ctx.input.pressed('up');
     if (wantsExit && overlaps(bodyRect(player[1], player[2]), door)) {
       this.exited = true;
-      this.ctx.bus.emit('level:exit', undefined);
+      this.ctx.bus.emit('level:exit', { ...this.ctx.stats });
       this.deps.onExit();
     }
   }

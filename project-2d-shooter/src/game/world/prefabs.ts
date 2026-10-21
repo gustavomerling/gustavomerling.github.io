@@ -79,12 +79,26 @@ export function spawnPlayer(world: World, def: PlayerDef, feet: Vec2): Entity {
     slideQueued: false,
     wallJumpLockLeft: 0,
     wallJumpDir: 1,
+    wallCoyoteLeft: 0,
+    wallSide: 1,
+    wallKickLeft: 0,
+    takeoffLeft: 0,
+    takeoffCut: false,
+    fallTopY: feet.y,
+    wasGrounded: false,
+    rollLeft: 0,
+    rollDir: 1,
+    kickLeft: 0,
+    kickCooldownLeft: 0,
     mantleLeft: 0,
     mantleTotal: 0,
     mantleFromX: 0,
     mantleFromY: 0,
     mantleToX: 0,
     mantleToY: 0,
+    mantleLedgeX: 0,
+    mantleLedgeY: 0,
+    mantleDir: 1,
     mantleCooldownLeft: 0,
   });
   world.add(e, Aim, { x: feet.x + 32, y: feet.y - h / 2, angle: 0 });
@@ -141,12 +155,15 @@ export function spawnProjectile(
   origin: Vec2,
   angle: number,
   damageScale = 1,
+  speedScale = 1,
+  shot?: { hit: boolean },
 ): Entity {
   const e = world.create();
   const s = weapon.stats;
   const ricochetAmmo = weapon.behaviors.has('ricochet');
   world.add(e, Position, at(origin.x, origin.y));
-  world.add(e, Velocity, { x: Math.cos(angle) * s.projectileSpeed, y: Math.sin(angle) * s.projectileSpeed });
+  const speed = s.projectileSpeed * speedScale;
+  world.add(e, Velocity, { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed });
   world.add(e, Projectile, {
     team,
     damage: s.damage * damageScale,
@@ -154,9 +171,10 @@ export function spawnProjectile(
     behaviors: weapon.behaviors,
     bouncesLeft: ricochetAmmo ? RICOCHET.ricochetAmmoBounces : RICOCHET.bounces,
     alwaysRicochet: ricochetAmmo,
-    piercesLeft: weapon.behaviors.has('pierce') ? 1 : 0,
+    power: s.penetration,
     hit: new Set<number>(),
     origin: { ...origin },
+    shot,
   });
   return e;
 }

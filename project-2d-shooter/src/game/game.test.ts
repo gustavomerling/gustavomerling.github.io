@@ -11,6 +11,7 @@ import { PLAYER_DEF } from './content/characters/player';
 import { ENEMIES } from './content/enemies/catalog';
 import { assembleWeapon } from './content/weapons/assemble';
 import { WEAPONS } from './content/weapons/catalog';
+import { GUN_MODELS, withAttachments } from './content/weapons/models';
 import { DEFAULT_BINDINGS, ACTIONS } from './input/actions';
 import { generateLevel, type LevelData } from './procgen/level';
 import { DOOR_ROWS, ROOM_COLS, ROOM_ROWS, ROOM_TEMPLATES, SLAB_ROWS, STOREY_ROWS, sideWindowRows, validateTemplate } from './procgen/rooms';
@@ -23,6 +24,20 @@ describe('content integrity', () => {
     for (const w of PLAYER_DEF.startingWeapons) {
       expect(() => assembleWeapon(WEAPONS.get(w.weaponId), w.attachments.map((a) => ATTACHMENTS.get(a)))).not.toThrow();
     }
+  });
+
+  it('every weapon has a gun model', () => {
+    for (const w of WEAPONS.all()) expect(GUN_MODELS.has(w.model), w.id).toBe(true);
+  });
+
+  it('attachments show on the gun model: suppressor moves the muzzle and shrinks the flash; same loadout, same object', () => {
+    const glock = GUN_MODELS.get('glock');
+    const quiet = withAttachments(glock, ['suppressor']);
+    expect(quiet.muzzle.x).toBeGreaterThan(glock.muzzle.x + 2);
+    expect(quiet.flash).toBeLessThan(glock.flash);
+    expect(quiet.parts.length).toBe(glock.parts.length + 1);
+    expect(withAttachments(glock, ['suppressor'])).toBe(quiet);
+    expect(withAttachments(glock, [])).toBe(glock);
   });
 
   it('every attachment fits at least one gun', () => {
@@ -98,14 +113,17 @@ describe('assembleWeapon', () => {
 });
 
 describe('humanoid rig', () => {
-  const states = ['idle', 'run', 'sprint', 'crouch', 'slide', 'air', 'climb', 'mantle'] as const;
+  const states = ['idle', 'run', 'sprint', 'crouch', 'slide', 'takeoff', 'air', 'wallSlide', 'wallJump', 'roll', 'climb', 'mantle'] as const;
+  const gun = (id: string) => GUN_MODELS.get(id);
 
   it('produces finite poses in every state, armed and unarmed, both facings', () => {
-    for (const weaponClass of [null, 'pistol', 'smg', 'rifle'] as const) {
+    for (const model of [null, ...GUN_MODELS.all()]) {
       const anim = new HumanoidAnimator(24);
       for (const state of states) {
         for (const facing of [1, -1] as const) {
-          for (let i = 0; i < 30; i++) anim.update(1 / 60, { state, vx: 120 * facing, vy: -50, facing, aimAngle: 0.4, weaponClass });
+          for (let i = 0; i < 30; i++) {
+            anim.update(1 / 60, { state, vx: 120 * facing, vy: -50, facing, aimAngle: 0.4, gun: model, progress: i / 30, cycle: 1 - i / 30 });
+          }
           for (const t of anim.sample(0.5)) {
             for (const v of [t.x0, t.y0, t.x1, t.y1, t.angle]) expect(Number.isFinite(v)).toBe(true);
           }
@@ -116,7 +134,7 @@ describe('humanoid rig', () => {
 
   it('standing idle: feet on the ground, head above them, inside the collider height', () => {
     const anim = new HumanoidAnimator(24);
-    for (let i = 0; i < 120; i++) anim.update(1 / 60, { state: 'idle', vx: 0, vy: 0, facing: 1, aimAngle: 0, weaponClass: 'pistol' });
+    for (let i = 0; i < 120; i++) anim.update(1 / 60, { state: 'idle', vx: 0, vy: 0, facing: 1, aimAngle: 0, gun: gun('glock') });
     const bones = anim.sample(1);
     expect(bones[HB.legFrontLower]!.y1).toBeCloseTo(0, 0);
     expect(bones[HB.legBackLower]!.y1).toBeCloseTo(0, 0);
@@ -127,17 +145,125 @@ describe('humanoid rig', () => {
 
   it('crouching keeps the body roughly within the crouch collider', () => {
     const anim = new HumanoidAnimator(24);
-    for (let i = 0; i < 120; i++) anim.update(1 / 60, { state: 'crouch', vx: 0, vy: 0, facing: 1, aimAngle: 0, weaponClass: null });
+    for (let i = 0; i < 120; i++) anim.update(1 / 60, { state: 'crouch', vx: 0, vy: 0, facing: 1, aimAngle: 0, gun: null });
     const head = anim.sample(1)[HB.head]!;
     expect(Math.min(head.y0, head.y1)).toBeGreaterThan(-18);
   });
 
-  it('the gun points where the character aims', () => {
+  it('the gun points where the character aims, muzzle ahead of the hand', () => {
     const anim = new HumanoidAnimator(24);
-    for (let i = 0; i < 60; i++) anim.update(1 / 60, { state: 'idle', vx: 0, vy: 0, facing: 1, aimAngle: -0.5, weaponClass: 'rifle' });
+    for (let i = 0; i < 60; i++) anim.update(1 / 60, { state: 'idle', vx: 0, vy: 0, facing: 1, aimAngle: -0.5, gun: gun('ak47') });
+    expect(anim.sampleGunAngle(1)).toBeCloseTo(-0.5, 3);
     const hand = anim.sample(1)[HB.armFrontLower]!;
     const muzzle = anim.muzzleLocal()!;
-    expect(Math.atan2(muzzle.y - hand.y1, muzzle.x - hand.x1)).toBeCloseTo(-0.5, 3);
+    const along = (muzzle.x - hand.x1) * Math.cos(-0.5) + (muzzle.y - hand.y1) * Math.sin(-0.5);
+    expect(along).toBeCloseTo(GUN_MODELS.get('ak47').muzzle.x, 3);
+  });
+
+  it('both arms read separately on the gun (elbows apart, hands on grip and support)', () => {
+    for (const id of ['glock', 'ak47', 'shotgun']) {
+      const anim = new HumanoidAnimator(24);
+      for (let i = 0; i < 60; i++) anim.update(1 / 60, { state: 'idle', vx: 0, vy: 0, facing: 1, aimAngle: 0, gun: gun(id) });
+      const b = anim.sample(1);
+      const elbowGap = Math.hypot(b[HB.armFrontUpper]!.x1 - b[HB.armBackUpper]!.x1, b[HB.armFrontUpper]!.y1 - b[HB.armBackUpper]!.y1);
+      expect(elbowGap, `${id} elbows overlap`).toBeGreaterThan(1.5);
+    }
+  });
+
+  it('on a ladder the body turns its back: shoulders spread, feet move only up and down, no muzzle', () => {
+    const anim = new HumanoidAnimator(24);
+    const feetX: number[] = [];
+    const feetY: number[] = [];
+    for (let i = 0; i < 90; i++) {
+      anim.update(1 / 60, { state: 'climb', vx: 0, vy: -60, facing: 1, aimAngle: 0, gun: gun('glock') });
+      if (i >= 40) {
+        const b = anim.sample(1);
+        feetX.push(b[HB.legFrontLower]!.x1);
+        feetY.push(b[HB.legFrontLower]!.y1);
+      }
+    }
+    expect(anim.backView).toBeGreaterThan(0.95);
+    const b = anim.sample(1);
+    expect(b[HB.armFrontUpper]!.x0 - b[HB.armBackUpper]!.x0).toBeGreaterThan(3);
+    expect(Math.max(...feetX) - Math.min(...feetX), 'feet drift sideways').toBeLessThan(0.3);
+    expect(Math.max(...feetY) - Math.min(...feetY), 'feet should step up and down').toBeGreaterThan(4);
+    expect(anim.muzzleLocal()).toBeNull();
+  });
+
+  it('reloading drops the magazine once, carries a new one and seats it', () => {
+    const anim = new HumanoidAnimator(24);
+    const n = 90;
+    let dropped = 0;
+    let carried = false;
+    let detached = false;
+    for (let i = 0; i <= n; i++) {
+      anim.update(1 / 60, { state: 'idle', vx: 0, vy: 0, facing: 1, aimAngle: 0, gun: gun('ak47'), reload: i < n ? i / n : undefined });
+      dropped += anim.events.filter((e) => e.kind === 'mag').length;
+      anim.events.length = 0;
+      carried ||= anim.magInHand;
+      detached ||= !anim.magAttached;
+    }
+    expect(dropped).toBe(1);
+    expect(carried && detached).toBe(true);
+    expect(anim.magAttached).toBe(true);
+  });
+
+  it('a shot ejects a casing (the shotgun only when pumped); switching guns dips the old one first', () => {
+    const anim = new HumanoidAnimator(24);
+    const idle = (model: string, cycle = 0) => anim.update(1 / 60, { state: 'idle', vx: 0, vy: 0, facing: 1, aimAngle: 0, gun: gun(model), cycle });
+    for (let i = 0; i < 30; i++) idle('uzi');
+    anim.kick(0.1);
+    expect(anim.events.map((e) => e.kind)).toEqual(['casing']);
+    anim.events.length = 0;
+
+    for (let i = 0; i < 5; i++) idle('shotgun');
+    expect(anim.gun?.id, 'old gun still in hand at the start of the swap').toBe('uzi');
+    expect(anim.sampleGunAngle(1), 'old gun dips').toBeGreaterThan(0.3);
+    for (let i = 0; i < 30; i++) idle('shotgun');
+    expect(anim.gun?.id).toBe('shotgun');
+    anim.events.length = 0;
+    anim.kick(0.6);
+    expect(anim.events).toHaveLength(0);
+    for (let i = 0; i < 40; i++) idle('shotgun', 1 - i / 40);
+    expect(anim.events.map((e) => e.kind)).toEqual(['casing']);
+  });
+
+  it('sliding mirrors with the aim instead of locking it (feet lead the travel)', () => {
+    const anim = new HumanoidAnimator(24);
+    for (let i = 0; i < 30; i++) anim.update(1 / 60, { state: 'slide', vx: 200, vy: 0, facing: -1, aimAngle: Math.PI, gun: gun('glock') });
+    const b = anim.sample(1);
+    // Facing left while sliding right: in local space the travel is -x, so the lead foot is at -x.
+    expect(Math.min(b[HB.legFrontLower]!.x1, b[HB.legBackLower]!.x1)).toBeLessThan(-5);
+  });
+
+  it('a roll spins once and ends upright', () => {
+    const anim = new HumanoidAnimator(24);
+    const frames = 25;
+    let minTorsoY = 0;
+    for (let i = 0; i <= frames; i++) {
+      anim.update(1 / 60, { state: 'roll', vx: 130, vy: 0, facing: 1, aimAngle: 0, gun: gun('glock'), progress: i / frames });
+      const torso = anim.sample(1)[HB.torso]!;
+      // Upside down at some point: the neck end below the hip end.
+      minTorsoY = Math.min(minTorsoY, torso.y0 - torso.y1);
+    }
+    expect(minTorsoY).toBeLessThan(-3);
+    for (let i = 0; i < 60; i++) anim.update(1 / 60, { state: 'idle', vx: 0, vy: 0, facing: 1, aimAngle: 0, gun: gun('glock') });
+    const torso = anim.sample(1)[HB.torso]!;
+    expect(torso.y1).toBeLessThan(torso.y0);
+  });
+
+  it('jump phases: anticipation dips, the rise tucks the knees, the fall reaches down', () => {
+    const anim = new HumanoidAnimator(24);
+    const step = (state: 'idle' | 'takeoff' | 'air', vy: number, n: number) => {
+      for (let i = 0; i < n; i++) anim.update(1 / 60, { state, vx: 0, vy, facing: 1, aimAngle: 0, gun: null });
+      return anim.sample(1).map((t) => ({ ...t }));
+    };
+    const hipY = (b: ReturnType<typeof step>) => b[HB.torso]!.y0;
+    const standing = hipY(step('idle', 0, 60));
+    expect(hipY(step('takeoff', 0, 3)), 'anticipation lowers the hips').toBeGreaterThan(standing + 1);
+    const rise = step('air', -250, 12);
+    const fall = step('air', 300, 20);
+    expect(rise[HB.legFrontLower]!.y1, 'knees up while rising').toBeLessThan(fall[HB.legFrontLower]!.y1 - 2);
   });
 });
 
@@ -145,7 +271,7 @@ describe('humanoid rig', () => {
 describe('rig hitboxes', () => {
   const standing = () => {
     const anim = new HumanoidAnimator(24);
-    for (let i = 0; i < 60; i++) anim.update(1 / 60, { state: 'idle', vx: 0, vy: 0, facing: -1, aimAngle: Math.PI, weaponClass: 'pistol' });
+    for (let i = 0; i < 60; i++) anim.update(1 / 60, { state: 'idle', vx: 0, vy: 0, facing: -1, aimAngle: Math.PI, gun: GUN_MODELS.get('glock') });
     // Feet at (100, 200), facing left.
     return rigHitParts(anim, 100, 200);
   };

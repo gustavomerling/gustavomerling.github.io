@@ -25,7 +25,9 @@ Atlas de mapas (dev): com `npm run dev` aberto, [localhost:5180/tools/atlas.html
 A/D mover · Shift correr · S agachar/deslizar · Espaço pular (S+Espaço desce da plataforma) ·
 no ar junto à parede, Espaço = walljump · andar contra um degrau de 1 tile escala sozinho ·
 W/S sobem e descem escadas · E câmera lenta · mouse mira · clique esquerdo atira ·
-roda (ou 1/2) troca arma · R recarrega · W ou F na saída · Esc pausa · F11 tela cheia.
+1-4 ou roda troca arma · R recarrega · F pega arma do chão / usa a saída · Q chute · Esc pausa · F11 tela cheia.
+
+Folha de poses (dev): [localhost:5180/tools/poses.html](http://localhost:5180/tools/poses.html) mostra o rig em todos os estados e com cada arma.
 
 Debug: **F2 grade** · F3 overlay (salas, colisores, visão da IA) · F4 god · F6 inimigo no cursor · F8 congela · F9 avança 1 passo · F10 replay da tentativa.
 

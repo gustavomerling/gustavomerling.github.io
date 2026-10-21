@@ -1,9 +1,11 @@
 import { Tile } from '@engine/physics/tilegrid';
 import { createRagdoll } from '../character/ragdoll';
 import { PLAYER_TUNING, TILE } from '../config';
-import { Body, Health, Npc, Position, Ragdoll, Rig, Velocity } from '../world/components';
+import { Arsenal, Body, Health, Npc, Position, Ragdoll, Rig, Velocity } from '../world/components';
 import { spawnRagdoll } from '../world/prefabs';
 import type { RunSystem } from './context';
+import { spawnBlood } from './effects';
+import { spawnPickup } from './pickups';
 
 const MAX_RAGDOLLS = 12;
 const RAGDOLL_SECONDS = 12;
@@ -24,12 +26,21 @@ export const lifecycleSystem: RunSystem = {
       if (health.hp > 0) continue;
       const rig = world.get(e, Rig);
       if (rig) {
+        // A last burst of blood where the killing shot pushed.
+        const hit = health.lastHit;
+        spawnBlood(world, pos.x + body.w / 2, pos.y + body.h * 0.4, hit ? Math.atan2(hit.vy, hit.vx) : -Math.PI / 2, 30, true);
         const vel = world.get(e, Velocity) ?? { x: 0, y: 0 };
         const verlet = createRagdoll(rig.animator, pos.x + body.w / 2, pos.y + body.h, vel, health.lastHit, Math.max(dt, 1 / 120));
         spawnRagdoll(world, verlet, rig.animator.props, rig.style);
         world.remove(e, Rig);
       }
-      if (world.has(e, Npc)) world.destroy(e);
+      if (world.has(e, Npc)) {
+        // The gun flies out of the dead enemy's hands.
+        const ws = world.get(e, Arsenal)?.weapons[0];
+        const hit = health.lastHit;
+        if (ws) spawnPickup(world, ws.weapon, pos.x + body.w / 2, pos.y + body.h * 0.4, (hit?.vx ?? 0) * 0.3, -110 + (hit?.vy ?? 0) * 0.1);
+        world.destroy(e);
+      }
     }
 
     const ragdolls = [...world.query(Ragdoll)];

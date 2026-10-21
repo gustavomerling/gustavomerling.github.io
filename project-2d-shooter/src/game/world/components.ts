@@ -36,7 +36,22 @@ export interface BodyData {
 }
 export const Body = defineComponent<BodyData>('Body');
 
-export type PlayerState = 'idle' | 'run' | 'sprint' | 'crouch' | 'slide' | 'air' | 'climb' | 'mantle';
+export type PlayerState =
+  | 'idle'
+  | 'run'
+  | 'sprint'
+  | 'crouch'
+  | 'slide'
+  /** Jump anticipation: a few frames crouching before leaving the ground. */
+  | 'takeoff'
+  | 'air'
+  | 'wallSlide'
+  /** Kicking off a wall (short, then 'air'). */
+  | 'wallJump'
+  /** Landing roll after a long fall. */
+  | 'roll'
+  | 'climb'
+  | 'mantle';
 
 export interface PlayerControlData {
   state: PlayerState;
@@ -52,12 +67,34 @@ export interface PlayerControlData {
   wallJumpLockLeft: number;
   /** Direction pushed by the last wall jump (away from the wall). */
   wallJumpDir: 1 | -1;
+  /** Wall contact grace: a wall jump still works this long after leaving the wall. */
+  wallCoyoteLeft: number;
+  /** Side of the last wall touched (-1 left, 1 right). */
+  wallSide: -1 | 1;
+  /** > 0 while the wall-jump kick animation plays. */
+  wallKickLeft: number;
+  /** > 0 during the jump anticipation; the jump launches when it runs out. */
+  takeoffLeft: number;
+  /** Jump released during the anticipation: launch a short hop. */
+  takeoffCut: boolean;
+  /** Highest feet Y since leaving the ground (fall height on landing). */
+  fallTopY: number;
+  wasGrounded: boolean;
+  rollLeft: number;
+  rollDir: 1 | -1;
+  /** Kick in progress (seconds left) and cooldown. */
+  kickLeft: number;
+  kickCooldownLeft: number;
   mantleLeft: number;
   mantleTotal: number;
   mantleFromX: number;
   mantleFromY: number;
   mantleToX: number;
   mantleToY: number;
+  /** World corner of the lip being climbed (hands plant there). */
+  mantleLedgeX: number;
+  mantleLedgeY: number;
+  mantleDir: 1 | -1;
   mantleCooldownLeft: number;
 }
 export const PlayerControl = defineComponent<PlayerControlData>('PlayerControl');
@@ -71,10 +108,12 @@ export interface IntentData {
   firePressed: boolean;
   reload: boolean;
   switchBy: number;
+  /** Direct weapon slot (0-based), -1 = none. */
+  select: number;
 }
 export const Intent = defineComponent<IntentData>('Intent');
 
-export const emptyIntent = (): IntentData => ({ fireHeld: false, firePressed: false, reload: false, switchBy: 0 });
+export const emptyIntent = (): IntentData => ({ fireHeld: false, firePressed: false, reload: false, switchBy: 0, select: -1 });
 
 /** Where the entity aims, world units. */
 export const Aim = defineComponent<{ x: number; y: number; angle: number }>('Aim');
@@ -120,11 +159,14 @@ export interface ProjectileData {
   bouncesLeft: number;
   /** Ricochet ammo: bounces at any angle. */
   alwaysRicochet: boolean;
-  piercesLeft: number;
-  /** Entities already hit (pierce must not hit the same one twice). */
+  /** Penetration left (bodies cost some each; at 0 the bullet drops). */
+  power: number;
+  /** Entities already hit (a bullet passing through must not hit the same one twice). */
   hit: Set<number>;
   /** Where it was fired from. */
   origin: { x: number; y: number };
+  /** Shared by the pellets of one trigger pull, for accuracy (counted once). */
+  shot?: { hit: boolean };
 }
 export const Projectile = defineComponent<ProjectileData>('Projectile');
 
@@ -159,6 +201,58 @@ export const Rig = defineComponent<{ animator: HumanoidAnimator; style: RigStyle
 
 /** Dead body simulated with verlet physics. */
 export const Ragdoll = defineComponent<{ body: VerletBody; props: HumanoidProportions; style: RigStyle; age: number }>('Ragdoll');
+
+/**
+ * Loose bits with simple physics: spent casings, dropped magazines. `shape` is a polygon
+ * around (x, y) in world units; it bounces, then rests on the floor and fades out.
+ */
+export interface DebrisData {
+  x: number;
+  y: number;
+  prevX: number;
+  prevY: number;
+  vx: number;
+  vy: number;
+  angle: number;
+  prevAngle: number;
+  spin: number;
+  shape: readonly number[];
+  color: string;
+  age: number;
+  life: number;
+  resting: boolean;
+}
+export const Debris = defineComponent<DebrisData>('Debris');
+
+/** Gunshot visuals: a muzzle flash (a few frames) or a smoke puff (rises, grows, fades). */
+export interface FxData {
+  kind: 'flash' | 'smoke' | 'spark' | 'dust';
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  angle: number;
+  size: number;
+  age: number;
+  life: number;
+}
+export const Fx = defineComponent<FxData>('Fx');
+
+/** A gun lying in the world (dropped by a dead enemy or swapped out). `x, y` = its centre. */
+export interface PickupData {
+  weapon: AssembledWeapon;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  angle: number;
+  spin: number;
+  resting: boolean;
+}
+export const Pickup = defineComponent<PickupData>('Pickup');
+
+/** Bullet hole on a wall (world point). Kept until the cap pushes the oldest out. */
+export const Decal = defineComponent<{ x: number; y: number; r: number }>('Decal');
 
 /** Bullet-time meter, 0..1. */
 export const Focus = defineComponent<{ value: number }>('Focus');

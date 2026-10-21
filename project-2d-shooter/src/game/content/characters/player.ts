@@ -9,9 +9,11 @@ export interface PlayerDef {
 export const PLAYER_DEF: PlayerDef = {
   name: 'Jogador',
   maxHp: 100,
-  // Two guns at start so weapon switching can be tested.
+  // One gun per hold style, so stances and shot types can be tested (keys 1-4).
   startingWeapons: [
     { weaponId: 'glock', attachments: [] },
     { weaponId: 'uzi', attachments: ['extended-mag'] },
+    { weaponId: 'shotgun', attachments: [] },
+    { weaponId: 'ak47', attachments: [] },
   ],
 };

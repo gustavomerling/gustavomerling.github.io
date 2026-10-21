@@ -6,7 +6,7 @@ import { spawnEnemy } from '../world/prefabs';
 import { lineOfSight } from './ai';
 import type { RunContext } from './context';
 
-const SPAWN_CYCLE = ['intern', 'security', 'it-guy', 'manager'];
+const SPAWN_CYCLE = ['intern', 'security', 'it-guy', 'janitor', 'auditor', 'manager'];
 
 /**
  * Debug keys, handled by the scene before (and even while) the simulation is frozen:

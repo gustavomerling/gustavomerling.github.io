@@ -1,16 +1,28 @@
 import type { Entity } from '@engine/ecs/world';
 import { DEG2RAD } from '@engine/math/math';
+import { segmentDistance } from '@engine/math/segment';
 import type { Rect } from '@engine/math/rect';
 import type { Vec2 } from '@engine/math/vec2';
 import type { TileGrid } from '@engine/physics/tilegrid';
 import type { HumanoidAnimator } from '../character/animator';
 import { raycastParts, rigHitParts, type HitPart } from '../character/hitbox';
-import { AI, HIT_ZONES, RICOCHET, type HitZone } from '../config';
-import { Aim, Arsenal, Body, Faction, Health, Intent, PlayerControl, Position, Projectile, Rig, Velocity, type BodyData } from '../world/components';
+import { AI, BALLISTICS, HIT_ZONES, IMPACT, RICOCHET, type HitZone } from '../config';
+import { Aim, Arsenal, Body, Brain, Faction, Health, Intent, PlayerControl, Position, Projectile, Ragdoll, Rig, Velocity, type BodyData, type PlayerState } from '../world/components';
+import { GUN_MODELS, withAttachments } from '../content/weapons/models';
 import { bodyRect, shoulder } from '../world/geometry';
 import { spawnProjectile } from '../world/prefabs';
 import type { RunSystem } from './context';
 import { applyDamage } from './damage';
+import { dropSlug, spawnBlood, spawnImpact, spawnShotFx } from './effects';
+
+/** Moves that set the facing themselves (the mouse can't turn the body mid-move). */
+const FACING_LOCKED: ReadonlySet<PlayerState> = new Set(['roll', 'mantle', 'wallSlide']);
+/** A bullet passing this close (px, box around the body centre) suppresses an enemy. */
+const SUPPRESS_RADIUS = 16;
+/** Seconds after a weapon swap before the new gun can fire (matches the swap animation). */
+const SWITCH_DELAY = 0.28;
+/** Both hands busy (or the gun slung): no shooting. */
+const HANDS_BUSY: ReadonlySet<PlayerState> = new Set(['climb', 'mantle', 'roll']);
 
 /** Mouse aim -> the player's Aim component and facing. */
 export const aimSystem: RunSystem = {
@@ -23,7 +35,7 @@ export const aimSystem: RunSystem = {
       aim.x = target.x;
       aim.y = target.y;
       aim.angle = Math.atan2(target.y - from.y, target.x - from.x);
-      if (pc.state !== 'slide') pc.facing = target.x >= from.x ? 1 : -1;
+      if (!FACING_LOCKED.has(pc.state)) pc.facing = target.x >= from.x ? 1 : -1;
     }
   },
 };
@@ -38,9 +50,12 @@ export const weaponSystem: RunSystem = {
       if (n === 0 || dt <= 0) continue;
       const isPlayer = faction.team === 'player';
 
-      if (intent.switchBy !== 0 && n > 1) {
+      const next = intent.select >= 0 && intent.select < n ? intent.select : (arsenal.active + intent.switchBy + n) % n;
+      if (next !== arsenal.active) {
         arsenal.weapons[arsenal.active]!.reloadLeft = 0;
-        arsenal.active = (arsenal.active + intent.switchBy + n) % n;
+        arsenal.active = next;
+        const drawn = arsenal.weapons[next]!;
+        drawn.cooldown = Math.max(drawn.cooldown, SWITCH_DELAY);
       }
 
       const ws = arsenal.weapons[arsenal.active]!;
@@ -65,6 +80,9 @@ export const weaponSystem: RunSystem = {
         startReload();
       }
 
+      const state = world.get(e, PlayerControl)?.state;
+      if (state && HANDS_BUSY.has(state)) continue;
+
       if (fireMode === 'burst' && intent.firePressed && ws.burstLeft === 0) ws.burstLeft = ws.weapon.def.burstCount ?? 3;
       const wantsShot = fireMode === 'auto' ? intent.fireHeld : fireMode === 'burst' ? ws.burstLeft > 0 : intent.firePressed;
       if (!wantsShot || ws.cooldown > 0 || ws.reloadLeft > 0) continue;
@@ -78,6 +96,8 @@ export const weaponSystem: RunSystem = {
 
       ws.ammo--;
       ws.cooldown = 1 / stats.fireRate;
+      if (isPlayer) ctx.stats.shots++;
+      const shot = { hit: false };
       if (ws.burstLeft > 0) ws.burstLeft--;
       const animator = world.get(e, Rig)?.animator;
       let muzzle = muzzlePoint(animator, pos, body, aim.angle);
@@ -86,11 +106,21 @@ export const weaponSystem: RunSystem = {
       // Converge on the aim point from the barrel (unless it's basically on the gun).
       const toAim = Math.hypot(aim.x - muzzle.x, aim.y - muzzle.y) > 12 ? Math.atan2(aim.y - muzzle.y, aim.x - muzzle.x) : aim.angle;
       const spread = (stats.spreadDeg + ws.bloom * 6) * DEG2RAD;
-      for (let i = 0; i < stats.pellets; i++) {
-        spawnProjectile(world, faction.team, ws.weapon, muzzle, toAim + ctx.rng.range(-spread, spread), isPlayer ? 1 : AI.damageScale);
+      const damageScale = isPlayer ? 1 : AI.damageScale;
+      if (stats.pellets <= 1) {
+        spawnProjectile(world, faction.team, ws.weapon, muzzle, toAim + ctx.rng.range(-spread, spread), damageScale, 1, shot);
+      } else {
+        // Shotgun: pellets fanned evenly across the spread (with jitter) and at slightly different speeds.
+        const lane = (spread * 2) / stats.pellets;
+        for (let i = 0; i < stats.pellets; i++) {
+          const angle = toAim - spread + lane * (i + 0.5) + ctx.rng.range(-lane / 2, lane / 2);
+          spawnProjectile(world, faction.team, ws.weapon, muzzle, angle, damageScale, ctx.rng.range(0.85, 1.05), shot);
+        }
       }
       ws.bloom = Math.min(1, ws.bloom + stats.recoil);
       animator?.kick(stats.recoil);
+      const gun = withAttachments(GUN_MODELS.get(ws.weapon.def.model), ws.weapon.attachments.map((a) => a.id));
+      spawnShotFx(world, muzzle.x, muzzle.y, toAim, gun.flash * (body.h / 24), Math.random);
       // Enemies hear the shot (the silencer shrinks `noise` in its stats).
       if (isPlayer) ctx.noises.push({ x: muzzle.x, y: muzzle.y, radius: stats.noise });
     }
@@ -165,13 +195,18 @@ export function zoneAt(r: Rect, y: number): HitZone {
   return t < 0.25 ? 'head' : t > 0.65 ? 'leg' : 'torso';
 }
 
-/** Moves bullets: hits on the rig's bones (or the collider), ricochets, pierce and range. */
+/**
+ * Moves bullets: hits on the rig's bones (or the collider), blood, going through bodies
+ * (spending penetration, then dropping), wall impacts, ricochets and range.
+ */
 export const projectileSystem: RunSystem = {
   name: 'projectiles',
   update(world, ctx) {
     const dt = ctx.clock.dt;
     if (dt <= 0) return;
     const targets = [...world.query(Position, Body, Health, Faction)];
+    // Ragdolls get an id in the bullet's `hit` set too (offset so they never clash with entity ids).
+    const ragdolls = [...world.query(Ragdoll)].map(([re, rag]) => [re, { body: rag.body, id: -1 - re }] as const);
     const partsCache = new Map<Entity, HitPart[]>();
     const partsOf = (t: Entity, pos: { x: number; y: number }, body: BodyData): HitPart[] | null => {
       const rig = world.get(t, Rig);
@@ -204,12 +239,22 @@ export const projectileSystem: RunSystem = {
 
           let zone: HitZone;
           let s: number;
+          let cost: number | null = null;
           const parts = partsOf(t, tpos, tbody);
           if (parts) {
             const hit = raycastParts(parts, pos.x, pos.y, nx, ny);
             if (!hit) continue;
             zone = hit.zone;
             s = hit.s;
+            // Crossing the body costs every part on the bullet's line (an arm in front of the chest too).
+            const hx = pos.x + (nx - pos.x) * s;
+            const hy = pos.y + (ny - pos.y) * s;
+            const crossed = new Set<HitZone>();
+            for (const part of parts) {
+              const { dist } = segmentDistance(hx, hy, hx + Math.cos(angle) * 30, hy + Math.sin(angle) * 30, part.x0, part.y0, part.x1, part.y1);
+              if (dist <= part.radius) crossed.add(part.zone);
+            }
+            cost = [...crossed].reduce((sum, z) => sum + BALLISTICS.partCost[z], 0);
           } else {
             const enter = segmentEntersRect(pos.x, pos.y, nx, ny, r);
             if (enter === null) continue;
@@ -219,18 +264,59 @@ export const projectileSystem: RunSystem = {
 
           proj.hit.add(t);
           const at = { x: pos.x + (nx - pos.x) * s, y: pos.y + (ny - pos.y) * s };
+          const amount = proj.damage * HIT_ZONES[zone].multiplier;
           const result = applyDamage(world, ctx, t, {
-            amount: proj.damage * HIT_ZONES[zone].multiplier,
+            amount,
             zone,
             at,
             angle,
             from: proj.origin,
             by: proj.team,
+            knockback:
+              zone === 'head' ? Math.min(IMPACT.maxKnockback, amount * IMPACT.knockbackPerDamage * BALLISTICS.headshotKnock) : undefined,
           });
           if (result === 'dodged') continue; // passes through a dodging target
-          if (proj.piercesLeft > 0) {
-            proj.piercesLeft--;
+          if (proj.team === 'player' && proj.shot && !proj.shot.hit) {
+            proj.shot.hit = true;
+            ctx.stats.hits++;
+          }
+
+          // Through the body: spend penetration; the rest carries on weaker, or the bullet drops.
+          proj.power -= cost ?? BALLISTICS.partCost[zone];
+          const through = proj.power > 0;
+          spawnBlood(world, at.x, at.y, angle, amount, through);
+          if (through) {
+            proj.damage *= BALLISTICS.damageKept;
+            vel.x *= BALLISTICS.speedKept;
+            vel.y *= BALLISTICS.speedKept;
           } else {
+            dropSlug(world, at.x, at.y, vel.x * 0.08, vel.y * 0.08);
+            world.destroy(e);
+            alive = false;
+          }
+          break;
+        }
+        if (!alive) break;
+
+        // Dead bodies: the bullet shoves the nearest joint, draws blood and loses power going through.
+        for (const [, rag] of ragdolls) {
+          if (proj.hit.has(rag.id)) continue;
+          const b = rag.body;
+          let hitPoint = -1;
+          for (let k = 0; k < b.size; k++) {
+            if (segmentDistance(pos.x, pos.y, nx, ny, b.x[k]!, b.y[k]!, b.x[k]!, b.y[k]!).dist <= 2.2) {
+              hitPoint = k;
+              break;
+            }
+          }
+          if (hitPoint < 0) continue;
+          proj.hit.add(rag.id);
+          const push = Math.min(260, proj.damage * 8);
+          b.addVelocity(hitPoint, Math.cos(angle) * push, Math.sin(angle) * push - 40, Math.max(dt, 1 / 120));
+          proj.power -= BALLISTICS.partCost.torso;
+          spawnBlood(world, b.x[hitPoint]!, b.y[hitPoint]!, angle, proj.damage * 0.5, proj.power > 0);
+          if (proj.power <= 0) {
+            dropSlug(world, b.x[hitPoint]!, b.y[hitPoint]!, vel.x * 0.08, vel.y * 0.08);
             world.destroy(e);
             alive = false;
           }
@@ -240,6 +326,9 @@ export const projectileSystem: RunSystem = {
 
         if (ctx.grid.isSolidAtPixel(nx, ny)) {
           const axis = proj.bouncesLeft > 0 ? ricochetAxis(ctx.grid, pos.x, pos.y, nx, ny, vel.x, vel.y, proj.alwaysRicochet) : null;
+          // Where it struck: the last free point, and the surface it faces.
+          const wallX = ctx.grid.isSolidAtPixel(nx, pos.y);
+          spawnImpact(world, pos.x, pos.y, angle, wallX ? 'x' : 'y', !axis);
           if (axis) {
             if (axis === 'x') vel.x = -vel.x;
             else vel.y = -vel.y;
@@ -254,10 +343,30 @@ export const projectileSystem: RunSystem = {
 
         pos.x = nx;
         pos.y = ny;
+
+        // Near misses: a bullet whizzing past makes enemies flinch, duck and turn to the shooter.
+        if (proj.team === 'player' && i === steps - 1) {
+          for (const [t, tpos, tbody, health, faction] of targets) {
+            if (faction.team === proj.team || proj.hit.has(t) || health.hp <= 0) continue;
+            const brain = world.get(t, Brain);
+            if (!brain) continue;
+            const cx = tpos.x + tbody.w / 2;
+            const cy = tpos.y + tbody.h / 2;
+            if (Math.abs(nx - cx) > SUPPRESS_RADIUS || Math.abs(ny - cy) > SUPPRESS_RADIUS) continue;
+            brain.alert = AI.memory;
+            if (brain.seeTime === 0) brain.lastSeen = { ...proj.origin };
+            brain.pauseLeft = Math.max(brain.pauseLeft, 0.35);
+            brain.crouching = true;
+          }
+        }
       }
 
       proj.distanceLeft -= dist;
-      if (alive && proj.distanceLeft <= 0) world.destroy(e);
+      // Out of range: the spent bullet falls instead of vanishing.
+      if (alive && proj.distanceLeft <= 0) {
+        dropSlug(world, pos.x, pos.y, vel.x * 0.1, vel.y * 0.1);
+        world.destroy(e);
+      }
     }
   },
 };

@@ -1,5 +1,4 @@
 import { Skeleton } from '@engine/rig/skeleton';
-import type { WeaponClass } from '../content/weapons/types';
 
 /** Proportions at the reference height (24 px, the player's standing collider). */
 const BASE = {
@@ -68,21 +67,3 @@ export function createHumanoidSkeleton(p: HumanoidProportions): Skeleton {
   });
   return skeleton;
 }
-
-/** How each weapon class is held (pixels at reference height; scaled per character). */
-export interface HoldStyle {
-  /** Distance shoulder -> grip, as a fraction of full arm length. */
-  reach: number;
-  /** Support hand distance in front of the grip, along the barrel (0 = both hands on the grip). */
-  support: number;
-  /** Barrel length in front of the grip. */
-  length: number;
-  /** Stock length behind the grip. */
-  stock: number;
-}
-
-export const HOLD_STYLES: Record<WeaponClass, HoldStyle> = {
-  pistol: { reach: 0.88, support: 0, length: 4, stock: 0 },
-  smg: { reach: 0.72, support: 3, length: 6, stock: 1 },
-  rifle: { reach: 0.62, support: 5, length: 10, stock: 4 },
-};

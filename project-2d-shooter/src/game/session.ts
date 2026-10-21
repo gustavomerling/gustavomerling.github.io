@@ -157,3 +157,6 @@ export class GameSession {
     }
   }
 }
+
+/** UI helper: the HUD draws the gun in hand with the game's own model. */
+export { drawWeaponIcon } from './render/icons';

@@ -37,6 +37,8 @@ type Pos = { x: number; y: number };
 const SHOUT_RADIUS = 140;
 const PATROL_SPEED = 0.35;
 const ADVANCE_SPEED = 0.7;
+/** Shooters step back when the player gets this close (px, horizontally). */
+const BACK_OFF_DISTANCE = 48;
 /** How far (tiles) a shooter looks for cover towards the player. */
 const COVER_SEARCH_TILES = 4;
 
@@ -219,10 +221,30 @@ function shooter(
     }
   }
 
-  if (brain.seeTime < AI.reactionTime || Math.abs(diff) > 0.35) return;
+  // Short-range guns walk up to the player first.
+  if (def.closeIn && player && Math.abs(player.center.x - eye.x) > def.closeIn && brain.pauseLeft <= 0) {
+    vel.x = Math.sign(player.center.x - eye.x) * def.moveSpeed * ADVANCE_SPEED;
+    if (body.onGround && body.hitWall) vel.y = -AI.melee.jumpSpeed;
+    brain.crouching = false;
+    return;
+  }
+
+  // Too close for a gunfight (and not a close-range gun): back off while still aiming.
+  const dx = player ? player.center.x - eye.x : 0;
+  const tooClose = !def.closeIn && player !== null && Math.abs(dx) < BACK_OFF_DISTANCE;
+  if (tooClose && body.onGround && !ledgeAhead(ctx.grid, pos, body, (dx > 0 ? -1 : 1) as 1 | -1)) {
+    vel.x = -Math.sign(dx) * def.moveSpeed * ADVANCE_SPEED;
+  }
+
+  if (brain.seeTime < (def.reaction ?? AI.reactionTime) || Math.abs(diff) > 0.35) return;
   if (brain.pauseLeft > 0) {
     brain.pauseLeft -= dt;
     brain.crouching = cover !== null; // duck between bursts
+    // Out in the open: shuffle sideways between bursts so they aren't a still target.
+    if (cover === null && !tooClose && body.onGround) {
+      const side = Math.sin(brain.pauseLeft * 7 + pos.x) > 0 ? 1 : -1;
+      if (!ledgeAhead(ctx.grid, pos, body, side as 1 | -1)) vel.x = side * def.moveSpeed * PATROL_SPEED;
+    }
     return;
   }
   if (brain.burstLeft <= 0) {

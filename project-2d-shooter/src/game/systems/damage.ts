@@ -62,6 +62,10 @@ export function applyDamage(world: World, ctx: RunContext, target: Entity, info:
 
   if (isPlayer) health.invulnLeft = IMPACT.playerIFrames;
 
+  if (info.by === 'player' && !isPlayer && killed) {
+    ctx.stats.kills++;
+    if (info.zone === 'head') ctx.stats.headshots++;
+  }
   if (info.by === 'player') {
     ctx.feedback.hitMarker = 0.15;
     ctx.feedback.hitHead = info.zone === 'head';

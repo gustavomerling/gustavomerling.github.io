@@ -8,7 +8,11 @@ import { DEFAULT_BINDINGS } from './input/actions';
 import type { LevelData, PlacedRoom } from './procgen/level';
 import { ROOM_ROWS, ROOM_TEMPLATES, STOREY_ROWS } from './procgen/rooms';
 import { RunScene } from './scenes/RunScene';
-import { Body, Npc, PlayerControl, Position, Velocity } from './world/components';
+import { assembleWeapon } from './content/weapons/assemble';
+import { WEAPONS } from './content/weapons/catalog';
+import { Arsenal, Body, Debris, Health, Npc, Pickup, PlayerControl, Position, Projectile, Velocity } from './world/components';
+import { spawnPickup } from './systems/pickups';
+import { spawnEnemy, spawnProjectile } from './world/prefabs';
 
 function makeScene(seed: string) {
   const input = new Input(DEFAULT_BINDINGS);
@@ -84,18 +88,19 @@ describe('map traversal', () => {
         const { scene, input, exited } = makeScene(seed);
         clearThreats(scene);
         const level = scene.level;
-        const [, pos, body] = scene.world.first(Position, Body, PlayerControl)!;
+        const [, pos, body, pc] = scene.world.first(Position, Body, PlayerControl)!;
         const visited = new Set<number>();
 
         // Simple agent: advance, shoot, use the exit, hop when blocked, back off if
-        // the way is still blocked. It never jumps while running, so hatches are not accidental.
+        // the way is still blocked, climb down a ladder it ends up on. It never jumps
+        // while running, so hatches are not accidental.
         let lastX = pos.x;
         let lastProgress = 0;
         let lastRecovery = -1000;
         let backtrack = false;
         let backtrackUntil = 0;
         let frames = 0;
-        for (; frames < 4200 && !exited(); frames++) {
+        for (; frames < 6000 && !exited(); frames++) {
           const down: string[] = [];
           const pressed: string[] = [];
           if (backtrack) {
@@ -106,7 +111,8 @@ describe('map traversal', () => {
             pressed.push('Mouse0');
             if (frames % 5 === 0) pressed.push('KeyF');
             const stuck = frames - lastProgress;
-            if (stuck > 30) pressed.push('Space');
+            if (pc.state === 'climb') down.push('KeyS');
+            else if (stuck > 30) pressed.push('Space');
             if (stuck > 240 && frames - lastRecovery > 300) {
               backtrack = true;
               backtrackUntil = frames + 60;
@@ -294,6 +300,129 @@ describe('map traversal', () => {
       scene.update(1 / 60);
     }
     expect(pos.x, 'the one-tile block should be vaulted by walking into it').toBeGreaterThan(blockLeft + ts);
+  });
+
+  it('bullets go through bodies while they have power, then drop; a rifle crosses more than a pistol', () => {
+    const shoot = (weaponId: string) => {
+      const { scene, input } = makeScene('BALLISTICS-1');
+      clearThreats(scene);
+      const grid = scene.level.grid;
+      const ts = grid.tileSize;
+      const floor = groundTop(ts);
+      const ground = ROOM_ROWS - 1;
+      // A stretch of open floor 10 tiles long.
+      let col = -1;
+      for (let c = 2; c < grid.cols - 12 && col < 0; c++) {
+        let open = true;
+        for (let k = 0; k < 10 && open; k++) {
+          open = grid.get(c + k, ground) === Tile.Solid;
+          for (let r = ground - 3; r < ground && open; r++) open = grid.get(c + k, r) === Tile.Empty;
+        }
+        if (open) col = c;
+      }
+      const x0 = col * ts;
+      // Three security guards in a row, shot from the left at chest height.
+      const guards = [70, 100, 130].map((dx) => spawnEnemy(scene.world, 'security', { x: x0 + dx, y: floor }));
+      spawnProjectile(scene.world, 'player', assembleWeapon(WEAPONS.get(weaponId)), { x: x0 + 4, y: floor - 14 }, 0);
+      for (let i = 0; i < 20; i++) {
+        input.beginTick();
+        input.inject(frame([]));
+        scene.update(1 / 60);
+      }
+      const hurt = guards.filter((g) => {
+        const h = scene.world.get(g, Health);
+        return !h || h.hp < h.max;
+      }).length;
+      return { hurt, bullets: [...scene.world.query(Projectile)].length, debris: [...scene.world.query(Debris)].length };
+    };
+    const rifle = shoot('ak47');
+    const pistol = shoot('glock');
+    expect(rifle.hurt, 'AK goes through all three').toBe(3);
+    expect(pistol.hurt, 'pistol runs out of power first').toBeLessThan(3);
+    expect(pistol.bullets, 'spent pistol bullet dropped').toBe(0);
+    expect(pistol.debris, 'blood and the dropped bullet').toBeGreaterThan(3);
+  });
+
+  it('a killed enemy drops its gun; F next to a gun takes it (full: swaps the one in hand)', () => {
+    const { scene, input } = makeScene('PICKUP-1');
+    clearThreats(scene);
+    const [pe, pos, , body] = scene.world.first(Position, Velocity, Body, PlayerControl)!;
+    const arsenal = scene.world.get(pe, Arsenal)!;
+    const step = (pressed: string[] = []) => {
+      input.beginTick();
+      input.inject(frame([], pressed));
+      scene.update(1 / 60);
+    };
+    // A dying guard drops his Glock.
+    const guard = spawnEnemy(scene.world, 'security', { x: pos.x + 60, y: pos.y + body.h });
+    scene.world.get(guard, Health)!.hp = 0;
+    for (let i = 0; i < 60; i++) step();
+    expect([...scene.world.query(Pickup)].map(([, g]) => g.weapon.def.id)).toEqual(['glock']);
+
+    // Full inventory (4): taking a bizon swaps out the gun in hand, which lands on the floor.
+    for (const [e] of [...scene.world.query(Pickup)]) scene.world.destroy(e);
+    arsenal.active = 1;
+    spawnPickup(scene.world, assembleWeapon(WEAPONS.get('bizon')), pos.x + body.w / 2, pos.y + body.h - 2, 0, 0);
+    for (let i = 0; i < 20; i++) step();
+    step(['KeyF']);
+    expect(arsenal.weapons.map((w) => w.weapon.def.id)).toEqual(['glock', 'bizon', 'shotgun', 'ak47']);
+    for (let i = 0; i < 60; i++) step();
+    expect([...scene.world.query(Pickup)].map(([, g]) => g.weapon.def.id)).toEqual(['uzi']);
+  });
+
+  it('Q kicks: an enemy right in front is hurt and shoved away', () => {
+    const { scene, input } = makeScene('KICK-1');
+    clearThreats(scene);
+    const [, pos, , body, pc] = scene.world.first(Position, Velocity, Body, PlayerControl)!;
+    pc.facing = 1;
+    const guard = spawnEnemy(scene.world, 'security', { x: pos.x + body.w + 8, y: pos.y + body.h });
+    const x0 = scene.world.get(guard, Position)!.x;
+    for (let i = 0; i < 30; i++) {
+      input.beginTick();
+      input.inject(frame([], i === 2 ? ['KeyQ'] : []));
+      scene.update(1 / 60);
+    }
+    const h = scene.world.get(guard, Health)!;
+    expect(h.hp).toBeLessThan(h.max);
+    expect(scene.world.get(guard, Position)!.x).toBeGreaterThan(x0 + 4);
+  });
+
+  it('a fall of more than 4 tiles ends in a roll; 4 tiles or less does not', () => {
+    const drop = (tiles: number) => {
+      const { scene, input } = makeScene('ROLL-1');
+      clearThreats(scene);
+      const grid = scene.level.grid;
+      const ts = grid.tileSize;
+      const ground = ROOM_ROWS - 1;
+      // A column with open air from the ground up to 8 tiles (an alley), and its neighbour.
+      let col = -1;
+      for (let c = 2; c < grid.cols - 2 && col < 0; c++) {
+        let open = grid.get(c, ground) === Tile.Solid;
+        for (let r = ground - 9; r < ground && open; r++) open = grid.get(c, r) === Tile.Empty && grid.get(c + 1, r) === Tile.Empty;
+        if (open) col = c;
+      }
+      expect(col, 'no open column').toBeGreaterThan(0);
+      const [, pos, vel, body, pc] = scene.world.first(Position, Velocity, Body, PlayerControl)!;
+      pos.x = col * ts + 2;
+      pos.prevX = pos.x;
+      pos.y = groundTop(ts) - body.h - tiles * ts - 1;
+      pos.prevY = pos.y;
+      vel.x = 0;
+      vel.y = 0;
+      body.onGround = false;
+      pc.wasGrounded = false;
+      pc.fallTopY = pos.y + body.h;
+      const states = new Set<string>();
+      for (let i = 0; i < 90; i++) {
+        input.beginTick();
+        input.inject(frame([]));
+        scene.update(1 / 60);
+        states.add(pc.state);
+      }
+      return states;
+    };
+    expect(drop(5).has('roll'), '5 tiles').toBe(true);
+    expect(drop(3.9).has('roll'), '3.9 tiles').toBe(false);
   });
 
   it('wall jumps climb the shaft in the alley, higher than a normal jump reaches', () => {

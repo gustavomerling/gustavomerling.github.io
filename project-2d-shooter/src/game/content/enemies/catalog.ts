@@ -17,6 +17,12 @@ export interface EnemyDef {
   readonly sightRange: number;
   /** Body colour (flat shapes for now). */
   readonly color: string;
+  /** Shooters close in until this distance (px) before firing; omitted = shoot from where they stand. */
+  readonly closeIn?: number;
+  /** Red laser on its aim while it sees the player (warns before the shot). */
+  readonly laser?: boolean;
+  /** Seconds of sight before the first shot (default AI.reactionTime). */
+  readonly reaction?: number;
 }
 
 export const ENEMIES = new Registry<EnemyDef>('enemy', [
@@ -54,6 +60,33 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     weaponId: 'uzi',
     sightRange: 220,
     color: '#9cff8a',
+  },
+  {
+    id: 'janitor',
+    name: 'Zelador',
+    description: 'Varre o corredor. Com chumbo.',
+    brain: 'shooter',
+    hp: 70,
+    moveSpeed: 80,
+    size: { w: 12, h: 24 },
+    weaponId: 'shotgun',
+    sightRange: 200,
+    color: '#c79bff',
+    closeIn: 70,
+  },
+  {
+    id: 'auditor',
+    name: 'Auditor',
+    description: 'Vê tudo de longe. Principalmente os seus erros.',
+    brain: 'shooter',
+    hp: 40,
+    moveSpeed: 50,
+    size: { w: 10, h: 24 },
+    weaponId: 'sniper',
+    sightRange: 380,
+    color: '#7ef0d6',
+    laser: true,
+    reaction: 1.1,
   },
   {
     id: 'manager',
