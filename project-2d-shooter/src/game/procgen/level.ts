@@ -171,6 +171,19 @@ function standableBelow(grid: TileGrid, col: number, row: number): Vec2 | null {
   return null;
 }
 
+/** Every feet position on a solid or one-way floor with two free tiles above it (reinforcement spots). */
+export function floorSpots(grid: TileGrid): Vec2[] {
+  const spots: Vec2[] = [];
+  for (let col = 0; col < grid.cols; col++) {
+    for (let row = 2; row < grid.rows; row++) {
+      const below = grid.get(col, row);
+      if ((below !== Tile.Solid && below !== Tile.OneWay) || grid.get(col, row - 1) !== Tile.Empty || grid.get(col, row - 2) !== Tile.Empty) continue;
+      spots.push({ x: (col + 0.5) * TILE, y: row * TILE });
+    }
+  }
+  return spots;
+}
+
 function stamp(grid: TileGrid, room: PlacedRoom, template: RoomTemplate) {
   const found = { spawn: [] as Cell[], exit: [] as Cell[], enemy: [] as Cell[], windows: [] as Cell[] };
   template.rows.forEach((line, r) => {

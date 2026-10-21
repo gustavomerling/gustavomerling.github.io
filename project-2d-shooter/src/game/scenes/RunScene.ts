@@ -9,9 +9,11 @@ import { Camera } from '@engine/render/camera';
 import type { Renderer } from '@engine/render/renderer';
 import { BIOMES, type BiomeDef } from '../content/biomes/catalog';
 import { PLAYER_DEF } from '../content/characters/player';
+import { RUN_MODES, type RunModeId } from '../content/modes/catalog';
+import { NavCache } from '../pathing/navgraph';
 import type { GameEvents } from '../events';
 import type { Action } from '../input/actions';
-import { generateLevel, type LevelData } from '../procgen/level';
+import { floorSpots, generateLevel, type LevelData } from '../procgen/level';
 import { drawDebris, drawDecals, drawFlashes, drawPickups, drawSmoke } from '../render/effects';
 import { drawCharacters, drawProjectiles, drawRagdolls } from '../render/entities';
 import { drawScreenOverlay, drawWorldOverlay } from '../render/overlay';
@@ -23,6 +25,7 @@ import { aimSystem, projectileSystem, weaponSystem } from '../systems/combat';
 import type { RunContext, RunSystem } from '../systems/context';
 import { drawDebugWorld, handleDebugKeys } from '../systems/debug';
 import { effectsSystem } from '../systems/effects';
+import { hordeSystem } from '../systems/horde';
 import { playerMeleeSystem } from '../systems/melee';
 import { pickupSystem } from '../systems/pickups';
 import { createHudSystem } from '../systems/hud';
@@ -42,6 +45,8 @@ export interface RunSceneDeps {
   bus: EventBus<GameEvents>;
   seed: string;
   biomeId: string;
+  /** Run mode (see content/modes). Defaults to the campaign. */
+  mode?: RunModeId;
   frameStats: { fps: number; steps: number };
   debugOverlay: boolean;
   /** Measuring grid visible (F2). */
@@ -68,6 +73,7 @@ export class RunScene implements Scene {
     playerIntentSystem,
     playerMovementSystem,
     playerMeleeSystem,
+    hordeSystem,
     aiSystem,
     physicsSystem,
     weaponSystem,
@@ -102,7 +108,9 @@ export class RunScene implements Scene {
 
   enter(): void {
     const { renderer, input, bus, seed, biomeId } = this.deps;
-    const biome: BiomeDef = BIOMES.get(biomeId);
+    const mode = RUN_MODES.get(this.deps.mode ?? 'campaign');
+    const base = BIOMES.get(biomeId);
+    const biome: BiomeDef = mode.enemyPool ? { ...base, enemyPool: mode.enemyPool } : base;
     const level = generateLevel(seed, biome);
     const camera = new Camera(renderer.width, renderer.height);
     camera.bounds = { x: 0, y: 0, w: level.grid.widthPx, h: level.grid.heightPx };
@@ -117,6 +125,8 @@ export class RunScene implements Scene {
       biome,
       bus,
       rng: Rng.fromString(`${seed}:${biome.id}:gameplay`),
+      horde: mode.horde ? { def: mode.horde, spots: floorSpots(level.grid), timer: 2 } : null,
+      nav: new NavCache(level.grid),
       debug: { overlay: this.deps.debugOverlay, grid: this.deps.grid, god: false, stepMode: false, stepOnce: false, spawnIndex: 0 },
       feedback: { hitMarker: 0, hitKill: false, hitHead: false, spread: 0, busy: false },
       stats: { kills: 0, headshots: 0, shots: 0, hits: 0, time: 0 },

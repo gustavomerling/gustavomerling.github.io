@@ -4,7 +4,7 @@ import { GunIcon } from './GunIcon';
 export const formatTime = (seconds: number): string =>
   `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 
-export function Hud({ hud, replaying }: { hud: HudState | null; replaying: boolean }) {
+export function Hud({ hud, replaying, modeTag }: { hud: HudState | null; replaying: boolean; modeTag?: string }) {
   if (!hud) return null;
   const hpRatio = hud.hp / hud.maxHp;
   const low = hpRatio <= 0.3 && hud.hp > 0;
@@ -27,6 +27,7 @@ export function Hud({ hud, replaying }: { hud: HudState | null; replaying: boole
         <span className="hud-stat">{formatTime(hud.time)}</span>
       </div>
       <div className="hud-top-right">
+        {modeTag && <span className="hud-flag hud-mode">{modeTag}</span>}
         {replaying && <span className="hud-flag hud-replay">● REPLAY</span>}
         {hud.frozen && <span className="hud-flag">PAUSADO (F9 avança)</span>}
         {hud.god && <span className="hud-flag">GOD</span>}
@@ -103,7 +104,9 @@ export function Controls() {
     <dl className="controls">
       {rows.map(([k, v]) => (
         <div key={k}>
-          <dt>{k}</dt>
+          <dt>
+            <kbd>{k}</kbd>
+          </dt>
           <dd>{v}</dd>
         </div>
       ))}

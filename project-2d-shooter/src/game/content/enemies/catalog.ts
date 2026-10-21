@@ -23,6 +23,16 @@ export interface EnemyDef {
   readonly laser?: boolean;
   /** Seconds of sight before the first shot (default AI.reactionTime). */
   readonly reaction?: number;
+  /**
+   * Senses the player through walls and from behind (sound, smell), within `sightRange`.
+   * Zombies use it: they don't need a line of sight to come after you.
+   */
+  readonly omniscient?: boolean;
+  /**
+   * Always knows where the player is and follows a route over the floor (walks, jumps, drops),
+   * see pathing/navgraph.ts. Only melee enemies use it.
+   */
+  readonly pathing?: boolean;
 }
 
 export const ENEMIES = new Registry<EnemyDef>('enemy', [
@@ -87,6 +97,46 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     color: '#7ef0d6',
     laser: true,
     reaction: 1.1,
+  },
+  // Zombies (modo zumbi): melee only, no line of sight needed to notice you.
+  {
+    id: 'zombie',
+    name: 'Zumbi',
+    description: 'Anda torto e não para. Sente o cheiro de longe.',
+    brain: 'melee',
+    hp: 35,
+    moveSpeed: 55,
+    size: { w: 10, h: 22 },
+    sightRange: 230,
+    color: '#8fbf7a',
+    omniscient: true,
+    pathing: true,
+  },
+  {
+    id: 'runner',
+    name: 'Corredor',
+    description: 'Ainda tem fôlego. Pouco. Chega antes de você ouvir.',
+    brain: 'melee',
+    hp: 22,
+    moveSpeed: 125,
+    size: { w: 10, h: 22 },
+    sightRange: 300,
+    color: '#d9a56b',
+    omniscient: true,
+    pathing: true,
+  },
+  {
+    id: 'bloater',
+    name: 'Inchado',
+    description: 'Lento e difícil de derrubar. Cada tiro só o faz cambalear.',
+    brain: 'melee',
+    hp: 120,
+    moveSpeed: 38,
+    size: { w: 16, h: 28 },
+    sightRange: 200,
+    color: '#7f9a6e',
+    omniscient: true,
+    pathing: true,
   },
   {
     id: 'manager',

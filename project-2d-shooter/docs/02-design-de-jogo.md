@@ -69,6 +69,26 @@ Valores em [src/game/config.ts](../src/game/config.ts) (`PLAYER_TUNING`).
 
 **E** alterna. O mundo vai a **30%** da velocidade, o jogador a **60%**. Gasta a barra de **foco**, que recarrega devagar sozinha e rápido com headshots e kills.
 
+## Modos
+
+Escolhidos no menu principal ([content/modes/catalog.ts](../src/game/content/modes/catalog.ts)).
+
+- **Jogar** (campanha): o loop descrito acima, com estagiários, seguranças, analistas, zeladores, auditores e gerentes.
+- **Modo zumbi**: só zumbis, e eles não param.
+  - Os zumbis da fase são os do pool do modo (zumbi, corredor, inchado), no lugar do pool do bioma.
+  - **Levas**: a cada 3,5 s, se houver menos de 14 vivos, nasce um zumbi no chão **atrás** do jogador (260 a 420 unidades, fora da tela). O sorteio usa o RNG de gameplay, então o replay continua exato.
+  - Como nascem atrás, a frente (a saída) fica livre: a pressão vem da esquerda.
+
+## Zumbis
+
+Os três são melee (o mesmo cérebro do estagiário) com `omniscient`: sentem o jogador **através de paredes**, dentro do `sightRange`, como se farejassem. Mas andam pelo chão como qualquer inimigo: sem caminho direto, ficam presos na parede. Os valores estão em [content/enemies/catalog.ts](../src/game/content/enemies/catalog.ts).
+
+| Zumbi | Vida | Velocidade | Alcance de percepção |
+|---|---|---|---|
+| Zumbi | 35 | 55 | 230 |
+| Corredor | 22 | 125 | 300 |
+| Inchado | 120 | 38 | 200 |
+
 ## Inimigos (IA)
 
 Placeholders: os nomes vêm do tema antigo e vão mudar.

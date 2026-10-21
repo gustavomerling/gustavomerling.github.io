@@ -5,6 +5,7 @@ import { Input, type InputFrame } from '@engine/input/input';
 import { randomSeedString } from '@engine/math/rng';
 import { Renderer } from '@engine/render/renderer';
 import { BIOME_ORDER } from './content/biomes/catalog';
+import type { RunModeId } from './content/modes/catalog';
 import { VIEW } from './config';
 import type { GameEvents } from './events';
 import { DEFAULT_BINDINGS, type Action } from './input/actions';
@@ -13,6 +14,8 @@ import { RunScene } from './scenes/RunScene';
 export interface SessionOptions {
   seed?: string;
   debug?: boolean;
+  /** Run mode; the campaign by default. */
+  mode?: RunModeId;
 }
 
 /**
@@ -22,6 +25,7 @@ export interface SessionOptions {
 export class GameSession {
   readonly bus = new EventBus<GameEvents>();
   readonly seed: string;
+  readonly mode: RunModeId;
   private readonly renderer: Renderer;
   private readonly input = new Input<Action>(DEFAULT_BINDINGS);
   private readonly scenes = new SceneManager();
@@ -42,6 +46,7 @@ export class GameSession {
     private readonly options: SessionOptions = {},
   ) {
     this.seed = options.seed ?? randomSeedString();
+    this.mode = options.mode ?? 'campaign';
     this.renderer = new Renderer(canvas, VIEW.height, VIEW.width);
     this.input.attach(canvas, (x, y) => this.renderer.clientToVirtual(x, y));
     this.loop = new GameLoop({
@@ -134,6 +139,7 @@ export class GameSession {
         bus: this.bus,
         seed: this.seed,
         biomeId: BIOME_ORDER[index % BIOME_ORDER.length]!,
+        mode: this.mode,
         frameStats: this.frameStats,
         debugOverlay: debug,
         grid,

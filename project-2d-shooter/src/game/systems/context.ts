@@ -5,10 +5,21 @@ import type { Input } from '@engine/input/input';
 import type { Rng } from '@engine/math/rng';
 import type { TileGrid } from '@engine/physics/tilegrid';
 import type { Camera } from '@engine/render/camera';
+import type { Vec2 } from '@engine/math/vec2';
 import type { BiomeDef } from '../content/biomes/catalog';
+import type { HordeDef } from '../content/modes/catalog';
 import type { GameEvents } from '../events';
 import type { Action } from '../input/actions';
+import type { NavCache } from '../pathing/navgraph';
 import type { LevelData } from '../procgen/level';
+
+/** Reinforcements in progress (zombie mode): when the next group may come. */
+export interface HordeState {
+  def: HordeDef;
+  /** Feet positions where enemies can appear. */
+  spots: Vec2[];
+  timer: number;
+}
 
 /** Short-lived UI feedback state, written by gameplay and read by the overlay. */
 export interface Feedback {
@@ -58,6 +69,10 @@ export interface RunContext {
   bus: EventBus<GameEvents>;
   /** Gameplay randomness (spread, AI). Separate stream from level generation. */
   rng: Rng;
+  /** Null in modes without reinforcements. */
+  horde: HordeState | null;
+  /** Routes for pathing enemies (built lazily per enemy type). */
+  nav: NavCache;
   debug: DebugState;
   feedback: Feedback;
   stats: RunStats;

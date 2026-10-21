@@ -3,7 +3,7 @@ import { DEG2RAD } from '@engine/math/math';
 import type { Vec2 } from '@engine/math/vec2';
 import { isBlocking, Tile, type TileGrid } from '@engine/physics/tilegrid';
 import { ENEMIES, type EnemyDef } from '../content/enemies/catalog';
-import { AI, TILE } from '../config';
+import { AI, PLAYER_TUNING, TILE } from '../config';
 import {
   Arsenal,
   Aim,
@@ -79,6 +79,11 @@ export const aiSystem: RunSystem = {
       perceive(ctx, def, brain, eye, player, dt);
       const sees = brain.seeTime > 0;
       if (sees && !wasSeeing && player) shouts.push(player.center);
+      // Pathing enemies always know where the player is; the route gets them there.
+      if (def.pathing && player) {
+        brain.alert = AI.memory;
+        brain.lastSeen = { ...player.center };
+      }
       if (brain.alert > 0 && brain.lastSeen) brain.facing = brain.lastSeen.x < eye.x ? -1 : 1;
 
       if (brain.alert <= 0) {
@@ -128,11 +133,12 @@ function perceive(ctx: RunContext, def: EnemyDef, brain: BrainData, eye: Vec2, p
   if (player) {
     const dx = player.center.x - eye.x;
     const dist = Math.hypot(dx, player.center.y - eye.y);
-    const inFront = Math.sign(dx) === brain.facing || dist < AI.closeSense || brain.alert > 0;
+    const inFront = def.omniscient || Math.sign(dx) === brain.facing || dist < AI.closeSense || brain.alert > 0;
     sees =
       dist <= def.sightRange &&
       inFront &&
-      (lineOfSight(ctx.grid, eye.x, eye.y, player.center.x, player.center.y) ||
+      (def.omniscient ||
+        lineOfSight(ctx.grid, eye.x, eye.y, player.center.x, player.center.y) ||
         lineOfSight(ctx.grid, eye.x, eye.y, player.head.x, player.head.y));
   }
 
@@ -313,6 +319,19 @@ function melee(
     brain.lastSeen = null;
     return;
   }
+  if (def.pathing) {
+    // Follow the route over the floor: walk, jump up where it says so, drop off ledges.
+    const feet = { x: me.x, y: pos.y + body.h };
+    const goal = { x: target.x, y: target.y + PLAYER_TUNING.standHeight / 2 };
+    const step = ctx.nav.step(def.id, { moveSpeed: def.moveSpeed, jumpSpeed: M.jumpSpeed }, feet, goal);
+    if (step) {
+      const sx = step.x - me.x;
+      vel.x = Math.abs(sx) < 2 ? 0 : Math.sign(sx) * def.moveSpeed;
+      if (step.up && body.onGround) vel.y = -M.jumpSpeed;
+      return;
+    }
+  }
+
   vel.x = Math.sign(dx) * def.moveSpeed;
   // Bumped into an obstacle: hop over it.
   if (body.onGround && body.hitWall) vel.y = -M.jumpSpeed;
