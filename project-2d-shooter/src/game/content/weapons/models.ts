@@ -15,11 +15,11 @@ export interface GunPart {
   pump?: boolean;
 }
 
-export type GunRole = 'sword' | 'bow' | 'shield' | 'staff';
+export type GunRole = 'sword' | 'bow';
 
 export interface GunModel {
   readonly id: string;
-  /** How the rig should treat it (sword sweeps, shield faces forward, bows/staves fire). */
+  /** How the rig should treat it (swords are posed by the fencing code, bows fire arrows). */
   readonly role?: GunRole;
   /** Extra rotation on top of the aim (rare; shields read better aligned with it). */
   readonly hold?: number;
@@ -220,58 +220,9 @@ export const GUN_MODELS = new Registry<GunModel>('gun model', [
       box('brass', 4.4, -1.4, 5.0, -0.9),
     ],
   },
-  {
-    id: 'kite-shield',
-    role: 'shield',
-    grip: { x: 4.0, y: 0.5 },
-    support: { x: 2.6, y: 0.6 },
-    muzzle: { x: 6.8, y: 0 },
-    oneHanded: true,
-    eject: { x: 0, y: 0 },
-    casing: 'brass',
-    kick: { strength: 0.2, recover: 14 },
-    flash: 0,
-    parts: [
-      poly('metal', 2.4, -6.4, 6.2, -6.4, 7.0, -4.4, 7.0, 4.4, 6.2, 6.4, 2.4, 6.4, 1.6, 4.4, 1.6, -4.4),
-      box('shell', 1.9, -0.7, 6.9, 0.7),
-      box('shell', 4.1, -6.2, 4.9, 6.2),
-      poly('brass', 3.6, -1.4, 5.0, -1.4, 5.7, -0.5, 5.7, 0.9, 5.0, 1.8, 3.6, 1.8, 2.9, 0.9, 2.9, -0.5),
-    ],
-  },
-  {
-    id: 'fire-staff',
-    role: 'staff',
-    grip: { x: 5.4, y: 1.0 },
-    support: { x: 8.0, y: 0.8 },
-    muzzle: { x: 16.5, y: -1.2 },
-    eject: { x: 0, y: 0 },
-    casing: 'brass',
-    kick: { strength: 0.7, recover: 16 },
-    flash: 1.0,
-    parts: [
-      box('wood', -4.0, -1.5, 13.0, -0.3),
-      box('brass', 4.4, -1.7, 5.2, -0.1),
-      poly('brass', 13.4, -2.4, 14.4, -3.0, 15.4, -2.4, 15.4, -0.6, 14.4, 0.0, 13.4, -0.6),
-      poly('shell', 14.0, -2.4, 14.9, -3.0, 15.6, -2.2, 15.4, -0.8, 14.4, -0.2),
-    ],
-  },
-  {
-    id: 'ward-staff',
-    role: 'staff',
-    grip: { x: 5.4, y: 1.0 },
-    support: { x: 8.0, y: 0.8 },
-    muzzle: { x: 16.5, y: -1.2 },
-    eject: { x: 0, y: 0 },
-    casing: 'brass',
-    kick: { strength: 0.3, recover: 20 },
-    flash: 0.8,
-    parts: [
-      box('wood', -4.0, -1.5, 13.0, -0.3),
-      box('brass', 4.4, -1.7, 5.2, -0.1),
-      poly('brass', 13.4, -2.4, 14.4, -3.0, 15.4, -2.4, 15.4, -0.6, 14.4, 0.0, 13.4, -0.6),
-      poly('light', 14.0, -2.4, 14.9, -3.0, 15.6, -2.2, 15.4, -0.8, 14.4, -0.2),
-    ],
-  },
+
+
+
 ]);
 
 const derived = new Map<string, GunModel>();

@@ -1,8 +1,10 @@
 import type { World } from '@engine/ecs/world';
 import { Tile } from '@engine/physics/tilegrid';
 import { PLAYER_TUNING, TILE } from '../config';
-import { Debris, Decal, Fx, type DebrisData } from '../world/components';
+import { Body, Debris, Decal, Fx, PlayerControl, Position, type DebrisData, type FxData } from '../world/components';
 import type { RunSystem } from './context';
+import { ACCENT, ENEMY, FX, theme } from '../render/palette';
+import { addShake, fxSetting, JUICE, nearPlayer } from './juice';
 
 const MAX_DEBRIS = 400;
 const MAX_FX = 200;
@@ -15,16 +17,28 @@ export function spawnDebris(world: World, d: DebrisSpec): void {
   world.add(e, Debris, { ...d, prevX: d.x, prevY: d.y, prevAngle: d.angle, age: 0, resting: false });
 }
 
-/** Muzzle flash pointing along `angle`, plus a few smoke puffs drifting out of the barrel. */
+/** One visual particle. Effects use Math.random, never the gameplay RNG. */
+function fx(world: World, f: Omit<FxData, 'age'>): void {
+  const e = world.create();
+  world.add(e, Fx, { ...f, age: 0 });
+}
+
+/** Particle switch (settings.particles). Muzzle flashes and bullet holes stay on regardless: they carry gameplay info. */
+const particles = () => fxSetting('particles');
+
+/**
+ * Muzzle flash pointing along `angle`, plus smoke drifting out of the barrel and, on big guns,
+ * a couple of hot sparks. The player's heavy guns kick the camera back a little.
+ */
 export function spawnShotFx(world: World, x: number, y: number, angle: number, size: number, rand: () => number): void {
-  const flash = world.create();
-  world.add(flash, Fx, { kind: 'flash', x, y, vx: 0, vy: 0, angle, size, age: 0, life: 0.05 });
+  fx(world, { kind: 'flash', x, y, vx: 0, vy: 0, angle, size, life: 0.05 });
+  if (size >= 1.1 && nearPlayer(world, x, y)) addShake(world, JUICE.shakeHeavyShot * Math.min(1, (size - 0.9) / 0.7), angle + Math.PI);
+  if (!particles()) return;
   const puffs = Math.round(2 + size * 1.5);
   for (let i = 0; i < puffs; i++) {
     const speed = (12 + rand() * 30) * size;
     const a = angle + (rand() - 0.5) * 0.9;
-    const e = world.create();
-    world.add(e, Fx, {
+    fx(world, {
       kind: 'smoke',
       x: x + Math.cos(angle) * i * 0.8,
       y: y + Math.sin(angle) * i * 0.8,
@@ -32,48 +46,102 @@ export function spawnShotFx(world: World, x: number, y: number, angle: number, s
       vy: Math.sin(a) * speed - 6,
       angle: 0,
       size: (0.9 + rand() * 0.8) * size,
-      age: 0,
       life: 0.5 + rand() * 0.5,
+    });
+  }
+  const sparks = size >= 1.1 ? 3 : 0;
+  for (let i = 0; i < sparks; i++) {
+    const a = angle + (rand() - 0.5) * 0.5;
+    const speed = 180 + rand() * 160;
+    fx(world, { kind: 'spark', x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, angle: a, size: 1, life: 0.05 + rand() * 0.05, color: FX.flashCore });
+  }
+}
+
+/** Sparks when a shield eats a hit: more, faster and white on a parry, with a bright ring. */
+export function spawnShieldFx(world: World, x: number, y: number, angle: number, parry: boolean): void {
+  if (!particles()) return;
+  const color = parry ? FX.parry : FX.spark;
+  for (let i = 0; i < (parry ? 16 : 7); i++) {
+    const a = angle + Math.PI + (Math.random() - 0.5) * (parry ? 2.4 : 1.8);
+    const speed = (parry ? 90 : 45) + Math.random() * (parry ? 180 : 90);
+    fx(world, { kind: 'spark', x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, angle: a, size: 1, life: 0.1 + Math.random() * 0.12, color });
+  }
+  if (parry) fx(world, { kind: 'ring', x, y, vx: 0, vy: 0, angle: 0, size: 9, life: 0.18, color: FX.parry });
+}
+
+/** Guard broken: a wide ring and a starburst of sparks all around the shield. */
+export function spawnGuardBreakFx(world: World, x: number, y: number): void {
+  if (!particles()) return;
+  fx(world, { kind: 'ring', x, y, vx: 0, vy: 0, angle: 0, size: 14, life: 0.25, color: FX.spark });
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2 + Math.random() * 0.3;
+    const speed = 110 + Math.random() * 120;
+    fx(world, { kind: 'spark', x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, angle: a, size: 1, life: 0.14 + Math.random() * 0.1, color: FX.spark });
+  }
+}
+
+/** Headshot: a small warm ring and a pop of flat blobs out of the head (bone chips on a skeleton). */
+export function spawnHeadshotPop(world: World, x: number, y: number, angle: number, killed: boolean, skeleton: boolean): void {
+  if (!particles()) return;
+  fx(world, { kind: 'ring', x, y, vx: 0, vy: 0, angle: 0, size: killed ? 7 : 4.5, life: 0.16, color: ACCENT.warm });
+  const n = killed ? 5 : 2;
+  for (let i = 0; i < n; i++) {
+    const a = angle + (Math.random() - 0.5) * 1.4 - 0.3;
+    const speed = 30 + Math.random() * 50;
+    fx(world, {
+      kind: 'puff',
+      x,
+      y,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed - 30,
+      angle: 0,
+      size: 0.9 + Math.random() * 0.8,
+      life: 0.22 + Math.random() * 0.12,
+      color: skeleton ? ENEMY.skeleton.chips : FX.blood[i % 2]!,
     });
   }
 }
 
-/** Sparks when a shield (or the magic bubble) eats a hit. */
-export function spawnShieldFx(world: World, x: number, y: number, angle: number, magic: boolean): void {
-  const color = magic ? '#8ef3ff' : '#ffd27a';
-  for (let i = 0; i < 7; i++) {
-    const a = angle + Math.PI + (Math.random() - 0.5) * 1.8;
-    const speed = 45 + Math.random() * 90;
-    const e = world.create();
-    world.add(e, Fx, {
-      kind: 'spark',
+/** A bloater bursting: a ring the size of the blast, a cloud of flat blobs, and a shake that fades with distance. */
+export function spawnBurstFx(world: World, x: number, y: number, radius: number): void {
+  const player = world.first(PlayerControl, Position, Body);
+  if (player) {
+    const [, , pos, body] = player;
+    const d = Math.hypot(pos.x + body.w / 2 - x, pos.y + body.h / 2 - y);
+    const falloff = 1 - Math.min(1, d / (radius * 4));
+    if (falloff > 0) addShake(world, JUICE.shakeBurst * falloff, Math.atan2(pos.y - y, pos.x - x));
+  }
+  if (!particles()) return;
+  fx(world, { kind: 'ring', x, y, vx: 0, vy: 0, angle: 0, size: radius, life: 0.3, color: ENEMY.undead.bloater });
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 + Math.random() * 0.4;
+    const speed = 40 + Math.random() * 90;
+    fx(world, {
+      kind: 'puff',
       x,
       y,
       vx: Math.cos(a) * speed,
-      vy: Math.sin(a) * speed,
-      angle: a,
-      size: 1,
-      age: 0,
-      life: 0.1 + Math.random() * 0.12,
-      color,
+      vy: Math.sin(a) * speed - 25,
+      angle: 0,
+      size: 1.4 + Math.random() * 1.4,
+      life: 0.3 + Math.random() * 0.2,
+      color: i % 3 === 0 ? FX.blood[0]! : ENEMY.undead.bloater,
     });
   }
-  if (!magic) return;
-  const e = world.create();
-  world.add(e, Fx, { kind: 'smoke', x, y, vx: 0, vy: -8, angle: 0, size: 1.4, age: 0, life: 0.3, color: '#65d8ef' });
 }
 
 /** Dust kicked up by the feet (landings, slides, wall slides). Visual only. */
 export function spawnDust(world: World, x: number, y: number, count: number, spreadX: number): void {
+  if (!particles()) return;
   for (let i = 0; i < count; i++) {
-    const e = world.create();
     const vx = (Math.random() - 0.5) * 2 * spreadX;
-    world.add(e, Fx, { kind: 'dust', x: x + vx * 0.03, y: y - 1, vx, vy: -8 - Math.random() * 12, angle: 0, size: 0.8 + Math.random() * 0.7, age: 0, life: 0.35 + Math.random() * 0.3 });
+    fx(world, { kind: 'dust', x: x + vx * 0.03, y: y - 1, vx, vy: -8 - Math.random() * 12, angle: 0, size: 0.8 + Math.random() * 0.7, life: 0.35 + Math.random() * 0.3 });
   }
 }
 
 /** A spent bullet tumbling to the floor. */
 export function dropSlug(world: World, x: number, y: number, vx: number, vy: number): void {
+  if (!particles()) return;
   spawnDebris(world, {
     x,
     y,
@@ -82,13 +150,22 @@ export function dropSlug(world: World, x: number, y: number, vx: number, vy: num
     angle: Math.atan2(vy, vx),
     spin: (Math.random() - 0.5) * 30,
     shape: [-0.6, -0.3, 0.6, -0.3, 0.6, 0.3, -0.6, 0.3],
-    color: '#c9a050',
+    color: FX.wad,
     life: 6,
   });
 }
 
-/** Blood: a small splash back out of the wound, a bigger spray out of the exit when the bullet goes through. */
-export function spawnBlood(world: World, x: number, y: number, angle: number, damage: number, through: boolean): void {
+/**
+ * Blood: a flat puff at the wound, a small splash back out of it, and a bigger spray (plus a
+ * puff) out of the exit when the bullet goes through. `color` swaps the drops for something
+ * else (bone chips off a skeleton).
+ */
+export function spawnBlood(world: World, x: number, y: number, angle: number, damage: number, through: boolean, color?: string): void {
+  if (!particles()) return;
+  const tint = (i: number) => color ?? FX.blood[i % 2]!;
+  const puffSize = Math.min(2.4, 0.9 + damage * 0.04);
+  fx(world, { kind: 'puff', x, y, vx: Math.cos(angle + Math.PI) * 25, vy: Math.sin(angle + Math.PI) * 25 - 10, angle: 0, size: puffSize, life: 0.16, color: tint(1) });
+  if (through) fx(world, { kind: 'puff', x, y, vx: Math.cos(angle) * 70, vy: Math.sin(angle) * 70 - 10, angle: 0, size: puffSize * 1.2, life: 0.2, color: tint(0) });
   const drops = Math.min(14, Math.round(3 + damage * 0.35));
   for (let i = 0; i < drops; i++) {
     const exit = through && i % 3 !== 0;
@@ -103,78 +180,56 @@ export function spawnBlood(world: World, x: number, y: number, angle: number, da
       angle: 0,
       spin: 0,
       shape: [-size, -size, size, -size, size, size, -size, size],
-      color: Math.random() < 0.5 ? '#9e1b1b' : '#c22a2a',
+      color: color ?? FX.blood[Math.random() < 0.5 ? 0 : 1]!,
       life: 7,
     });
   }
 }
 
-/** Bullet hitting a wall: sparks off the surface, a dust puff, and a hole left behind (if it stops there). */
+/**
+ * Bullet hitting the level, by surface: a wall throws sparks and a chip of the block; a floor or
+ * ceiling kicks up a dust cloud with fewer sparks. The hole is left either way (if the bullet
+ * stops there).
+ */
 export function spawnImpact(world: World, x: number, y: number, angle: number, surface: 'x' | 'y', hole: boolean): void {
-  // Bounce direction off the surface.
-  const rx = surface === 'x' ? -Math.cos(angle) : Math.cos(angle);
-  const ry = surface === 'y' ? -Math.sin(angle) : Math.sin(angle);
-  const out = Math.atan2(ry, rx);
-  for (let i = 0; i < 5; i++) {
-    const a = out + (Math.random() - 0.5) * 1.6;
-    const speed = 80 + Math.random() * 140;
-    const e = world.create();
-    world.add(e, Fx, { kind: 'spark', x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, angle: a, size: 1, age: 0, life: 0.08 + Math.random() * 0.1 });
+  if (particles()) {
+    // Bounce direction off the surface.
+    const rx = surface === 'x' ? -Math.cos(angle) : Math.cos(angle);
+    const ry = surface === 'y' ? -Math.sin(angle) : Math.sin(angle);
+    const out = Math.atan2(ry, rx);
+    const wall = surface === 'x';
+    for (let i = 0; i < (wall ? 6 : 3); i++) {
+      const a = out + (Math.random() - 0.5) * 1.6;
+      const speed = 80 + Math.random() * 140;
+      fx(world, { kind: 'spark', x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, angle: a, size: 1, life: 0.08 + Math.random() * 0.1 });
+    }
+    for (let i = 0; i < (wall ? 1 : 3); i++) {
+      const a = out + (Math.random() - 0.5) * 0.9;
+      const speed = wall ? 15 : 20 + Math.random() * 25;
+      fx(world, { kind: 'dust', x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, angle: 0, size: wall ? 1.2 : 1 + Math.random() * 0.6, life: wall ? 0.5 : 0.6 + Math.random() * 0.3 });
+    }
+    // A chip of the block (the tile's edge colour), only off walls.
+    if (wall) {
+      const s = 0.35 + Math.random() * 0.3;
+      const a = out + (Math.random() - 0.5) * 1.2;
+      spawnDebris(world, {
+        x,
+        y,
+        vx: Math.cos(a) * 60,
+        vy: Math.sin(a) * 60 - 40,
+        angle: Math.random() * Math.PI,
+        spin: (Math.random() - 0.5) * 20,
+        shape: [-s, -s, s, -s * 0.6, s * 0.7, s, -s * 0.8, s * 0.8],
+        color: theme().tiles.solidEdge,
+        life: 3,
+      });
+    }
   }
-  const dust = world.create();
-  world.add(dust, Fx, { kind: 'dust', x, y, vx: Math.cos(out) * 15, vy: Math.sin(out) * 15, angle: 0, size: 1.2, age: 0, life: 0.5 });
   if (!hole) return;
   const decal = world.create();
   world.add(decal, Decal, { x: x + Math.cos(angle) * 0.8, y: y + Math.sin(angle) * 0.8, r: 0.55 + Math.random() * 0.25 });
   const decals = [...world.query(Decal)];
   for (let i = 0; i < decals.length - MAX_DECALS; i++) world.destroy(decals[i]![0]);
-}
-
-/** Fireball blast: a quick ball of fire, embers flying out and a puff of smoke. */
-export function spawnExplosion(world: World, x: number, y: number, radius: number): void {
-  const fire = world.create();
-  world.add(fire, Fx, {
-    kind: 'fire',
-    x,
-    y,
-    vx: 0,
-    vy: 0,
-    angle: 0,
-    size: radius / 12,
-    age: 0,
-    life: 0.22,
-  });
-  for (let i = 0; i < 12; i++) {
-    const a = Math.random() * Math.PI * 2;
-    const speed = 90 + Math.random() * 200;
-    const e = world.create();
-    world.add(e, Fx, {
-      kind: 'spark',
-      x,
-      y,
-      vx: Math.cos(a) * speed,
-      vy: Math.sin(a) * speed - 30,
-      angle: a,
-      size: 1,
-      age: 0,
-      life: 0.12 + Math.random() * 0.2,
-      color: Math.random() < 0.5 ? '#ffb347' : '#ff7a2f',
-    });
-  }
-  for (let i = 0; i < 3; i++) {
-    const e = world.create();
-    world.add(e, Fx, {
-      kind: 'smoke',
-      x: x + (Math.random() - 0.5) * radius * 0.5,
-      y: y + (Math.random() - 0.5) * radius * 0.5,
-      vx: (Math.random() - 0.5) * 20,
-      vy: -20 - Math.random() * 20,
-      angle: 0,
-      size: 1.4 + Math.random() * 0.8,
-      age: 0,
-      life: 0.4 + Math.random() * 0.3,
-    });
-  }
 }
 
 /** Debris: gravity, bounces on floors/walls, comes to rest lying flat. Fx: drift, grow, fade. */
@@ -239,10 +294,11 @@ export const effectsSystem: RunSystem = {
         world.destroy(e);
         return;
       }
-      // Sparks fly and fall; smoke and dust drift up.
-      const drag = Math.exp((f.kind === 'spark' ? -2 : -4) * dt);
+      if (f.kind === 'ring' || f.kind === 'flash') return;
+      // Sparks fly and fall; blobs arc down; smoke and dust drift up.
+      const drag = Math.exp((f.kind === 'spark' ? -2 : f.kind === 'puff' ? -5 : -4) * dt);
       f.vx *= drag;
-      f.vy = f.vy * drag + (f.kind === 'spark' ? 400 : -10) * dt;
+      f.vy = f.vy * drag + (f.kind === 'spark' ? 400 : f.kind === 'puff' ? 160 : -10) * dt;
       f.x += f.vx * dt;
       f.y += f.vy * dt;
     });

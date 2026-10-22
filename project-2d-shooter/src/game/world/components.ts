@@ -4,6 +4,7 @@ import type { HumanoidAnimator } from '../character/animator';
 import type { RigStyle } from '../character/draw';
 import type { HumanoidProportions } from '../character/humanoid';
 import type { HitZone } from '../config';
+import type { FencePhase } from '../content/blades/kits';
 import type { AssembledWeapon } from '../content/weapons/assemble';
 import type { WeaponBehavior } from '../content/weapons/types';
 
@@ -141,6 +142,8 @@ export interface WeaponState {
   bloom: number;
   /** Spare rounds (Infinity = endless). Reloading takes from here. */
   reserve: number;
+  /** Seconds a click made while the gun wasn't ready stays queued (see GUNPLAY.triggerBuffer). */
+  queuedShot?: number;
 }
 
 export interface ArsenalData {
@@ -152,33 +155,64 @@ export const Arsenal = defineComponent<ArsenalData>('Arsenal');
 export type Team = 'player' | 'enemy';
 export const Faction = defineComponent<{ team: Team }>('Faction');
 
-/** Shield/ward state: a raised physical shield, a temporary bubble, and the hit flash. */
-export interface GuardData {
-  raised: boolean;
-  /** Seconds left on the shield's hit flash (visual). */
-  flash: number;
-  /** Seconds of magic bubble left; 0 = down. */
-  magicLeft: number;
-  magicMax: number;
-  magicCooldownLeft: number;
-}
-export const Guard = defineComponent<GuardData>('Guard');
-
-/** Cursor-driven sword swing state (world-unit cursor samples + swing timing). */
-export interface SwordStateData {
-  lastX: number;
-  lastY: number;
-  /** Cursor speed measured this step (px/s). */
-  speed: number;
-  cooldownLeft: number;
-  swingLeft: number;
-  swingTotal: number;
-  /** Direction of the slash (world radians), from the cursor movement. */
-  swingAngle: number;
-  /** Every enemy already hit by the current swing. */
+/**
+ * Sword and shield fighter (modo medieval): the player and the skeletons. Driven by
+ * systems/fencing.ts from the entity's Intent (fire = attack, block = shield); the kit
+ * (content/blades/kits.ts) holds the timings and numbers.
+ */
+export interface FencerData {
+  kitId: string;
+  /** Carries a shield (can block). */
+  shield: boolean;
+  phase: FencePhase;
+  /** Seconds spent in the current phase, and how long it lasts (0 = open-ended). */
+  t: number;
+  duration: number;
+  /** Swing of the combo in progress (index into the kit's swings). */
+  swing: number;
+  /** Attack pressed during a swing: the next one follows right after. */
+  queued: boolean;
+  /** Seconds left to continue the combo after a swing ended. */
+  comboLeft: number;
+  /** Facing locked at the start of a swing. */
+  facing: 1 | -1;
+  stamina: number;
+  /** Seconds until stamina starts coming back. */
+  regenDelay: number;
+  /** Targets already cut by the current swing. */
   hit: Set<number>;
+  /** Seconds left on the shield's hit flash, and whether it was a parry (visual). */
+  flash: number;
+  parryFlash: number;
+  /** Multiplier the movement code applies to walking speed this step. */
+  moveScale: number;
+  /** Swing to open the next attack with (-1 = the kit's first / combo order). The AI's counter-cut. */
+  opener: number;
+  /** This raise of the shield can still parry (it was down long enough before, see kit.parryRearm). */
+  parryOpen: boolean;
+  /** Seconds since the shield last went down. */
+  downFor: number;
+  /** Seconds since the shield last stopped a hit. */
+  sinceBlocked: number;
+  /** AI: seconds spent wanting to face the other way (turning takes kit.turnTime). */
+  turnLeft: number;
+  /** AI tactics (systems/ai.ts `fencer`). */
+  ai: FencerAiState;
 }
-export const SwordState = defineComponent<SwordStateData>('SwordState');
+
+export type FencerAiMode = 'approach' | 'measure' | 'press' | 'evade' | 'retreat';
+export interface FencerAiState {
+  mode: FencerAiMode;
+  /** Seconds left in a timed mode (evade) / until the pacing turns. */
+  left: number;
+  /** Pacing direction while measuring: +1 = towards the target. */
+  pace: 1 | -1;
+  /** The attack being wound up is a feint. */
+  feint: boolean;
+  /** Already reacted to the target's current wind-up. */
+  sawSwing: boolean;
+}
+export const Fencer = defineComponent<FencerData>('Fencer');
 
 export interface HealthData {
   hp: number;
@@ -190,15 +224,13 @@ export interface HealthData {
 }
 export const Health = defineComponent<HealthData>('Health');
 
-export type ProjectileKind = 'bullet' | 'arrow' | 'fireball';
+export type ProjectileKind = 'bullet' | 'arrow';
 
 export interface ProjectileData {
   team: Team;
   damage: number;
   distanceLeft: number;
   kind: ProjectileKind;
-  /** Blast radius (px) for explosive projectiles; 0 = none. */
-  explosionRadius: number;
   behaviors: ReadonlySet<WeaponBehavior>;
   bouncesLeft: number;
   /** Ricochet ammo: bounces at any angle. */
@@ -274,7 +306,8 @@ export const Debris = defineComponent<DebrisData>('Debris');
 
 /** Gunshot visuals: a muzzle flash (a few frames) or a smoke puff (rises, grows, fades). */
 export interface FxData {
-  kind: 'flash' | 'smoke' | 'spark' | 'dust' | 'fire';
+  /** 'puff': flat blob that pops and fades (blood/bone); 'ring': thin expanding ring (impacts, bursts). */
+  kind: 'flash' | 'smoke' | 'spark' | 'dust' | 'puff' | 'ring';
   x: number;
   y: number;
   vx: number;
@@ -283,7 +316,7 @@ export interface FxData {
   size: number;
   age: number;
   life: number;
-  /** Overrides the default colour (shield sparks, magic). */
+  /** Overrides the default colour (shield sparks). */
   color?: string;
 }
 export const Fx = defineComponent<FxData>('Fx');
@@ -309,3 +342,21 @@ export const Focus = defineComponent<{ value: number }>('Focus');
 
 export const CameraTarget = defineComponent<{ lookahead: number }>('CameraTarget');
 
+
+/** Zombie state (modo zumbi): rush, grab on the player, stuck watch. Rules in systems/zombies.ts. */
+export interface ZombieData {
+  /** Runner: 'tell' = stopped, tensing up before the sprint; 'run' = sprinting. */
+  rush: 'none' | 'tell' | 'run';
+  /** Seconds left of the current rush phase. */
+  rushLeft: number;
+  /** Seconds until it may rush again. */
+  rushCooldown: number;
+  /** Holding the player: seconds until the bite, and break-free presses so far. */
+  grab: { left: number; presses: number } | null;
+  /** Stuck watch for the horde: x a while ago, and seconds without real progress. */
+  watchX: number;
+  stuck: number;
+}
+export const Zombie = defineComponent<ZombieData>('Zombie');
+
+export const zombieState = (x: number): ZombieData => ({ rush: 'none', rushLeft: 0, rushCooldown: 0, grab: null, watchX: x, stuck: 0 });

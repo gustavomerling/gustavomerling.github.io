@@ -2,8 +2,10 @@ import type { Entity, World } from '@engine/ecs/world';
 import type { Vec2 } from '@engine/math/vec2';
 import { AI, FOCUS, IMPACT, type HitZone } from '../config';
 import { ENEMIES } from '../content/enemies/catalog';
-import { Body, Brain, Focus, Guard, Health, Npc, PlayerControl, Position, Rig, Velocity, type Team } from '../world/components';
+import { Body, Brain, Focus, Health, Npc, PlayerControl, Position, Rig, Velocity, type Team } from '../world/components';
 import type { RunContext } from './context';
+import { guardAgainst } from './fencing';
+import { damageJuice } from './juice';
 
 export interface DamageInfo {
   amount: number;
@@ -18,9 +20,12 @@ export interface DamageInfo {
   by?: Team;
   /** Overrides the damage-based knockback speed (px/s). */
   knockback?: number;
+  /** Shield stamina taken when blocked, as a multiple of `amount` (heavy blows, kicks). Default 1. */
+  guardDamage?: number;
 }
 
-export type DamageResult = 'hit' | 'killed' | 'dodged' | 'blocked' | 'none';
+/** 'blocked': a raised shield took it; 'parried': the shield went up just in time (the attacker reels). */
+export type DamageResult = 'hit' | 'killed' | 'dodged' | 'blocked' | 'parried' | 'none';
 
 /**
  * Single entry point for hurting anyone (bullets, melee). Applies damage and its consequences:
@@ -37,20 +42,11 @@ export function applyDamage(world: World, ctx: RunContext, target: Entity, info:
 
   if (health.invulnLeft > 0 || (isPlayer && ctx.debug.god)) return 'dodged';
 
-  // Shields: a magic bubble blocks every direction; a raised shield blocks what comes from the front.
-  const guard = world.get(target, Guard);
-  if (guard) {
-    guard.flash = Math.max(guard.flash, 0.18);
-    if (guard.magicLeft > 0) return 'blocked';
-    const body = world.get(target, Body);
-    const pos = world.get(target, Position);
-    if (guard.raised && body && pos) {
-      const center = { x: pos.x + body.w / 2, y: pos.y + body.h / 2 };
-      const facing = world.get(target, PlayerControl)?.facing ?? brain?.facing ?? 1;
-      let source: Vec2 | null = info.from ? { ...info.from } : null;
-      if (!source && info.angle !== undefined) source = { x: center.x - Math.cos(info.angle), y: center.y - Math.sin(info.angle) };
-      if (source && (source.x - center.x) * facing > -1 && Math.abs(source.y - center.y) < body.h) return 'blocked';
-    }
+  // Sword and shield: a raised shield facing the blow blocks or parries it (systems/fencing.ts).
+  const guarded = guardAgainst(world, target, info);
+  if (guarded) {
+    damageJuice(world, target, info, guarded, isPlayer);
+    return guarded;
   }
 
   // Undead: only the head is lethal. Every other hit stops at the last point of health.
@@ -90,12 +86,15 @@ export function applyDamage(world: World, ctx: RunContext, target: Entity, info:
   if (rig && info.angle !== undefined) rig.animator.flinch(info.zone, Math.sign(dirX || 1) * rig.animator.facing);
 
   // Interrupt enemies: no shooting/running/punching for a moment.
+  // Heavy enemies (poise) shrug off light body hits: no stunlocking them with a fast gun.
   if (brain) {
     brain.alert = AI.memory;
-    brain.staggerLeft = IMPACT.stagger + (info.zone === 'head' ? IMPACT.headshotStagger : 0);
-    brain.windupLeft = 0;
-    brain.crouching = false;
     if (info.from) brain.lastSeen = { ...info.from };
+    if (killed || info.zone === 'head' || info.amount >= (def?.poise ?? 0)) {
+      brain.staggerLeft = IMPACT.stagger + (info.zone === 'head' ? IMPACT.headshotStagger : 0);
+      brain.windupLeft = 0;
+      brain.crouching = false;
+    }
   }
 
   if (isPlayer) health.invulnLeft = IMPACT.playerIFrames;
@@ -114,5 +113,7 @@ export function applyDamage(world: World, ctx: RunContext, target: Entity, info:
       focus.value = Math.min(1, focus.value + gain);
     }
   }
-  return killed ? 'killed' : 'hit';
+  const result = killed ? 'killed' : 'hit';
+  damageJuice(world, target, info, result, isPlayer);
+  return result;
 }

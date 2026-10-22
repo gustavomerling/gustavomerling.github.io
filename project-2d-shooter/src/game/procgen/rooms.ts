@@ -1,5 +1,6 @@
 import { ALLEY_CHUNKS } from './chunks/alley';
 import { CASTLE_CHUNKS } from './chunks/castle';
+import type { BuildingTone } from '../render/palette';
 
 /**
  * Hand-made room (chunk) templates, assembled procedurally (the Dead Cells / Spelunky approach:
@@ -46,13 +47,12 @@ export function sideWindowRows(slab: number): number[] {
 /** Width of the sill/landing the generator guarantees next to a side window. */
 export const SIDE_WINDOW_SILL = 3;
 
-/** Back-wall colours for one building chunk. */
+/** Back-wall tone of one building chunk; the colours live in the theme (render/palette.ts). */
 export interface RoomStyle {
-  readonly wall: string;
-  readonly window: string;
+  readonly tone: BuildingTone;
 }
 
-export const DEFAULT_ROOM_STYLE: RoomStyle = { wall: '#1c1c22', window: '#0e0e12' };
+export const DEFAULT_ROOM_STYLE: RoomStyle = { tone: 'plain' };
 
 export interface RoomTemplate {
   readonly id: string;

@@ -6,15 +6,20 @@ import type { RoomStyle, RoomTemplate } from '../rooms';
  * - Buildings: four storeys on the storey grid (4 tiles of headroom + 1 slab, see rooms.ts),
  *   joined by ladders, holes and short platform hops. Opaque back wall with windows.
  * - Alleys (`outdoor`): open to the sky between two facades. "Vão" has the wall-jump shaft:
- *   its top landing is out of reach of a normal jump.
+ *   its top landing is out of reach of a normal jump. "Passarela" has a catwalk at the third
+ *   storey, joining the facades' side windows.
+ *
+ * Middle chunks may be stamped mirrored (biome `mirrorChance`), so draw them for either side:
+ * the player always comes in from the left, by the ground door or a side window.
+ * E markers are candidates: the biome's `encounters` ramp decides how many of them spawn.
  *
  * Generated from a storey-grid sketch; edit the rows directly, keeping every row 30 wide and
  * every standing surface reachable (game.test.ts checks it).
  */
 
-const BUILDING_A: RoomStyle = { wall: '#1c2029', window: '#0e1118' };
-const BUILDING_B: RoomStyle = { wall: '#221c20', window: '#100d10' };
-const BUILDING_C: RoomStyle = { wall: '#1a2420', window: '#0c1210' };
+const BUILDING_A: RoomStyle = { tone: 'a' };
+const BUILDING_B: RoomStyle = { tone: 'b' };
+const BUILDING_C: RoomStyle = { tone: 'c' };
 
 export const ALLEY_CHUNKS: readonly RoomTemplate[] = [
   {
@@ -56,17 +61,17 @@ export const ALLEY_CHUNKS: readonly RoomTemplate[] = [
       '#............................#',
       '#..WW......WW......WW....WW..#',
       '#..WW......WW......WW....WW..#',
-      '#..H............E............#',
+      '#..H............E........E...#',
       '###H##########################',
       '#..H.........................#',
       '#..HW......WW......WW....WW..#',
       '#..HW......WW......WW....WW..#',
-      '#..H..........H.......E......#',
+      '#..H..........H...E..........#',
       '##############H#####.....#####',
       '#.............H..............#',
       '#..WW......WW.H....WW....WW..#',
       '#..WW......WW.H....WW....WW..#',
-      '#......E......H...........H..#',
+      '#......E......H...E.......H..#',
       '##########################H###',
       '#.............##..........H..#',
       '#..WW.........##.....WW...H..#',
@@ -85,12 +90,12 @@ export const ALLEY_CHUNKS: readonly RoomTemplate[] = [
       '#............................#',
       '#...WW....WW......WW....WW...#',
       '#...WW....WW......WW....WW...#',
-      '#.......H.....E..............#',
+      '#.......H.....E........E.....#',
       '########H#####################',
       '#.......H....................#',
       '#...WW..H.WW......WW....WW...#',
       '#...WW..H.WW......WW....WW...#',
-      '#.......H...........E.....H..#',
+      '#.......H..E........E.....H..#',
       '#############..###########H###',
       '#.........................H..#',
       '#...WW....WW...====W....WWH..#',
@@ -119,7 +124,7 @@ export const ALLEY_CHUNKS: readonly RoomTemplate[] = [
       '#...................H........#',
       '#...WW......WW......HW.......#',
       '#...WW......WW......HW.......#',
-      '#....E....H.........H........#',
+      '#....E....H...E.....H........#',
       '##########H###################',
       '#.........H..................#',
       '#...WW....H.WW......WW.......#',
@@ -129,7 +134,38 @@ export const ALLEY_CHUNKS: readonly RoomTemplate[] = [
       '#.......................H....#',
       '#...WW......WW......WW..H....#',
       '#...WW......WW......WW..H....#',
-      '#.....E........##.E.....H.X..#',
+      '#.....E....E...##.E.....H.X..#',
+      '##############################',
+    ],
+  },
+  {
+    id: 'building-5',
+    name: 'Prédio 5',
+    tags: ['alley'],
+    style: BUILDING_C,
+    // Forced detour: the ground floor is cut by a staircase of 1-tile steps (vaulted while walking)
+    // that comes out on the second storey; the way back down is the ladder at the far side.
+    rows: [
+      '##############################',
+      '#............................#',
+      '#...WW....WW......WW....WW...#',
+      '#...WW....WW......WW....WW...#',
+      '#.......E............E.......#',
+      '############......############',
+      '#............................#',
+      '#...WW....WW.====.WW....WW...#',
+      '#...WW....WW......WW....WW...#',
+      '#.....E...##..........H..E...#',
+      '######################H#######',
+      '#.....................H......#',
+      '#...WW....WW......WW..H.WW...#',
+      '#...WW....WW......WW..H.WW...#',
+      '#...............E...E.H...H..#',
+      '######........############H###',
+      '#...........##............H..#',
+      '#...WW....####....WW....WWH..#',
+      '#...WW..######....WW....WWH..#',
+      '#.....########..E..#..E...H..#',
       '##############################',
     ],
   },
@@ -146,10 +182,10 @@ export const ALLEY_CHUNKS: readonly RoomTemplate[] = [
       '#..H.E.......................#',
       '#==H===......................#',
       '#..H.........................#',
-      '#..H.........................#',
+      '#..H.....................E...#',
       '#..H...................====..#',
       '#..H.........................#',
-      '#==H===......................#',
+      '#==H===..............E.......#',
       '#..H...............====......#',
       '#..H.........................#',
       '#..H....................E....#',
@@ -181,13 +217,44 @@ export const ALLEY_CHUNKS: readonly RoomTemplate[] = [
       '#....#..................E....#',
       '#....#.................====..#',
       '#....#.......................#',
-      '#....#.......................#',
+      '#....#...............E.......#',
       '#....#.............====......#',
       '#....#.......................#',
-      '#....#.......................#',
-      '#..............====..........#',
+      '#....#...........E...........#',
+      '#..............====......E...#',
       '#......................###...#',
       '#...........E..........###...#',
+      '##############################',
+    ],
+  },
+  {
+    id: 'alley-3',
+    name: 'Passarela',
+    tags: ['alley'],
+    outdoor: true,
+    // A catwalk at the third storey, joining the facades' windows: gunmen up there cover the
+    // ground, which has a 1-tile step and a 2-tile barricade for cover.
+    rows: [
+      '#............................#',
+      '#............................#',
+      '#............................#',
+      '#............................#',
+      '#............................#',
+      '#............................#',
+      '#....E.................E.....#',
+      '#...====.............====....#',
+      '#............................#',
+      '#......E..H.............E....#',
+      '#=========H==================#',
+      '#.........H..................#',
+      '#.........H..................#',
+      '#.........H..................#',
+      '#.........H..................#',
+      '#.........H..................#',
+      '#.........H..................#',
+      '#.........H..................#',
+      '#.........H......##..........#',
+      '#.....#...H..E...##...E......#',
       '##############################',
     ],
   },

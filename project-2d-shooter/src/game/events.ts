@@ -1,3 +1,5 @@
+import type { SfxId } from './audio/sounds';
+
 /** Snapshot the React HUD renders. Emitted only when something changed. */
 export interface HudState {
   hp: number;
@@ -11,11 +13,15 @@ export interface HudState {
   reserve: number;
   reloading: boolean;
   fireMode: string;
-  /** Infinite ammo (sword, bow, shield, staves): the HUD shows ∞ instead of a magazine. */
+  /** Infinite ammo (bow, sword): the HUD shows ∞ instead of a magazine. */
   infinite: boolean;
-  /** Short tip for the held weapon ("Mova o mouse rápido para golpear"). */
+  /** Short tip for the held weapon. */
   weaponHint: string;
   attachments: string[];
+  /** Shield stamina 0..1 while fighting with sword and shield (null otherwise): replaces the ammo readout. */
+  stamina: number | null;
+  /** Guard broken (or parried): stunned for a moment. */
+  guardBroken: boolean;
   /** Every weapon carried, in slot order (keys 1-5); `active` marks the one in hand. */
   weapons: { name: string; active: boolean }[];
   /** Reload progress 0..1 (rounded), 0 when not reloading. */
@@ -36,6 +42,12 @@ export interface HudState {
   /** Measuring grid on (F2). */
   grid: boolean;
   frozen: boolean;
+  /** What F / W would do right now ("[F] pegar AK-47", "[W] sair"); '' = nothing in reach. */
+  prompt: string;
+  /** Progress from the spawn to the exit, 0..1 (rounded). */
+  progress: number;
+  /** Reinforcement pressure (zombie mode): enemies alive vs the cap; null in other modes. */
+  horde: { alive: number; max: number; wave: number; warning: boolean; grabbed: boolean; struggle: number } | null;
 }
 
 export interface RunSummary {
@@ -67,4 +79,6 @@ export type GameEvents = {
   'run:over': RunSummary;
   /** A replay (F10) started (true) or finished (false). */
   replay: boolean;
+  /** Play a sound (game/audio): `pan` -1..1 from screen position, `gain` from distance. */
+  sfx: { id: SfxId; pan: number; gain: number };
 };

@@ -1,26 +1,24 @@
 import type { Entity } from '@engine/ecs/world';
-import { clamp, DEG2RAD } from '@engine/math/math';
+import { DEG2RAD } from '@engine/math/math';
 import { segmentDistance } from '@engine/math/segment';
 import type { Rect } from '@engine/math/rect';
 import type { Vec2 } from '@engine/math/vec2';
 import type { TileGrid } from '@engine/physics/tilegrid';
 import type { HumanoidAnimator } from '../character/animator';
 import { raycastParts, rigHitParts, type HitPart } from '../character/hitbox';
-import { AI, BALLISTICS, HIT_ZONES, IMPACT, RICOCHET, type HitZone } from '../config';
-import { Aim, Arsenal, Body, Brain, Faction, Guard, Health, Intent, PlayerControl, Position, Projectile, Ragdoll, Rig, Velocity, type BodyData, type PlayerState, type ProjectileData } from '../world/components';
+import { AI, BALLISTICS, GUNPLAY, HIT_ZONES, IMPACT, RICOCHET, type HitZone } from '../config';
+import { Aim, Arsenal, Body, Brain, Faction, Health, Intent, PlayerControl, Position, Projectile, Ragdoll, Rig, Velocity, type BodyData, type PlayerState, type WeaponState } from '../world/components';
 import { GUN_MODELS, withAttachments } from '../content/weapons/models';
-import { bodyCenter, bodyRect, shoulder } from '../world/geometry';
+import { bodyRect, shoulder } from '../world/geometry';
 import { spawnProjectile } from '../world/prefabs';
 import type { RunSystem } from './context';
 import { applyDamage } from './damage';
-import { dropSlug, spawnBlood, spawnExplosion, spawnImpact, spawnShieldFx, spawnShotFx } from './effects';
+import { dropSlug, spawnBlood, spawnImpact, spawnShieldFx, spawnShotFx } from './effects';
 
 /** Moves that set the facing themselves (the mouse can't turn the body mid-move). */
 const FACING_LOCKED: ReadonlySet<PlayerState> = new Set(['roll', 'mantle', 'wallSlide']);
 /** A bullet passing this close (px, box around the body centre) suppresses an enemy. */
 const SUPPRESS_RADIUS = 16;
-/** Seconds after a weapon swap before the new gun can fire (matches the swap animation). */
-const SWITCH_DELAY = 0.28;
 /** Both hands busy (or the gun slung): no shooting. */
 const HANDS_BUSY: ReadonlySet<PlayerState> = new Set(['climb', 'mantle', 'roll']);
 
@@ -55,22 +53,25 @@ export const weaponSystem: RunSystem = {
         arsenal.weapons[arsenal.active]!.reloadLeft = 0;
         arsenal.active = next;
         const drawn = arsenal.weapons[next]!;
-        drawn.cooldown = Math.max(drawn.cooldown, SWITCH_DELAY);
+        drawn.cooldown = Math.max(drawn.cooldown, GUNPLAY.switchDelay);
       }
 
       const ws = arsenal.weapons[arsenal.active]!;
       const { stats, fireMode } = ws.weapon;
       ws.cooldown = Math.max(0, ws.cooldown - dt);
-      ws.bloom = Math.max(0, ws.bloom - dt * 2.5);
-      // Sword, shield and magic are driven by the medieval system; they never fire bullets here.
-      const { behaviors } = ws.weapon;
-      if (behaviors.has('cursorSwing') || behaviors.has('shield') || behaviors.has('magicShield')) continue;
+      // Bloom only recovers once the gun is ready again: sustained fire keeps opening the cone.
+      if (ws.cooldown <= 0) ws.bloom = Math.max(0, ws.bloom - dt * GUNPLAY.bloomRecoveryPerSecond);
+      // A click a little before the gun is ready is remembered (semi-auto and burst triggers).
+      ws.queuedShot = intent.firePressed ? GUNPLAY.triggerBuffer : Math.max(0, (ws.queuedShot ?? 0) - dt);
+      // Swords fight through the fencing system; they never fire here.
+      if (ws.weapon.behaviors.has('blade')) continue;
 
       const startReload = () => {
         if (ws.reserve <= 0 || ws.ammo >= stats.magazine) return;
         ws.reloadLeft = stats.reloadTime;
       };
 
+      if (ws.reloadLeft > 0 && intent.firePressed) interruptReload(ws);
       if (ws.reloadLeft > 0) {
         ws.reloadLeft -= dt;
         if (ws.reloadLeft <= 0) {
@@ -86,19 +87,28 @@ export const weaponSystem: RunSystem = {
       const state = world.get(e, PlayerControl)?.state;
       if (state && HANDS_BUSY.has(state)) continue;
 
-      if (fireMode === 'burst' && intent.firePressed && ws.burstLeft === 0) ws.burstLeft = ws.weapon.def.burstCount ?? 3;
-      const wantsShot = fireMode === 'auto' ? intent.fireHeld : fireMode === 'burst' ? ws.burstLeft > 0 : intent.firePressed;
+      const pulled = ws.queuedShot > 0;
+      if (fireMode === 'burst' && pulled && ws.burstLeft === 0 && ws.cooldown <= 0 && ws.reloadLeft <= 0) {
+        ws.burstLeft = ws.weapon.def.burstCount ?? 3;
+      }
+      const wantsShot = fireMode === 'auto' ? intent.fireHeld : fireMode === 'burst' ? ws.burstLeft > 0 : pulled;
       if (!wantsShot || ws.cooldown > 0 || ws.reloadLeft > 0) continue;
+      ws.queuedShot = 0;
 
       if (ws.ammo <= 0) {
         ws.burstLeft = 0;
-        ws.cooldown = 0.25;
+        ws.cooldown = GUNPLAY.dryFireDelay;
         startReload(); // auto-reload on empty click
         continue;
       }
 
       ws.ammo--;
       ws.cooldown = 1 / stats.fireRate;
+      // Last round gone: the reload starts on its own (no dry click needed).
+      if (ws.ammo <= 0) {
+        ws.burstLeft = 0;
+        startReload();
+      }
       if (isPlayer) ctx.stats.shots++;
       const shot = { hit: false };
       if (ws.burstLeft > 0) ws.burstLeft--;
@@ -108,7 +118,7 @@ export const weaponSystem: RunSystem = {
       if (ctx.grid.isSolidAtPixel(muzzle.x, muzzle.y)) muzzle = shoulder(pos, body);
       // Converge on the aim point from the barrel (unless it's basically on the gun).
       const toAim = Math.hypot(aim.x - muzzle.x, aim.y - muzzle.y) > 12 ? Math.atan2(aim.y - muzzle.y, aim.x - muzzle.x) : aim.angle;
-      const spread = (stats.spreadDeg + ws.bloom * 6) * DEG2RAD;
+      const spread = (stats.spreadDeg + ws.bloom * GUNPLAY.bloomDeg) * DEG2RAD;
       const damageScale = isPlayer ? 1 : AI.damageScale;
       if (stats.pellets <= 1) {
         spawnProjectile(world, faction.team, ws.weapon, muzzle, toAim + ctx.rng.range(-spread, spread), damageScale, 1, shot);
@@ -129,6 +139,25 @@ export const weaponSystem: RunSystem = {
     }
   },
 };
+
+/**
+ * Fire pressed mid-reload with rounds still in the gun: shell-fed guns stop loading (keeping
+ * the shells already in), magazine guns abort only before the magazine comes out.
+ */
+export function interruptReload(ws: WeaponState): void {
+  const { stats } = ws.weapon;
+  if (ws.reloadLeft <= 0 || stats.reloadTime <= 0) return;
+  const progress = 1 - ws.reloadLeft / stats.reloadTime;
+  if (GUN_MODELS.get(ws.weapon.def.model).mag) {
+    if (ws.ammo > 0 && progress < GUNPLAY.reloadCancelWindow) ws.reloadLeft = 0;
+    return;
+  }
+  const loaded = Math.min(ws.reserve, Math.floor(progress * (stats.magazine - ws.ammo)));
+  if (ws.ammo + loaded <= 0) return;
+  ws.ammo += loaded;
+  ws.reserve -= loaded;
+  ws.reloadLeft = 0;
+}
 
 /** Bullets leave from the rig's gun barrel when there is one, else from just in front of the shoulder. */
 function muzzlePoint(animator: HumanoidAnimator | undefined, pos: { x: number; y: number }, body: BodyData, angle: number): Vec2 {
@@ -196,32 +225,6 @@ export function segmentEntersRect(x0: number, y0: number, x1: number, y1: number
 export function zoneAt(r: Rect, y: number): HitZone {
   const t = (y - r.y) / r.h;
   return t < 0.25 ? 'head' : t > 0.65 ? 'leg' : 'torso';
-}
-
-/** Fireball blast: damages everyone but the projectile's team, weaker with distance. */
-function explodeProjectile(world: Parameters<RunSystem['update']>[0], ctx: Parameters<RunSystem['update']>[1], proj: ProjectileData, at: Vec2): void {
-  const radius = proj.explosionRadius;
-  if (radius <= 0) return;
-  spawnExplosion(world, at.x, at.y, radius);
-  for (const [t, tpos, tbody, health, faction] of [...world.query(Position, Body, Health, Faction)]) {
-    if (faction.team === proj.team || health.hp <= 0 || proj.hit.has(t)) continue;
-    const center = bodyCenter(tpos, tbody);
-    const dist = Math.hypot(center.x - at.x, center.y - at.y);
-    if (dist > radius + tbody.w / 2) continue;
-    const falloff = 1 - 0.65 * clamp(dist / radius, 0, 1);
-    const angle = Math.atan2(center.y - at.y, center.x - at.x);
-    const result = applyDamage(world, ctx, t, {
-      amount: proj.damage * falloff,
-      zone: 'torso',
-      at: center,
-      angle,
-      from: { ...at },
-      by: proj.team,
-      knockback: 160 * falloff,
-    });
-    if (result === 'blocked') spawnShieldFx(world, center.x, center.y, angle, (world.get(t, Guard)?.magicLeft ?? 0) > 0);
-    else spawnBlood(world, center.x, center.y, angle, proj.damage * falloff * 0.5, false);
-  }
 }
 
 /**
@@ -305,9 +308,8 @@ export const projectileSystem: RunSystem = {
               zone === 'head' ? Math.min(IMPACT.maxKnockback, amount * IMPACT.knockbackPerDamage * BALLISTICS.headshotKnock) : undefined,
           });
           if (result === 'dodged') continue; // passes through a dodging target
-          if (result === 'blocked') {
-            spawnShieldFx(world, at.x, at.y, angle, (world.get(t, Guard)?.magicLeft ?? 0) > 0);
-            if (proj.kind === 'fireball') explodeProjectile(world, ctx, proj, at);
+          if (result === 'blocked' || result === 'parried') {
+            spawnShieldFx(world, at.x, at.y, angle, result === 'parried');
             world.destroy(e);
             alive = false;
             break;
@@ -318,7 +320,7 @@ export const projectileSystem: RunSystem = {
           }
 
           // Through the body: spend penetration; the rest carries on weaker, or the bullet drops.
-          // Arrows and fireballs always stop at the first body.
+          // Arrows always stop at the first body.
           proj.power -= cost ?? BALLISTICS.partCost[zone];
           const through = proj.power > 0 && proj.kind === 'bullet';
           spawnBlood(world, at.x, at.y, angle, amount, through);
@@ -327,8 +329,7 @@ export const projectileSystem: RunSystem = {
             vel.x *= BALLISTICS.speedKept;
             vel.y *= BALLISTICS.speedKept;
           } else {
-            if (proj.kind === 'fireball') explodeProjectile(world, ctx, proj, at);
-            else if (proj.kind === 'bullet') dropSlug(world, at.x, at.y, vel.x * 0.08, vel.y * 0.08);
+            if (proj.kind === 'bullet') dropSlug(world, at.x, at.y, vel.x * 0.08, vel.y * 0.08);
             world.destroy(e);
             alive = false;
           }
@@ -364,7 +365,6 @@ export const projectileSystem: RunSystem = {
 
         if (ctx.grid.isSolidAtPixel(nx, ny)) {
           const axis = proj.bouncesLeft > 0 ? ricochetAxis(ctx.grid, pos.x, pos.y, nx, ny, vel.x, vel.y, proj.alwaysRicochet) : null;
-          if (proj.kind === 'fireball') explodeProjectile(world, ctx, proj, { x: pos.x, y: pos.y });
           // Where it struck: the last free point, and the surface it faces.
           const wallX = ctx.grid.isSolidAtPixel(nx, pos.y);
           spawnImpact(world, pos.x, pos.y, angle, wallX ? 'x' : 'y', !axis);
@@ -403,8 +403,7 @@ export const projectileSystem: RunSystem = {
       proj.distanceLeft -= dist;
       // Out of range: the spent bullet falls instead of vanishing.
       if (alive && proj.distanceLeft <= 0) {
-        if (proj.kind === 'fireball') explodeProjectile(world, ctx, proj, { x: pos.x, y: pos.y });
-        else if (proj.kind === 'bullet') dropSlug(world, pos.x, pos.y, vel.x * 0.1, vel.y * 0.1);
+        if (proj.kind === 'bullet') dropSlug(world, pos.x, pos.y, vel.x * 0.1, vel.y * 0.1);
         world.destroy(e);
       }
     }

@@ -1,10 +1,22 @@
 import { describe, expect, it } from 'vitest';
+import { EventBus } from '@engine/core/events';
+import { Input, type InputFrame } from '@engine/input/input';
+import { Camera } from '@engine/render/camera';
+import type { Renderer } from '@engine/render/renderer';
 import { Tile, TileGrid } from '@engine/physics/tilegrid';
+import type { GameEvents } from './events';
+import { RunScene } from './scenes/RunScene';
+import { inCameraView } from './systems/camera';
+import type { RunContext } from './systems/context';
+import { applyDamage } from './systems/damage';
+import { airRate } from './systems/playerMovement';
+import { Arsenal, Brain, Npc, PlayerControl, Position } from './world/components';
+import { spawnEnemy, weaponState } from './world/prefabs';
 import { HumanoidAnimator } from './character/animator';
 import { raycastParts, rigHitParts } from './character/hitbox';
 import { HB } from './character/humanoid';
 import { HIT_ZONES, PLAYER_TUNING, TILE, VIEW } from './config';
-import { ricochetAxis, segmentEntersRect, zoneAt } from './systems/combat';
+import { interruptReload, ricochetAxis, segmentEntersRect, zoneAt } from './systems/combat';
 import { ATTACHMENTS } from './content/attachments/catalog';
 import { BIOME_ORDER, BIOMES } from './content/biomes/catalog';
 import { PLAYER_DEF } from './content/characters/player';
@@ -550,3 +562,116 @@ function expectReachableSurfaces(level: LevelData): void {
   const where = missing.slice(0, 8).map((p) => `${level.rooms[Math.floor(p.c / ROOM_COLS)]?.templateId} ${p.c},${p.r}`);
   expect(where, `${level.seed}: unreachable surfaces`).toEqual([]);
 }
+
+describe('shooter feel', () => {
+  function makeScene(seed: string) {
+    const input = new Input(DEFAULT_BINDINGS);
+    const scene = new RunScene({
+      renderer: { width: 480, height: 270 } as Renderer,
+      input,
+      bus: new EventBus<GameEvents>(),
+      seed,
+      biomeId: 'alleys',
+      frameStats: { fps: 0, steps: 0 },
+      debugOverlay: false,
+      grid: false,
+      onExit: () => undefined,
+      onReplay: () => undefined,
+    });
+    scene.enter();
+    for (const [e] of [...scene.world.query(Npc)]) scene.world.destroy(e);
+    scene.world.flush();
+    const step = (down: string[] = [], pressed: string[] = []) => {
+      const frame: InputFrame = { down: [...down, ...pressed], pressed, released: [], wheel: 0, px: 400, py: 150, inside: true };
+      input.beginTick();
+      input.inject(frame);
+      scene.update(1 / 60);
+    };
+    const [pe] = scene.world.first(PlayerControl)!;
+    const ctx = (scene as unknown as { ctx: RunContext }).ctx;
+    return { scene, step, arsenal: scene.world.get(pe, Arsenal)!, ctx };
+  }
+
+  it('sustained fire opens the cone; it closes again only once the trigger is let go', () => {
+    const { step, arsenal } = makeScene('FEEL-1');
+    arsenal.active = 3; // AK
+    const ak = arsenal.weapons[3]!;
+    for (let i = 0; i < 40; i++) step(['Mouse0']);
+    expect(ak.bloom, 'spraying blooms').toBeGreaterThan(0.6);
+    for (let i = 0; i < 40; i++) step();
+    expect(ak.bloom, 'recovered after letting go').toBe(0);
+  });
+
+  it('a semi-auto click just before the gun is ready still fires', () => {
+    const { step, arsenal } = makeScene('FEEL-2');
+    const glock = arsenal.weapons[0]!;
+    const full = glock.ammo;
+    step([], ['Mouse0']);
+    for (let i = 0; i < 5; i++) step();
+    step([], ['Mouse0']); // ~0.1 s after the first shot, the Glock needs ~0.17 s
+    for (let i = 0; i < 20; i++) step();
+    expect(glock.ammo).toBe(full - 2);
+  });
+
+  it('the last round starts the reload on its own; firing early in a reload interrupts it', () => {
+    const { step, arsenal } = makeScene('FEEL-3');
+    const glock = arsenal.weapons[0]!;
+    glock.ammo = 1;
+    step([], ['Mouse0']);
+    expect(glock.ammo).toBe(0);
+    expect(glock.reloadLeft).toBeGreaterThan(0);
+
+    glock.ammo = 5;
+    glock.reloadLeft = glock.weapon.stats.reloadTime * 0.95; // magazine still in
+    interruptReload(glock);
+    expect(glock.reloadLeft).toBe(0);
+    glock.reloadLeft = glock.weapon.stats.reloadTime * 0.5; // magazine already out
+    interruptReload(glock);
+    expect(glock.reloadLeft).toBeGreaterThan(0);
+
+    // Shell by shell: stopping halfway keeps the shells already loaded.
+    const shotgun = weaponState(assembleWeapon(WEAPONS.get('shotgun')));
+    shotgun.ammo = 2;
+    shotgun.reloadLeft = shotgun.weapon.stats.reloadTime * 0.5;
+    interruptReload(shotgun);
+    expect(shotgun.reloadLeft).toBe(0);
+    expect(shotgun.ammo).toBe(4);
+  });
+
+  it('heavy enemies shrug off light body hits; heavy hits and headshots still stagger', () => {
+    const { scene, ctx } = makeScene('FEEL-4');
+    const spawn = scene.level.spawn;
+    const manager = spawnEnemy(scene.world, 'manager', { x: spawn.x + 80, y: spawn.y });
+    const brain = scene.world.get(manager, Brain)!;
+    const at = { ...scene.world.get(manager, Position)! };
+    applyDamage(scene.world, ctx, manager, { amount: 8, zone: 'torso', at, angle: 0 });
+    expect(brain.staggerLeft).toBe(0);
+    applyDamage(scene.world, ctx, manager, { amount: 8, zone: 'head', at, angle: 0 });
+    expect(brain.staggerLeft).toBeGreaterThan(0);
+    brain.staggerLeft = 0;
+    applyDamage(scene.world, ctx, manager, { amount: 30, zone: 'torso', at, angle: 0 });
+    expect(brain.staggerLeft).toBeGreaterThan(0);
+    // Regular gunmen flinch at anything.
+    const guard = spawnEnemy(scene.world, 'security', { x: spawn.x + 120, y: spawn.y });
+    applyDamage(scene.world, ctx, guard, { amount: 5, zone: 'leg', at, angle: 0 });
+    expect(scene.world.get(guard, Brain)!.staggerLeft).toBeGreaterThan(0);
+  });
+
+  it('air momentum: overspeed bleeds slowly, braking or letting go at normal speed stays sharp', () => {
+    const T = PLAYER_TUNING;
+    expect(airRate(false, 230, T.airSpeed, T.airAccel)).toBe(T.airOverspeedDrag);
+    expect(airRate(false, 230, 0, T.airAccel)).toBe(T.airOverspeedDrag);
+    expect(airRate(false, 230, -T.airSpeed, T.airAccel)).toBe(T.airAccel);
+    expect(airRate(false, 80, 0, T.airAccel)).toBe(T.airAccel);
+    expect(airRate(true, 230, T.walkSpeed, T.groundAccel)).toBe(T.groundAccel);
+  });
+
+  it('gunmen only count as on screen inside the camera view', () => {
+    const cam = new Camera(480, 270);
+    cam.snapTo(1000, 500);
+    expect(inCameraView(cam, 1230, 500)).toBe(true);
+    expect(inCameraView(cam, 1250, 500)).toBe(false);
+    expect(inCameraView(cam, 1000, 640, 6)).toBe(true);
+    expect(inCameraView(cam, 1000, 650, 6)).toBe(false);
+  });
+});

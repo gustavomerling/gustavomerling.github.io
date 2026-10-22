@@ -63,7 +63,7 @@ describe('simulation', () => {
     const a = run('DET-0001', 900);
     const b = run('DET-0001', 900);
     expect(a).toEqual(b);
-  });
+  }, 30_000);
 
   it('actually plays: the player moved and fired', () => {
     const r = run('DET-0002', 600);

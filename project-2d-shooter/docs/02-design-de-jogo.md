@@ -50,6 +50,7 @@ Valores em [src/game/config.ts](../src/game/config.ts) (`PLAYER_TUNING`).
 
 - Andar 95 u/s · correr 155 u/s · agachado 45 u/s.
 - Soltar o Espaço cedo corta o pulo. *Coyote time* 0,1 s; *jump buffer* 0,12 s.
+- **Impulso no ar**: velocidade acima da normal (pulo do slide, walljump, soltar o Shift no ar) só se perde devagar (`airOverspeedDrag`); apertar para o outro lado ainda freia na hora, e soltar as teclas em velocidade normal para rápido.
 - **Slide**: S em movimento rápido → 235 u/s decaindo por 0,45 s, colisor baixo. Começar um slide dá ~0,3 s de invulnerabilidade (esquiva). Pular durante o slide mantém o impulso; segurar S no ar entra em slide ao pousar.
 - **Escadas**: W/S sobem e descem, A/D ignorados; Espaço salta para fora.
 - **Walljump**: com parede a ~2 u, Espaço chuta para longe dela (340 u/s para cima, 210 u/s para o lado); 0,16 s sem controle aéreo.
@@ -63,6 +64,8 @@ Valores em [src/game/config.ts](../src/game/config.ts) (`PLAYER_TUNING`).
 - **Morte**: o corpo vira **ragdoll** (física verlet) empurrado pelo último golpe; some após ~12 s.
 - **Jogador**: ~0,35 s de invulnerabilidade após levar dano (o boneco pisca).
 - **Munição**: infinita por enquanto (sem drops); recarregar ainda leva tempo.
+- **Dispersão** (`GUNPLAY` no config): cada tiro abre o cone pelo `recoil` da arma, até +6°; ele só fecha quando a arma já poderia atirar de novo. Segurar o gatilho ou clicar no limite abre o cone; ritmar os tiros mantém a precisão.
+- **Gatilho**: um clique até 0,12 s antes da arma estar pronta ainda dispara. A última bala do pente já começa a recarga. Atirar durante a recarga com balas no pente a interrompe: pente só antes de sair da arma; escopeta a qualquer momento, ficando com os cartuchos já colocados.
 - **Feedback**: marcador na mira ao acertar (laranja no headshot, vermelho na kill), coice da arma no rig. Sem efeitos de partícula nem som nesta fase.
 
 ## Câmera lenta (bullet time)
@@ -74,10 +77,13 @@ Valores em [src/game/config.ts](../src/game/config.ts) (`PLAYER_TUNING`).
 Escolhidos no menu principal ([content/modes/catalog.ts](../src/game/content/modes/catalog.ts)).
 
 - **Jogar** (campanha): o loop descrito acima, com estagiários, seguranças, analistas, zeladores, auditores e gerentes.
-- **Modo zumbi**: só zumbis, e eles não param.
-  - Os zumbis da fase são os do pool do modo (zumbi, corredor, inchado), no lugar do pool do bioma.
-  - **Levas**: a cada 3,5 s, se houver menos de 14 vivos, nasce um zumbi no chão **atrás** do jogador (260 a 420 unidades, fora da tela). O sorteio usa o RNG de gameplay, então o replay continua exato.
-  - Como nascem atrás, a frente (a saída) fica livre: a pressão vem da esquerda.
+- **Modo zumbi**: chegar à saída com a horda atrás. Pontuação: kills, headshots e tempo.
+  - Os zumbis da fase são os do pool do modo (zumbi, corredor, inchado), no lugar do pool do bioma. Ficam parados até **notar** o jogador (dentro do `sightRange`, através de paredes), **ouvir um tiro** ou levar um; daí em diante nunca perdem a pista. Atirar acorda a vizinhança: o silenciador vale ouro.
+  - **Ondas** ([systems/horde.ts](../src/game/systems/horde.ts), valores em `horde` no [catálogo de modos](../src/game/content/modes/catalog.ts)): respiro (nada nasce; os 3 s finais são o aviso) e **surto** (grupos chegam um zumbi por vez, a cada 0,5 s). Primeiro surto aos 8 s.
+  - **Intensidade** 0..1 = metade tempo vivo (4 min para o máximo), metade progresso até a saída. Ela move tudo: respiro 10→6 s, surto 10→18 s, grupo a cada 3,2→1,8 s com 1→3 zumbis, teto de 7→16 caçando perto, e o sorteio puxa mais corredores e inchados (no máximo 4 corredores e 2 inchados por vez).
+  - **Nascimento justo**: no chão, atrás do jogador (na frente só se atrás não couber), **fora da câmera** (a faixa de 260–420 u começa na borda da tela se ela for mais larga), longe de outro zumbi e **com rota** até o jogador.
+  - **Reciclagem**: zumbi a mais de 640 u para trás, ou parado 6 s sem progresso, some quando fora da tela (não conta kill) e libera o teto.
+  - **Munição finita**: cada arma começa com 2 pentes de reserva; cada kill devolve 30% de um pente a todas as armas (teto de 5 pentes). Tiro no corpo gasta bala sem render nada.
 
 ## Zumbis
 
@@ -89,8 +95,16 @@ Os três são melee (o mesmo cérebro do estagiário) com `omniscient`: sentem o
 | Zumbi | Vida | Velocidade | Alcance de percepção |
 |---|---|---|---|
 | Zumbi | 35 | 38 | 230 |
-| Corredor | 22 | 95 | 300 |
+| Corredor | 22 | 55 (arrancada 145) | 300 |
 | Inchado | 120 | 28 | 200 |
+
+**Papéis** (`zombie` em cada inimigo do catálogo; regras comuns em `ZOMBIE`, [systems/zombies.ts](../src/game/systems/zombies.ts)):
+
+- **Zumbi — agarra.** Para na sua frente com os braços armados (0,5 s): recuar, chutar, deslizar ou acertar qualquer tiro cancela. Se pega, **prende** (não anda nem pula) e morde em 0,85 s (22). Para escapar: apertar **A/D/Espaço 3 vezes**, ou acertar o zumbi (qualquer tiro ou chute o faz soltar). Só um agarra por vez; os outros arranham (8). Depois de soltar ou ser mordido, 0,6 s sem novo agarrão.
+- **Corredor — arrancada.** Anda devagar até te ver no mesmo andar a até 150 u: **para e se arma por 0,45 s** (a deixa para virar e mirar) e dispara a 145 u/s por até 1,6 s (anda mais que você andando, menos que correndo). Arranha forte (14), não agarra. Recarga da arrancada 3,5 s.
+- **Inchado — estoura.** Lento, agarra mais tempo (1 s, 5 apertos para escapar, mordida 32). Ao morrer **estoura**: mata os zumbis num raio de 44 u (contam como kills, inclusive outro inchado, em cadeia) e tira 25 do jogador a até 40 u. Matar de longe no meio do grupo é uma ferramenta; matar agarrado custa caro.
+- **Rastejante** (perna atingida): rasteja pela rota (sem pulos nem escadas), ataca devagar (×1,5), só belisca (6) e nunca agarra.
+- **Fila, não pilha**: zumbis no mesmo andar andando um contra o outro desaceleram e param a ~6 u, formando uma fila legível em vez de um bloco com todas as cabeças no mesmo ponto.
 
 ## Inimigos (IA)
 
@@ -105,7 +119,9 @@ Placeholders: os nomes vêm do tema antigo e vão mudar.
 
 - **Percepção**: veem dentro do alcance, na direção em que olham (ou bem perto, ou se já alertas), com linha de visão (paredes bloqueiam; plataformas e escadas não). Ouvem os tiros do jogador no raio de ruído da arma. Levar tiro também alerta.
 - **Memória**: ficam alertas ~3 s e vão até a última posição conhecida.
-- **Atiradores**: tempo de reação, mira com giro limitado (lentos em câmera lenta), erro de mira, rajadas com pausa, agacham atrás de degraus de 1 tile entre rajadas. Causam 50% do dano da arma.
+- **Atiradores**: sem visão, seguem a mesma rota dos zumbis até a última posição conhecida (escadas e pulos incluídos), em vez de andar reto. Tempo de reação, mira com giro limitado (lentos em câmera lenta), erro de mira, rajadas com pausa, agacham atrás de degraus de 1 tile entre rajadas. Causam 50% do dano da arma.
+- **Jogo limpo**: atiradores só disparam de dentro da tela; fora dela andam até entrar, e o tempo de reação só conta depois. O erro de mira começa em 2× e assenta em ~1,2 s com você à vista (perder a visão zera).
+- **Tanque** (gerente): não se esconde, avança devagar entre as rajadas e tem *poise* 20: tiros no corpo abaixo disso não o atordoam (headshot sempre atordoa), então não dá para travá-lo com a Uzi.
 - **Melee**: corre até você, pula obstáculos, prepara o soco (braço para trás) e bate com *knockback*.
 - **Patrulha** quando calmos; **alerta em grupo** num raio de ~140 u.
 
@@ -121,12 +137,14 @@ Attachments ([content/attachments/catalog.ts](../src/game/content/attachments/ca
 
 **Chunks feitos à mão, montados proceduralmente**, numa fileira da esquerda para a direita ([procgen/level.ts](../src/game/procgen/level.ts)).
 
-1. **Ritmo**: prédio, beco, prédio, beco… (um beco sempre fica entre dois prédios) e nunca o mesmo chunk duas vezes seguidas. O primeiro e o último prédio são fixos (`startTemplate` / `endTemplate`).
-2. **Prédios**: quatro andares na grade, ligados por escadas, buracos na laje e plataformas intermediárias. Parede de fundo com janelas por onde se vê o céu. Os andares de cima se ligam aos vizinhos pelas janelas laterais.
-3. **Becos** (`outdoor`): abertos para o céu entre duas fachadas. O beco "Vão" tem um poço que só se sobe com walljump.
-4. **Marcadores** no template: `P` (início), `X` (saída), `E` (inimigo, sorteado do *pool* do bioma), `W` (janela), `H` (escada).
+1. **Ritmo**: prédio, beco, prédio, beco… (um beco sempre fica entre dois prédios), de 5 a 7 chunks. Nunca o mesmo chunk duas vezes no mesmo mapa (enquanto houver opção). O primeiro e o último prédio são fixos (`startTemplate` / `endTemplate`).
+2. **Espelho**: cada chunk do meio tem 50% de chance de vir espelhado (escadas e buracos trocam de lado), o que dobra as rotas sem sair da grade (`mirrorChance` no bioma).
+3. **Prédios**: quatro andares na grade, ligados por escadas, buracos na laje e plataformas intermediárias. Parede de fundo com janelas por onde se vê o céu. Os andares de cima se ligam aos vizinhos pelas janelas laterais. O "Prédio 5" corta o térreo com uma escadaria de degraus de 1 tile (sobe com o vault, andando) que leva ao 2º andar; volta-se ao térreo pela escada de mão do outro lado. Espelhado, o caminho é o inverso: escada de mão para subir, escadaria para descer.
+4. **Becos** (`outdoor`): abertos para o céu entre duas fachadas. "Vão" tem um poço que só se sobe com walljump. "Passarela" tem uma passarela no 3º andar ligando as janelas das fachadas; atiradores lá em cima cobrem o chão, que tem um degrau e uma barricada de 2 tiles como cobertura.
+5. **Marcadores** no template: `P` (início), `X` (saída), `E` (candidato a inimigo), `W` (janela), `H` (escada).
+6. **Encontros** (`encounters` no bioma): os `E` são candidatos. A fração preenchida sobe ao longo do mapa (35% na primeira sala com inimigos → 75% na última; uns 18 a 24 inimigos por mapa), com pelo menos 2 por sala e espalhada pelos andares. Nada a menos de 4 tiles da parede esquerda da sala (por onde se entra, pela porta ou pela janela). No *pool*, `from` atrasa os pesados: auditor a partir de 25% do mapa, gerente a partir de 50%.
 
-Regras de autoria em [procgen/rooms.ts](../src/game/procgen/rooms.ts) e os chunks em [procgen/chunks/alley.ts](../src/game/procgen/chunks/alley.ts). Os testes garantem que toda superfície de cada chunk é alcançável e que um bot atravessa o mapa inteiro.
+Regras de autoria em [procgen/rooms.ts](../src/game/procgen/rooms.ts) e os chunks em [procgen/chunks/alley.ts](../src/game/procgen/chunks/alley.ts). Os testes garantem que toda superfície de cada chunk é alcançável, que um bot jogando com as teclas segue a rota até a saída em todo chunk (normal e espelhado), e uma varredura de 150 seeds ([procgen/sweep.test.ts](../src/game/procgen/sweep.test.ts)): saída alcançável com o pulo do jogador, nenhum lugar alcançável sem volta (*softlock*), todo inimigo em chão firme e com rota para a saída, rampa de dificuldade e determinismo.
 
 ## Decisões em aberto
 

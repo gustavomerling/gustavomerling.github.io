@@ -1,11 +1,23 @@
 import { KICK } from '../config';
-import { Body, Faction, Health, PlayerControl, Position } from '../world/components';
+import { Body, Faction, Fencer, Health, PlayerControl, Position } from '../world/components';
 import { bodyRect } from '../world/geometry';
 import type { RunSystem } from './context';
 import { applyDamage } from './damage';
 import { spawnBlood } from './effects';
+import { meleeHitJuice } from './juice';
+import { enter } from './fencing';
 
-/** Player kick (Q): when the foot lands, everyone of the other team in reach is shoved and staggered. */
+/**
+ * Kicking a raised shield (modo medieval): no damage gets through, but it takes
+ * `KICK.damage x GUARD_KICK.guardDamage x blockCost` stamina and knocks the shield aside for
+ * `GUARD_KICK.open` seconds, long enough to land a quick cut. The answer to a turtling knight.
+ */
+export const GUARD_KICK = { guardDamage: 2.5, open: 0.35 } as const;
+
+/**
+ * Player kick (Q): when the foot lands, everyone of the other team in reach is shoved and
+ * staggered. A kicked shield is knocked aside (see GUARD_KICK).
+ */
 export const playerMeleeSystem: RunSystem = {
   name: 'playerMelee',
   update(world, ctx) {
@@ -34,8 +46,23 @@ export const playerMeleeSystem: RunSystem = {
         if (r.x > zone.x + zone.w || r.x + r.w < zone.x || r.y > zone.y + zone.h || r.y + r.h < zone.y) continue;
         const angle = pc.facing > 0 ? -0.35 : Math.PI + 0.35;
         const at = { x: r.x + r.w / 2, y: hipY };
-        applyDamage(world, ctx, t, { amount: KICK.damage, zone: 'torso', at, angle, by: faction.team, knockback: KICK.knockback });
-        spawnBlood(world, at.x, at.y, angle, 4, false);
+        const from = { x: pos.x + body.w / 2, y: hipY };
+        const result = applyDamage(world, ctx, t, {
+          amount: KICK.damage,
+          zone: 'torso',
+          at,
+          angle,
+          from,
+          by: faction.team,
+          knockback: KICK.knockback,
+          guardDamage: GUARD_KICK.guardDamage,
+        });
+        const shield = world.get(t, Fencer);
+        if (result === 'blocked' && shield?.phase === 'block') enter(shield, 'hurt', GUARD_KICK.open);
+        if (result === 'hit' || result === 'killed') {
+          spawnBlood(world, at.x, at.y, angle, 4, false);
+          meleeHitJuice(world, angle);
+        }
       }
     }
   },

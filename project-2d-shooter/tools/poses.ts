@@ -6,12 +6,14 @@
  */
 import { HumanoidAnimator, type RigInput } from '@game/character/animator';
 import { drawHumanoid, rigStyle } from '@game/character/draw';
+import { BLOCK_POSE, bladePose, FENCING_KITS, GUARD_POSE, type BladeKey, type FencePhase } from '@game/content/blades/kits';
 import { GUN_MODELS, withAttachments } from '@game/content/weapons/models';
 
 const params = new URLSearchParams(location.search);
 const scale = Number(params.get('scale') ?? 6);
 const CELL = { w: 44, h: 40 };
 const style = rigStyle('#f2f2f2');
+const fenceStyle = rigStyle('#f2f2f2', { shield: true });
 const gun = (id: string) => GUN_MODELS.get(id);
 
 interface Cell {
@@ -23,6 +25,10 @@ interface Cell {
   scenery?: (ctx: CanvasRenderingContext2D) => void;
   /** Feet height above the ground line (airborne cells). */
   lift?: number;
+  /** Animator fields the AI sets directly (melee wind-up, punch), before each step. */
+  setup?: (anim: HumanoidAnimator, i: number, n: number) => void;
+  /** Body colour (zombies...). */
+  style?: ReturnType<typeof rigStyle>;
 }
 
 const base: RigInput = { state: 'idle', vx: 0, vy: 0, facing: 1, aimAngle: 0, gun: gun('glock') };
@@ -39,7 +45,66 @@ const ladder = (ctx: CanvasRenderingContext2D) => {
   for (let y = -34; y < 4; y += 4) ctx.fillRect(-5, y, 10, 1.2);
 };
 
+/** Sword and shield (modo medieval): the blade pose drives the sword hand. */
+const fence = (blade: BladeKey, shieldUp = false): Partial<RigInput> => ({ gun: gun('iron-sword'), blade, shield: true, shieldUp });
+const SWINGS = FENCING_KITS.get('player').swings;
+const KNIGHT = FENCING_KITS.get('knight');
+const zombieStyle = rigStyle('#8fbf7a');
+const knightStyle = rigStyle('#ddd6c2', { skeleton: true, shield: true });
+/** A fencer in a phase, `p` through it (blade from the knight's kit, body tells from the phase). */
+const duel = (phase: FencePhase, p: number, swing = 0, parry = 0): Partial<RigInput> => ({
+  ...fence(bladePose(KNIGHT.swings[swing]!, phase, p), phase === 'block'),
+  fencePhase: phase,
+  fenceProgress: p,
+  parry,
+});
+const unarmed = { gun: null, zombie: { rush: 'none' as const, grabbing: false } };
+
 const allRows: { title: string; cells: Cell[] }[] = [
+  {
+    title: 'Telegrafia: cavaleiro (corte alto: preparo 0.4/1, golpe, recupera), atordoado, escudo, parry',
+    cells: [
+      { label: 'guarda', steps: 30, style: knightStyle, input: () => duel('ready', 0) },
+      { label: 'preparo .4', steps: 30, style: knightStyle, input: () => duel('windup', 0.4) },
+      { label: 'preparo 1', steps: 30, style: knightStyle, input: () => duel('windup', 1) },
+      { label: 'golpe .3', steps: 34, style: knightStyle, input: (i) => (i < 30 ? duel('windup', 1) : duel('strike', ((i - 30) / 4) * 0.3)) },
+      { label: 'golpe 1', steps: 40, style: knightStyle, input: (i) => (i < 30 ? duel('windup', 1) : duel('strike', Math.min(1, (i - 30) / 6))) },
+      { label: 'recupera .5', steps: 40, style: knightStyle, input: (i) => (i < 30 ? duel('strike', 1) : duel('recover', ((i - 30) / 10) * 0.5)) },
+      { label: 'atordoado', steps: 40, style: knightStyle, input: () => ({ ...duel('stunned', 0.2), lunge: -1 }) },
+      { label: 'escudo', steps: 30, style: knightStyle, input: () => duel('block', 0.5) },
+      { label: 'parry', steps: 32, style: knightStyle, input: (i) => duel('block', 0.5, 0, i < 30 ? 0 : 1) },
+    ],
+  },
+  {
+    title: 'Telegrafia: zumbi (agarrão 0.5/1, bote, segurando), corredor (tensão, corrida), rastejante (preparo, golpe)',
+    cells: [
+      { label: 'parado', steps: 30, style: zombieStyle, input: () => unarmed },
+      { label: 'agarra .5', steps: 30, style: zombieStyle, setup: (a, i, n) => (a.meleeWindup = (0.5 * i) / n), input: () => unarmed },
+      { label: 'agarra 1', steps: 30, style: zombieStyle, setup: (a, i, n) => (a.meleeWindup = i / n), input: () => unarmed },
+      { label: 'bote', steps: 33, style: zombieStyle, setup: (a, i) => (i < 30 ? (a.meleeWindup = i / 30) : i === 30 && a.punch()), input: () => unarmed },
+      { label: 'segurando', steps: 40, style: zombieStyle, input: () => ({ ...unarmed, zombie: { rush: 'none' as const, grabbing: true } }) },
+      { label: 'tensão', steps: 30, style: zombieStyle, setup: (a) => (a.meleeWindup = 0.5), input: () => ({ ...unarmed, zombie: { rush: 'tell' as const, grabbing: false } }) },
+      { label: 'corrida', steps: 46, style: zombieStyle, input: () => ({ ...unarmed, state: 'run' as const, vx: 150, zombie: { rush: 'run' as const, grabbing: false } }) },
+      { label: 'rasteja prep.', steps: 30, style: zombieStyle, setup: (a, i, n) => (a.meleeWindup = i / n), input: () => ({ ...unarmed, state: 'crawl' as const }) },
+      { label: 'rasteja golpe', steps: 32, style: zombieStyle, setup: (a, i) => (i < 30 ? (a.meleeWindup = i / 30) : i === 30 && a.punch()), input: () => ({ ...unarmed, state: 'crawl' as const }) },
+    ],
+  },
+  {
+    title: 'Espada e escudo: guarda, escudo, golpes (preparo / meio / fim)',
+    cells: [
+      { label: 'guarda', steps: 30, input: () => fence(GUARD_POSE) },
+      { label: 'escudo', steps: 30, input: () => fence(BLOCK_POSE, true) },
+      ...SWINGS.flatMap((sw, i) =>
+        (
+          [
+            ['preparo', sw.cocked],
+            ['meio', bladePose(sw, 'strike', 0.5)],
+            ['fim', sw.end],
+          ] as const
+        ).map(([name, pose]) => ({ label: `${i + 1} ${name}`, steps: 30, input: () => fence(pose) })),
+      ),
+    ],
+  },
   {
     title: 'Empunhadura (mira -0.7 / 0 / +0.6)',
     cells: ['glock', 'uzi', 'shotgun', 'ak47'].flatMap((id) =>
@@ -210,8 +275,11 @@ rows.forEach((row, r) => {
       ctx.restore();
     }
     const anim = new HumanoidAnimator(24);
-    for (let i = 0; i < cell.steps; i++) anim.update(1 / 60, { ...base, ...cell.input(i, cell.steps) });
-    drawHumanoid(ctx, anim, ox, feetY, 1, style);
+    for (let i = 0; i < cell.steps; i++) {
+      cell.setup?.(anim, i, cell.steps);
+      anim.update(1 / 60, { ...base, ...cell.input(i, cell.steps) });
+    }
+    drawHumanoid(ctx, anim, ox, feetY, 1, cell.style ?? (anim.fencing ? fenceStyle : style));
     ctx.fillStyle = '#9aa3b2';
     ctx.font = '3.2px monospace';
     ctx.fillText(cell.label, ox - 20, ground + 4);

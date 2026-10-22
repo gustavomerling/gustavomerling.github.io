@@ -1,20 +1,76 @@
-/** Emblem: a tower on the measuring grid, with the crosshair of the game. Flat strokes, one accent. */
+import type { ReactElement } from 'react';
+
+/**
+ * Emblem: a pixel-art gunman with a red scarf in front of a crosshair, drawn on a 24x24 grid.
+ * Legend: # outline, w body, r scarf, d dark scarf, g gun, a accent (crosshair).
+ */
+const MARK = [
+  '..........aaaa..........',
+  '........aa....aa........',
+  '......aa........aa......',
+  '.....a............a.....',
+  '....a.....###......a....',
+  '....a....#www#.....a....',
+  '...a.....#www#......a...',
+  '...a.....#www#......a...',
+  '..a....###rrr##.....a...',
+  'aaaa..#rrrrrrdd#....aaaa',
+  '..a..#dd#wwww#ggggggg.a.',
+  '..a.#dd##wwww#ggggg#..a.',
+  '..a.#d#.#wwww##g##....a.',
+  '..a.#d#.#wwww#.#......a.',
+  '...a.#..#wwww#.......a..',
+  '...a....######.......a..',
+  '....a...#ww#ww#.....a...',
+  '....a...#ww##ww#....a...',
+  '.....a..#ww#.#ww#..a....',
+  '......a.#ww#..#ww#a.....',
+  '.......####...####......',
+  '..........aaaa..........',
+  '..........a..a..........',
+  '..........aaaa..........',
+];
+const MARK_FILL: Record<string, string> = {
+  '#': 'var(--bg)',
+  w: 'var(--player)',
+  r: 'var(--danger)',
+  d: 'color-mix(in srgb, var(--danger) 60%, var(--bg))',
+  g: 'var(--dim)',
+  a: 'var(--accent)',
+};
+
 export function LogoMark() {
+  const cells: ReactElement[] = [];
+  MARK.forEach((row, y) =>
+    [...row].forEach((ch, x) => {
+      const fill = MARK_FILL[ch];
+      if (fill) cells.push(<rect key={`${x},${y}`} x={x} y={y} width={1} height={1} fill={fill} />);
+    }),
+  );
   return (
-    <svg className="logo-mark" viewBox="0 0 96 96" aria-hidden="true">
-      <rect x="4" y="4" width="88" height="88" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.25" />
-      <path d="M4 48h88M48 4v88" stroke="currentColor" strokeWidth="1" opacity="0.12" />
-      <path d="M26 88V26h44v62" fill="#0c0e12" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />
-      <path d="M26 48h44M26 68h44" stroke="currentColor" strokeWidth="2" opacity="0.6" />
-      <g fill="currentColor" opacity="0.7">
-        <rect x="34" y="34" width="6" height="8" />
-        <rect x="56" y="34" width="6" height="8" />
-        <rect x="34" y="54" width="6" height="8" />
-        <rect x="56" y="54" width="6" height="8" />
-      </g>
-      <circle cx="48" cy="48" r="20" fill="none" stroke="var(--accent)" strokeWidth="2.5" />
-      <path d="M48 22v10M48 64v10M22 48h10M64 48h10" stroke="var(--accent)" strokeWidth="2.5" />
-      <circle cx="48" cy="48" r="2.5" fill="var(--accent)" />
+    <svg className="logo-mark" viewBox="0 0 24 24" shapeRendering="crispEdges" aria-hidden="true">
+      {cells}
+    </svg>
+  );
+}
+
+/** "2D" as a 9x7 pixel glyph pair: the 2 has a flat base so it can't read as a mirrored S. */
+const TWO_D = [
+  '.##..###.',
+  '#..#.#..#',
+  '...#.#..#',
+  '..#..#..#',
+  '.#...#..#',
+  '#....#..#',
+  '####.###.',
+];
+
+function TwoD() {
+  return (
+    <svg className="logo-2d" viewBox="0 0 9 7" shapeRendering="crispEdges" aria-label="2D">
+      {TWO_D.flatMap((row, y) =>
+        [...row].map((ch, x) => (ch === '#' ? <rect key={`${x},${y}`} x={x} y={y} width={1} height={1} fill="currentColor" /> : null)),
+      )}
     </svg>
   );
 }
@@ -27,7 +83,7 @@ export function Logo() {
       <div className="logo-word">
         <span className="logo-kicker">Project</span>
         <h1 className="logo-title" aria-label="Project Shooter 2D">
-          Shooter<sup>2D</sup>
+          Shooter<sup><TwoD /></sup>
         </h1>
       </div>
     </div>

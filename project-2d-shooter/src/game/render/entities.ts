@@ -2,6 +2,8 @@ import type { World } from '@engine/ecs/world';
 import { lerp } from '@engine/math/math';
 import { drawHumanoid } from '../character/draw';
 import { drawRagdoll } from '../character/ragdoll';
+import { ENEMY, FX, LINE, TEAM } from './palette';
+import { drawScarf, drawScarfWrap } from './scarf';
 import { Body, Health, PlayerControl, Position, Projectile, Ragdoll, Rig, Velocity } from '../world/components';
 
 /**
@@ -20,14 +22,16 @@ export function drawCharacters(ctx: CanvasRenderingContext2D, world: World, alph
     const blink = pc && health && health.invulnLeft > 0 && pc.state !== 'slide' && Math.floor(time * 16) % 2 === 0;
     ctx.globalAlpha = blink ? 0.35 : 1;
     // Rig origin = feet (collider bottom-centre).
+    if (pc) drawScarf(ctx, e, rig.animator, x + w / 2, y + h, alpha, time);
     drawHumanoid(ctx, rig.animator, x + w / 2, y + h, alpha, rig.style);
+    if (pc) drawScarfWrap(ctx, rig.animator, x + w / 2, y + h, alpha);
     ctx.globalAlpha = 1;
 
     // Enemy health bar once hurt.
     if (health && !pc && health.hp < health.max) {
-      ctx.fillStyle = '#400';
+      ctx.fillStyle = ENEMY.hpBack;
       ctx.fillRect(x, y - 5, w, 2);
-      ctx.fillStyle = '#f44';
+      ctx.fillStyle = ENEMY.hpFill;
       ctx.fillRect(x, y - 5, (w * Math.max(0, health.hp)) / health.max, 2);
     }
 
@@ -60,21 +64,21 @@ export function drawProjectiles(ctx: CanvasRenderingContext2D, world: World, alp
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(angle);
-      ctx.strokeStyle = '#d9b382';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = FX.arrowShaft;
+      ctx.lineWidth = LINE.arrowShaft;
       ctx.beginPath();
       ctx.moveTo(-13, 0);
       ctx.lineTo(-1, 0);
       ctx.stroke();
-      ctx.fillStyle = '#dfe6f0';
+      ctx.fillStyle = FX.arrowHead;
       ctx.beginPath();
       ctx.moveTo(2.6, 0);
       ctx.lineTo(-1.4, -1.6);
       ctx.lineTo(-1.4, 1.6);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = proj.team === 'player' ? '#f3f0d0' : '#c46b6b';
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = TEAM[proj.team === 'player' ? 'player' : 'enemy'].fletch;
+      ctx.lineWidth = LINE.arrowFletch;
       ctx.beginPath();
       ctx.moveTo(-13, 0);
       ctx.lineTo(-10, -2.4);
@@ -85,27 +89,8 @@ export function drawProjectiles(ctx: CanvasRenderingContext2D, world: World, alp
       continue;
     }
 
-    if (proj.kind === 'fireball') {
-      const pulse = 1 + Math.sin(x * 0.4 + y * 0.3) * 0.12;
-      ctx.globalAlpha = 0.28;
-      ctx.fillStyle = '#ff9b3d';
-      ctx.beginPath();
-      ctx.arc(x, y, 7 * pulse, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = '#ff7a2f';
-      ctx.beginPath();
-      ctx.arc(x, y, 3.6 * pulse, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffe08a';
-      ctx.beginPath();
-      ctx.arc(x + Math.cos(angle) * 0.8, y + Math.sin(angle) * 0.8, 1.8 * pulse, 0, Math.PI * 2);
-      ctx.fill();
-      continue;
-    }
-
-    ctx.strokeStyle = proj.team === 'player' ? '#fff6a0' : '#ff7a7a';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = TEAM[proj.team === 'player' ? 'player' : 'enemy'].tracer;
+    ctx.lineWidth = LINE.tracer;
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(x - (vel.x / len) * 8, y - (vel.y / len) * 8);

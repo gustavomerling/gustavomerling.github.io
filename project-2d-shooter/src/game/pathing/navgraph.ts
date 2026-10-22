@@ -3,8 +3,12 @@ import { moveAndCollide } from '@engine/physics/collide';
 import { Tile, type TileGrid } from '@engine/physics/tilegrid';
 import { PLAYER_TUNING, TILE } from '../config';
 
-/** How far (tiles) an edge may drop. */
-const MAX_FALL = 10;
+/**
+ * How far (tiles) an edge may drop. Nobody takes fall damage, so any drop inside the map counts:
+ * a lower cap strands bodies on high landings whose only way down is a long fall (a ladder shaft
+ * or the edge of an alley platform).
+ */
+const MAX_FALL = 24;
 /** Share of the theoretical reach counted as reachable: steering and air drift need a margin. */
 const REACH_MARGIN = 0.85;
 /** Share of the jump's peak height a rising edge may use: headroom margin. */
@@ -69,6 +73,11 @@ export function buildNavGraph(grid: TileGrid, motor: NavMotor): NavGraph {
       nodes.push({ col: c, row: r, x: (c + 0.5) * TILE, y: r * TILE });
     }
   }
+  /** Every tile between column c and c + s * dc is floor on row r. */
+  const walkable = (c: number, r: number, s: number, dc: number) => {
+    for (let i = 1; i < dc; i++) if (!standable(c + s * i, r)) return false;
+    return true;
+  };
   const idx = (c: number, r: number): number | undefined =>
     c < 0 || r < 0 || c >= cols || r >= rows ? undefined : at.get(r * cols + c);
 
@@ -110,6 +119,9 @@ export function buildNavGraph(grid: TileGrid, motor: NavMotor): NavGraph {
         for (let dc = k === 0 ? 2 : 1; dc <= Math.max(1, maxCols); dc++) {
           const b = idx(c + s * dc, R - k);
           if (b === undefined) continue;
+          // No jumping where walking does: a hop over flat floor only risks the ceiling (or a
+          // hatch above, where the jump ends up climbing out).
+          if (k === 0 && walkable(c, R, s, dc)) continue;
           // Gaps: the arc must clear the walls. Steps up: replay the jump with the real collision
           // (the body may slide up a wall or bonk a low ceiling and still make it).
           const ok = k === 0 ? arcClear(grid, from.x, from.y, s * dc * TILE, vy, g, t2) : jumpLands(grid, from, nodes[b]!, motor);

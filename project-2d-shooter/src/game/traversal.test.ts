@@ -6,11 +6,14 @@ import type { Renderer } from '@engine/render/renderer';
 import type { GameEvents } from './events';
 import { DEFAULT_BINDINGS } from './input/actions';
 import type { LevelData, PlacedRoom } from './procgen/level';
+import { NavCache, type NavStep } from './pathing/navgraph';
+import { BIOMES } from './content/biomes/catalog';
+import { PLAYER_TUNING } from './config';
 import { ROOM_ROWS, ROOM_TEMPLATES, STOREY_ROWS } from './procgen/rooms';
 import { RunScene } from './scenes/RunScene';
 import { assembleWeapon } from './content/weapons/assemble';
 import { WEAPONS } from './content/weapons/catalog';
-import { Arsenal, Body, Debris, Health, Npc, Pickup, PlayerControl, Position, Projectile, Velocity } from './world/components';
+import { Arsenal, Body, Brain, Debris, Health, Npc, Pickup, PlayerControl, Position, Projectile, Velocity } from './world/components';
 import { spawnPickup } from './systems/pickups';
 import { spawnEnemy, spawnProjectile, weaponState } from './world/prefabs';
 
@@ -75,76 +78,110 @@ function ladderBase(grid: TileGrid, room: PlacedRoom): { col: number; row: numbe
   return best;
 }
 
+/**
+ * Plays the level like a person would, with keys only: asks the route graph (built for the
+ * player's own jump) where to go next, walks there, jumps where the route jumps, and climbs the
+ * ladders it takes (W up, then a hop off to the side at the top). Presses F now and then for the
+ * exit.
+ */
+function playRoute(scene: RunScene, input: ReturnType<typeof makeScene>['input'], exited: () => boolean, maxFrames = 9000) {
+  const level = scene.level;
+  const nav = new NavCache(level.grid);
+  const motor = { moveSpeed: PLAYER_TUNING.airSpeed, jumpSpeed: PLAYER_TUNING.jumpSpeed };
+  const [, pos, , body] = scene.world.first(Position, Velocity, Body, PlayerControl)!;
+  const visited = new Set<number>();
+  let step: NavStep | null = null;
+  let climb: NavStep | null = null;
+  let jumpHold = 0;
+  let frames = 0;
+  for (; frames < maxFrames && !exited(); frames++) {
+    const feet = { x: pos.x + body.w / 2, y: pos.y + body.h };
+    const down: string[] = [];
+    const pressed: string[] = [];
+    if (frames % 5 === 0) pressed.push('KeyF');
+    const toward = (x: number) => {
+      if (x > feet.x + 2) down.push('KeyD');
+      else if (x < feet.x - 2) down.push('KeyA');
+    };
+
+    if (body.climbing) {
+      const target = climb ?? step;
+      if (target && feet.y > target.y) down.push('KeyW');
+      else if (target) {
+        // At the top: hop off towards the floor beside the ladder.
+        pressed.push('Space');
+        toward(target.x);
+        climb = null;
+      }
+    } else {
+      if (body.onGround) {
+        // No step: either at the exit, or over a gap the route says to drop into (keep going).
+        const next = nav.step('player', motor, feet, level.exit);
+        const atExit = Math.abs(feet.x - level.exit.x) < 24 && Math.abs(feet.y - level.exit.y) < 8;
+        if (next || atExit) step = next;
+        if (step?.ladderX === undefined) climb = null;
+      }
+      if (!step) {
+        toward(level.exit.x);
+      } else if (step.ladderX !== undefined && body.onGround) {
+        if (Math.abs(step.ladderX - feet.x) > 3) toward(step.ladderX);
+        else {
+          down.push('KeyW');
+          climb = step;
+        }
+      } else {
+        toward(step.x);
+        if (step.up && body.onGround && jumpHold <= 0) {
+          pressed.push('Space');
+          jumpHold = 24;
+        }
+      }
+    }
+    if (jumpHold > 0) {
+      down.push('Space');
+      jumpHold--;
+    }
+
+    input.beginTick();
+    input.inject(frame(down, pressed));
+    scene.update(1 / 60);
+    const cx = pos.x + body.w / 2;
+    const idx = level.rooms.findIndex((r) => cx >= r.rect.x && cx < r.rect.x + r.rect.w);
+    if (idx >= 0) visited.add(idx);
+  }
+  return { frames, visited, end: `feet ${Math.round(pos.x + body.w / 2)},${Math.round(pos.y + body.h)} exit ${level.exit.x},${level.exit.y}` };
+}
+
 describe('map traversal', () => {
   it(
-    'walks from the first building to the exit through every room',
+    'a bot playing with the real controls follows the route to the exit, on every chunk both ways round',
     () => {
+      // Every middle chunk, plain and mirrored, plus the fixed first and last buildings.
+      const expected = new Set<string>();
+      for (const t of ROOM_TEMPLATES.filter((t) => t.tags.includes('alley'))) {
+        expected.add(t.id);
+        if (t.id !== BIOMES.get('alleys').startTemplate && t.id !== BIOMES.get('alleys').endTemplate) expected.add(`${t.id}(m)`);
+      }
       const coverage = new Set<string>();
-      const expected = ROOM_TEMPLATES.filter((t) => t.tags.includes('alley')).map((t) => t.id).sort();
       let runs = 0;
-
-      for (let i = 0; i < 24 && coverage.size < expected.length; i++) {
+      for (let i = 0; i < 40 && coverage.size < expected.size; i++) {
         const seed = `TRAV-${i}`;
         const { scene, input, exited } = makeScene(seed);
-        clearThreats(scene);
         const level = scene.level;
-        const [, pos, body, pc] = scene.world.first(Position, Body, PlayerControl)!;
-        const visited = new Set<number>();
-
-        // Simple agent: advance, shoot, use the exit, hop when blocked, back off if
-        // the way is still blocked, climb down a ladder it ends up on. It never jumps
-        // while running, so hatches are not accidental.
-        let lastX = pos.x;
-        let lastProgress = 0;
-        let lastRecovery = -1000;
-        let backtrack = false;
-        let backtrackUntil = 0;
-        let frames = 0;
-        for (; frames < 6000 && !exited(); frames++) {
-          const down: string[] = [];
-          const pressed: string[] = [];
-          if (backtrack) {
-            down.push('KeyA', 'KeyS');
-            if (frames >= backtrackUntil) backtrack = false;
-          } else {
-            down.push('KeyD', 'Mouse0');
-            pressed.push('Mouse0');
-            if (frames % 5 === 0) pressed.push('KeyF');
-            const stuck = frames - lastProgress;
-            if (pc.state === 'climb') down.push('KeyS');
-            else if (stuck > 30) pressed.push('Space');
-            if (stuck > 240 && frames - lastRecovery > 300) {
-              backtrack = true;
-              backtrackUntil = frames + 60;
-              lastRecovery = frames;
-            }
-          }
-          if (pos.x > lastX + 1) {
-            lastX = pos.x;
-            lastProgress = frames;
-          }
-          input.beginTick();
-          input.inject(frame(down, pressed));
-          scene.update(1 / 60);
-
-          const cx = pos.x + body.w / 2;
-          const idx = level.rooms.findIndex((r) => cx >= r.rect.x && cx < r.rect.x + r.rect.w);
-          if (idx >= 0) visited.add(idx);
-        }
-
+        const tag = (r: PlacedRoom) => `${r.templateId}${r.mirrored ? '(m)' : ''}`;
+        // Only seeds that bring something new: keeps the test short.
+        if (level.rooms.every((r) => coverage.has(tag(r)))) continue;
+        clearThreats(scene);
+        const { frames, visited, end } = playRoute(scene, input, exited);
         runs++;
-        expect(
-          exited(),
-          `${seed} got stuck after ${frames} frames (${visited.size}/${level.rooms.length} rooms)`,
-        ).toBe(true);
+        expect(exited(), `${seed} got stuck after ${frames} frames at ${end} (${visited.size}/${level.rooms.length} rooms: ${level.rooms.map(tag).join(' ')})`).toBe(true);
         expect(visited.size, `${seed} skipped a room`).toBe(level.rooms.length);
-        for (const idx of visited) coverage.add(level.rooms[idx]!.templateId);
+        for (const r of level.rooms) coverage.add(tag(r));
       }
-
       expect(runs).toBeGreaterThan(0);
-      expect([...coverage].sort()).toEqual(expected);
+      expect([...coverage].sort()).toEqual([...expected].sort());
     },
-    60_000,
+    120_000,
   );
 
   it('climbs a hatch ladder from the ground floor to the upper floor', () => {
@@ -324,7 +361,16 @@ describe('map traversal', () => {
       // Three security guards in a row, shot from the left at chest height.
       const guards = [70, 100, 130].map((dx) => spawnEnemy(scene.world, 'security', { x: x0 + dx, y: floor }));
       spawnProjectile(scene.world, 'player', assembleWeapon(WEAPONS.get(weaponId)), { x: x0 + 4, y: floor - 14 }, 0);
+      // Targets stay put and don't react: once shot, guards would hunt down their route, and this test is about bullets.
+      const spots = guards.map((g) => ({ ...scene.world.get(g, Position)! }));
       for (let i = 0; i < 20; i++) {
+        guards.forEach((g, k) => {
+          Object.assign(scene.world.get(g, Position)!, spots[k]);
+          const brain = scene.world.get(g, Brain)!;
+          brain.alert = 0;
+          brain.lastSeen = null;
+          brain.climb = null;
+        });
         input.beginTick();
         input.inject(frame([]));
         scene.update(1 / 60);
@@ -431,13 +477,14 @@ describe('map traversal', () => {
     let found: ReturnType<typeof makeScene> | null = null;
     for (let i = 0; i < 40 && !found; i++) {
       const candidate = makeScene(`WALLJUMP-${i}`);
-      if (candidate.scene.level.rooms.some((r) => r.templateId === 'alley-2')) found = candidate;
+      if (candidate.scene.level.rooms.some((r) => r.templateId === 'alley-2' && !r.mirrored)) found = candidate;
     }
     expect(found, 'no seed generated the shaft alley').not.toBeNull();
     const { scene, input } = found!;
     clearThreats(scene);
     const level = scene.level;
-    const room = roomOf(level, 'alley-2');
+    // The shaft is on the left of the chunk as drawn (not mirrored).
+    const room = level.rooms.find((r) => r.templateId === 'alley-2' && !r.mirrored)!;
     const ts = level.grid.tileSize;
     const landingRow = ROOM_TEMPLATES.find((t) => t.id === 'alley-2')!.rows.findIndex((row) => row.slice(1, 5) === '====');
     const [, pos, vel, body] = scene.world.first(Position, Velocity, Body, PlayerControl)!;

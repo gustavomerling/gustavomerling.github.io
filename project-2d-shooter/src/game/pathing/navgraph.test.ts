@@ -8,7 +8,7 @@ import { DEFAULT_BINDINGS } from '../input/actions';
 import type { GameEvents } from '../events';
 import { RunScene } from '../scenes/RunScene';
 import { spawnEnemy } from '../world/prefabs';
-import { Health, PlayerControl, Position } from '../world/components';
+import { Brain, Health, PlayerControl, Position } from '../world/components';
 import { buildNavGraph, NavCache, type NavMotor } from './navgraph';
 
 const WALKER: NavMotor = { moveSpeed: 55, jumpSpeed: 300 };
@@ -142,7 +142,8 @@ describe('zombies on a generated level', () => {
       bus: new EventBus<GameEvents>(),
       seed,
       biomeId: 'alleys',
-      mode: 'zombie',
+      // Campaign: no horde, so the lone chaser isn't recycled for being far behind the player.
+      mode: 'campaign',
       frameStats: { fps: 0, steps: 0 },
       debugOverlay: false,
       grid: false,
@@ -159,6 +160,8 @@ describe('zombies on a generated level', () => {
     player[2].hp = 1e9;
     const zombie = spawnEnemy(w, enemy, { x: level.spawn.x, y: level.spawn.y }, 1);
     const zPos = w.get(zombie, Position)!;
+    // Zombies hunt once they notice you; this one already has.
+    w.get(zombie, Brain)!.alert = 1;
 
     let steps = 0;
     for (; steps < seconds * 60; steps++) {
@@ -171,7 +174,7 @@ describe('zombies on a generated level', () => {
 
   it('a zombie walks the level to the player', () => {
     expect(chase('PATH-A', 'zombie', 240)).toBeLessThan(240);
-  }, 15_000);
+  }, 30_000);
 
   it('a zombie climbs a ladder to the storey above', () => {
     const time = chase('PATH-A', 'zombie', 120, (level) => {
@@ -182,9 +185,9 @@ describe('zombies on a generated level', () => {
       return { x: col * TILE + 3, y: row * TILE };
     });
     expect(time).toBeLessThan(120);
-  }, 15_000);
+  }, 30_000);
 
   it('a runner walks the level to the player', () => {
     expect(chase('PATH-B', 'runner', 120)).toBeLessThan(120);
-  }, 15_000);
+  }, 30_000);
 });

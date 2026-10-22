@@ -1,8 +1,19 @@
 import { useEffect, useRef } from 'react';
 
+/** CSS pixels per backdrop pixel. */
+const BACKDROP_PIXEL = 3;
+
 /** Skyline repeats every LOOP px. */
 const LOOP = 1600;
 const ACCENT = '255,210,63';
+const TV = '120,180,255';
+const WHITE = '220,226,235';
+/** Stable 0..1 hash per (building seed, a, b). */
+const hash01 = (seed: number, a: number, b: number): number => {
+  let h = Math.imul(seed ^ (a * 374761393) ^ (b * 668265263), 1274126177);
+  h = Math.imul(h ^ (h >>> 15), 2246822519);
+  return ((h ^ (h >>> 13)) >>> 0) / 4294967296;
+};
 
 interface Building {
   x: number;
@@ -87,14 +98,25 @@ function paint(ctx: CanvasRenderingContext2D, W: number, H: number, t: number) {
         ctx.strokeStyle = layer.edge;
         ctx.strokeRect(Math.round(x) + 0.5, Math.round(top) + 0.5, b.w, h);
 
-        const cols = Math.floor((b.w - 12) / 12);
-        const rows = Math.floor((h - 16) / 16);
-        for (let i = 0; i < cols; i++) {
-          for (let j = 0; j < rows; j++) {
-            const v = (b.seed + i * 31 + j * 17 + phase * 7) % 100;
-            if (v >= layer.lit * 100) continue;
-            ctx.fillStyle = `rgba(${ACCENT},${0.3 + (v % 3) * 0.12})`;
-            ctx.fillRect(x + 8 + i * 12, top + 10 + j * 16, 4, 6);
+        // Each building has its own window grid; lights are hashed (no diagonal patterns), cluster
+        // by floor (some floors busy, others dark), vary in colour, and a few switch over time.
+        const bs = b.seed;
+        const ww = 3 + (bs % 3);
+        const wh = 4 + ((bs >> 3) % 4);
+        const gx = ww + 4 + ((bs >> 5) % 5);
+        const gy = wh + 6 + ((bs >> 8) % 6);
+        const cols = Math.floor((b.w - 8) / gx);
+        const rows = Math.floor((h - 12) / gy);
+        const pad = (b.w - cols * gx + (gx - ww)) / 2;
+        for (let j = 0; j < rows; j++) {
+          const floorBusy = hash01(bs, j, 0) < 0.55 ? 1.9 : 0.35;
+          for (let i = 0; i < cols; i++) {
+            const flip = hash01(bs, i * 97 + j, 3) < 0.04 ? Math.floor(phase / (2 + (i % 3))) : 0;
+            const v = hash01(bs + flip * 13, i, j);
+            if (v >= layer.lit * floorBusy) continue;
+            const tint = hash01(bs, i, j + 50);
+            ctx.fillStyle = tint < 0.7 ? `rgba(${ACCENT},${0.25 + v * 0.9})` : tint < 0.88 ? `rgba(${TV},0.45)` : `rgba(${WHITE},0.4)`;
+            ctx.fillRect(Math.round(x + pad + i * gx), Math.round(top + 8 + j * gy), ww, wh);
           }
         }
       }
@@ -120,7 +142,8 @@ export function MenuBackdrop() {
     let raf = 0;
 
     const fit = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      // Pixel art: one canvas pixel per BACKDROP_PIXEL CSS px, scaled up with image-rendering: pixelated.
+      const dpr = 1 / BACKDROP_PIXEL;
       W = canvas.clientWidth;
       H = canvas.clientHeight;
       canvas.width = Math.round(W * dpr);

@@ -1,6 +1,7 @@
 import { Registry } from '@engine/content/registry';
+import { ENEMY } from '../../render/palette';
 
-export type EnemyBrain = 'melee' | 'shooter' | 'tank';
+export type EnemyBrain = 'melee' | 'shooter' | 'tank' | 'fencer';
 
 /** Enemy archetypes. Behaviour code lives in AI systems, keyed by `brain`. */
 export interface EnemyDef {
@@ -33,14 +34,41 @@ export interface EnemyDef {
    * see pathing/navgraph.ts. Only melee enemies use it.
    */
   readonly pathing?: boolean;
+  /**
+   * Lost sight of you: follows the same route to your last known spot (ladders and jumps
+   * included) instead of walking straight at it. Gunmen use it to flank.
+   */
+  readonly routes?: boolean;
   /** Only a headshot can kill it: any other hit stops at 1 HP. */
   readonly headshotOnly?: boolean;
   /** A leg hit knocks it down; it drags itself along the floor from then on. */
   readonly crawlsWhenLegShot?: boolean;
   /** Skull face and pale bones (medieval skeletons). */
   readonly skeleton?: boolean;
-  /** Carries a shield that blocks damage from the front. */
+  /** Carries a shield (fencers block with it; it hangs on the back otherwise). */
   readonly shield?: boolean;
+  /** Sword fighting kit (content/blades/kits.ts) for the 'fencer' brain. */
+  readonly fencingKit?: string;
+  /** Hits dealing less damage than this don't stagger it (headshots always do). Omitted = every hit staggers. */
+  readonly poise?: number;
+  /** Zombie role (modo zumbi): how it attacks. See systems/zombies.ts for the shared rules. */
+  readonly zombie?: ZombieTraits;
+}
+
+/** What makes each zombie demand a different answer. Times in seconds, damage in HP, speeds px/s. */
+export interface ZombieTraits {
+  /** Arms-out telegraph before the attack lands (step back, kick or shoot to cancel it). */
+  readonly windup: number;
+  /** Seconds before it can attack again. */
+  readonly cooldown: number;
+  /** Reaching you grabs and pins you; the bite lands after `hold` s unless you break free with `struggle` presses (A, D, Space) or it gets hit. */
+  readonly grab?: { readonly hold: number; readonly struggle: number; readonly bite: number };
+  /** Damage of a plain swipe (no grab, or someone else already holds you). */
+  readonly claw: number;
+  /** Spots you on the same floor, stops to tense up (`tell`), then sprints for `duration`. */
+  readonly rush?: { readonly range: number; readonly tell: number; readonly speed: number; readonly duration: number; readonly cooldown: number };
+  /** Dies bursting: kills zombies within `radius`, hurts and shoves you within `playerRadius`. */
+  readonly burst?: { readonly radius: number; readonly playerRadius: number; readonly damage: number; readonly knockback: number };
 }
 
 export const ENEMIES = new Registry<EnemyDef>('enemy', [
@@ -53,7 +81,7 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     moveSpeed: 120,
     size: { w: 10, h: 20 },
     sightRange: 180,
-    color: '#7fd1ff',
+    color: ENEMY.office.intern,
   },
   {
     id: 'security',
@@ -65,7 +93,8 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     size: { w: 12, h: 24 },
     weaponId: 'glock',
     sightRange: 240,
-    color: '#ffb347',
+    color: ENEMY.office.security,
+    routes: true,
   },
   {
     id: 'it-guy',
@@ -77,7 +106,8 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     size: { w: 10, h: 24 },
     weaponId: 'uzi',
     sightRange: 220,
-    color: '#9cff8a',
+    color: ENEMY.office.itGuy,
+    routes: true,
   },
   {
     id: 'janitor',
@@ -89,8 +119,9 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     size: { w: 12, h: 24 },
     weaponId: 'shotgun',
     sightRange: 200,
-    color: '#c79bff',
+    color: ENEMY.office.janitor,
     closeIn: 70,
+    routes: true,
   },
   {
     id: 'auditor',
@@ -102,9 +133,10 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     size: { w: 10, h: 24 },
     weaponId: 'sniper',
     sightRange: 380,
-    color: '#7ef0d6',
+    color: ENEMY.office.auditor,
     laser: true,
     reaction: 1.1,
+    routes: true,
   },
   // Zombies (modo zumbi): melee only, no line of sight needed to notice you.
   {
@@ -116,41 +148,50 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     moveSpeed: 38,
     size: { w: 10, h: 22 },
     sightRange: 230,
-    color: '#8fbf7a',
+    color: ENEMY.undead.zombie,
     omniscient: true,
     pathing: true,
     headshotOnly: true,
     crawlsWhenLegShot: true,
+    zombie: { windup: 0.5, cooldown: 1.2, grab: { hold: 0.85, struggle: 3, bite: 22 }, claw: 8 },
   },
   {
     id: 'runner',
     name: 'Corredor',
-    description: 'Ainda tem fôlego. Pouco. Chega antes de você ouvir.',
+    description: 'Ainda tem fôlego. Pouco. Quando te vê no mesmo andar, para, se arma e dispara.',
     brain: 'melee',
     hp: 22,
-    moveSpeed: 95,
+    moveSpeed: 55,
     size: { w: 10, h: 22 },
     sightRange: 300,
-    color: '#d9a56b',
+    color: ENEMY.undead.runner,
     omniscient: true,
     pathing: true,
     headshotOnly: true,
     crawlsWhenLegShot: true,
+    zombie: { windup: 0.28, cooldown: 1.6, claw: 14, rush: { range: 150, tell: 0.45, speed: 145, duration: 1.6, cooldown: 3.5 } },
   },
   {
     id: 'bloater',
     name: 'Inchado',
-    description: 'Lento e difícil de derrubar. Cada tiro só o faz cambalear.',
+    description: 'Lento, agarra forte e estoura ao morrer: leva os zumbis em volta junto. E você, se estiver perto.',
     brain: 'melee',
     hp: 120,
     moveSpeed: 28,
     size: { w: 16, h: 28 },
     sightRange: 200,
-    color: '#7f9a6e',
+    color: ENEMY.undead.bloater,
     omniscient: true,
     pathing: true,
     headshotOnly: true,
     crawlsWhenLegShot: true,
+    zombie: {
+      windup: 0.7,
+      cooldown: 1.6,
+      grab: { hold: 1.0, struggle: 5, bite: 32 },
+      claw: 12,
+      burst: { radius: 44, playerRadius: 40, damage: 25, knockback: 280 },
+    },
   },
   {
     id: 'manager',
@@ -162,7 +203,9 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     size: { w: 16, h: 28 },
     weaponId: 'ak47',
     sightRange: 260,
-    color: '#ff6b6b',
+    color: ENEMY.office.manager,
+    poise: 20,
+    routes: true,
   },
   // Medieval skeletons (modo medieval): one per weapon family.
   {
@@ -174,36 +217,41 @@ export const ENEMIES = new Registry<EnemyDef>('enemy', [
     moveSpeed: 60,
     size: { w: 10, h: 23 },
     weaponId: 'shortbow',
-    sightRange: 280,
-    color: '#ddd6c2',
+    // Inside the screen: no arrows from an archer you can't see.
+    sightRange: 220,
+    color: ENEMY.skeleton.bone,
     skeleton: true,
+    routes: true,
+    // Draws slowly: time to raise the shield (or close in) before the first arrow.
+    reaction: 0.8,
+  },
+  {
+    id: 'skeleton',
+    name: 'Esqueleto',
+    description: 'Só osso e espada. Dança na borda do seu alcance, finta e recua dos seus golpes.',
+    brain: 'fencer',
+    hp: 40,
+    moveSpeed: 62,
+    size: { w: 10, h: 23 },
+    weaponId: 'iron-sword',
+    sightRange: 240,
+    color: ENEMY.skeleton.bone,
+    skeleton: true,
+    fencingKit: 'skeleton',
   },
   {
     id: 'skeleton-knight',
     name: 'Esqueleto cavaleiro',
-    description: 'A armadura ficou, a carne não. Avança de escudo e espada.',
-    brain: 'melee',
-    hp: 80,
-    moveSpeed: 72,
+    description: 'A armadura ficou, a carne não. Avança atrás do escudo e só abre a guarda para bater.',
+    brain: 'fencer',
+    hp: 60,
+    moveSpeed: 55,
     size: { w: 12, h: 24 },
     weaponId: 'iron-sword',
-    sightRange: 220,
-    color: '#cfc8b4',
+    sightRange: 240,
+    color: ENEMY.skeleton.knight,
     skeleton: true,
     shield: true,
-  },
-  {
-    id: 'skeleton-mage',
-    name: 'Esqueleto mago',
-    description: 'Estudou demais. Agora lança bolas de fogo com sotaque antigo.',
-    brain: 'shooter',
-    hp: 40,
-    moveSpeed: 52,
-    size: { w: 10, h: 24 },
-    weaponId: 'fire-staff',
-    sightRange: 300,
-    color: '#d8d0bb',
-    skeleton: true,
-    reaction: 0.7,
+    fencingKit: 'knight',
   },
 ]);

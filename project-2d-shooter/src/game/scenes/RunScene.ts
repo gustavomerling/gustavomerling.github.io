@@ -11,13 +11,17 @@ import { BIOMES, type BiomeDef } from '../content/biomes/catalog';
 import { PLAYER_DEF } from '../content/characters/player';
 import { RUN_MODES, type RunModeId } from '../content/modes/catalog';
 import { NavCache } from '../pathing/navgraph';
+import { createAudioSystem } from '../audio/system';
 import type { GameEvents } from '../events';
 import type { Action } from '../input/actions';
 import { floorSpots, generateLevel, type LevelData } from '../procgen/level';
 import { drawDebris, drawDecals, drawFlashes, drawPickups, drawSmoke } from '../render/effects';
 import { drawCharacters, drawProjectiles, drawRagdolls } from '../render/entities';
 import { drawScreenOverlay, drawWorldOverlay } from '../render/overlay';
+import { drawProps } from '../render/props';
 import { drawSky } from '../render/sky';
+import { drawWeather } from '../render/weather';
+import { setTheme, theme } from '../render/palette';
 import { drawBackdrop, drawExit, drawGrid, drawTiles } from '../render/tilemap';
 import { aiSystem } from '../systems/ai';
 import { cameraSystem } from '../systems/camera';
@@ -25,13 +29,13 @@ import { aimSystem, projectileSystem, weaponSystem } from '../systems/combat';
 import type { RunContext, RunSystem } from '../systems/context';
 import { drawDebugWorld, handleDebugKeys } from '../systems/debug';
 import { effectsSystem } from '../systems/effects';
-import { hordeSystem } from '../systems/horde';
+import { fencingSystem } from '../systems/fencing';
+import { createHordeState, hordeSystem } from '../systems/horde';
 import { playerMeleeSystem } from '../systems/melee';
 import { pickupSystem } from '../systems/pickups';
 import { createHudSystem } from '../systems/hud';
 import { playerIntentSystem } from '../systems/intent';
 import { lifecycleSystem } from '../systems/lifecycle';
-import { medievalSystem } from '../systems/medieval';
 import { physicsSystem } from '../systems/physics';
 import { playerMovementSystem } from '../systems/playerMovement';
 import { rigSystem } from '../systems/rig';
@@ -74,9 +78,9 @@ export class RunScene implements Scene {
     playerIntentSystem,
     playerMovementSystem,
     playerMeleeSystem,
-    medievalSystem,
     hordeSystem,
     aiSystem,
+    fencingSystem,
     physicsSystem,
     weaponSystem,
     projectileSystem,
@@ -86,6 +90,8 @@ export class RunScene implements Scene {
     pickupSystem,
     cameraSystem,
     createHudSystem(),
+    // Last: watches what changed this step and emits `sfx` (read-only).
+    createAudioSystem(),
   ];
 
   constructor(private readonly deps: RunSceneDeps) {}
@@ -114,6 +120,7 @@ export class RunScene implements Scene {
     const base = BIOMES.get(mode.biomeId ?? biomeId);
     const biome: BiomeDef = mode.enemyPool ? { ...base, enemyPool: mode.enemyPool } : base;
     const level = generateLevel(seed, biome);
+    setTheme(mode.theme ?? biome.theme);
     const camera = new Camera(renderer.width, renderer.height);
     camera.bounds = { x: 0, y: 0, w: level.grid.widthPx, h: level.grid.heightPx };
 
@@ -127,7 +134,7 @@ export class RunScene implements Scene {
       biome,
       bus,
       rng: Rng.fromString(`${seed}:${biome.id}:gameplay`),
-      horde: mode.horde ? { def: mode.horde, spots: floorSpots(level.grid), timer: 2 } : null,
+      horde: mode.horde ? createHordeState(mode.horde, floorSpots(level.grid)) : null,
       nav: new NavCache(level.grid),
       debug: { overlay: this.deps.debugOverlay, grid: this.deps.grid, god: false, stepMode: false, stepOnce: false, spawnIndex: 0 },
       feedback: { hitMarker: 0, hitKill: false, hitHead: false, spread: 0, busy: false },
@@ -178,16 +185,24 @@ export class RunScene implements Scene {
     const { camera, biome, level, clock, input, feedback, debug } = this.ctx;
     const ctx = renderer.ctx;
 
-    renderer.clear(biome.palette.sky);
+    renderer.clear(theme().void);
     camera.begin(ctx, alpha);
     const view = camera.view;
     camera.end(ctx);
-    drawSky(ctx, view, level.grid.heightPx, clock.realElapsed, biome.sky ?? 'city');
+    drawSky(ctx, view, level.grid.heightPx, clock.realElapsed);
     camera.begin(ctx, alpha);
     drawBackdrop(ctx, level, view);
-    drawTiles(ctx, level.grid, biome.palette, view);
+    drawProps(ctx, level, view, theme().skyKind === 'castle' ? 'castle' : this.deps.mode === 'zombie' ? 'zombie' : 'city');
+    drawTiles(ctx, level.grid, view);
     if (debug.grid) drawGrid(ctx, level.grid, view);
-    drawExit(ctx, level, biome.palette, biome.exitLabel, clock.realElapsed);
+    drawExit(ctx, level, biome.exitLabel, clock.realElapsed);
+    drawWeather(
+      ctx,
+      view,
+      theme().skyKind === 'castle' ? 'embers' : this.deps.mode === 'zombie' ? 'rain' : 'motes',
+      clock.realElapsed,
+      (x, y) => level.grid.isSolidAtPixel(x, y) || level.rooms.some((r) => !r.outdoor && x >= r.rect.x && x < r.rect.x + r.rect.w && y >= r.rect.y && y < r.rect.y + r.rect.h),
+    );
     drawDecals(ctx, this.world);
     drawRagdolls(ctx, this.world);
     drawDebris(ctx, this.world, alpha);
@@ -196,7 +211,7 @@ export class RunScene implements Scene {
     drawSmoke(ctx, this.world);
     drawProjectiles(ctx, this.world, alpha);
     drawFlashes(ctx, this.world);
-    drawWorldOverlay(ctx, this.world, level.grid, clock.realElapsed);
+    drawWorldOverlay(ctx, this.world, level.grid, clock.realElapsed, alpha);
     if (debug.overlay) drawDebugWorld(ctx, this.world, this.ctx);
     camera.end(ctx);
 

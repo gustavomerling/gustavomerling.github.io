@@ -1,9 +1,9 @@
 import type { Vec2 } from '../math/vec2';
 
 /**
- * Vector renderer. The game draws in virtual units straight onto the visible canvas at device
- * resolution: the virtual -> device transform is set by `clear()`, so lines and shapes stay
- * smooth at any window size (no low-res back buffer, no pixel art).
+ * Pixel-art renderer. The game draws in virtual units onto a low-resolution canvas (one pixel per
+ * unit by default) that CSS scales up without smoothing; the virtual -> buffer transform is set
+ * by `clear()`.
  *
  * The view always shows `height` virtual units vertically and fills the whole window: `width`
  * follows the window's aspect ratio (no letterbox).
@@ -22,6 +22,8 @@ export class Renderer {
     readonly height: number,
     /** Width used until the canvas has a size (and the narrowest the view gets). */
     private readonly minWidth: number,
+    /** Back-buffer pixels per virtual unit: 1 = true pixel art, 2 = finer pixels. */
+    private readonly pixelsPerUnit = 1,
   ) {
     this.width = minWidth;
     const ctx = display.getContext('2d', { alpha: false });
@@ -33,15 +35,17 @@ export class Renderer {
   }
 
   resize(): void {
-    const dpr = window.devicePixelRatio || 1;
     const rect = this.display.getBoundingClientRect();
-    const cw = Math.max(1, Math.round(rect.width * dpr));
-    const ch = Math.max(1, Math.round(rect.height * dpr));
+    const aspect = rect.width > 0 && rect.height > 0 ? rect.width / rect.height : this.minWidth / this.height;
+    // Pixel art: the back buffer is the virtual grid itself (times `pixelsPerUnit`) and CSS
+    // scales it up with `image-rendering: pixelated`, so every unit is a crisp, chunky pixel.
+    this.scale = this.pixelsPerUnit;
+    this.width = Math.max(this.minWidth, Math.round(this.height * aspect));
+    const cw = Math.round(this.width * this.scale);
+    const ch = Math.round(this.height * this.scale);
     if (this.display.width !== cw) this.display.width = cw;
     if (this.display.height !== ch) this.display.height = ch;
-    // Fit the height; a very tall/narrow window fits the minimum width instead.
-    this.scale = Math.min(ch / this.height, cw / this.minWidth);
-    this.width = cw / this.scale;
+    this.ctx.imageSmoothingEnabled = false;
   }
 
   /** Paints the whole canvas and leaves the virtual-unit transform active. */

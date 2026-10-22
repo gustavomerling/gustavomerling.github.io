@@ -21,6 +21,12 @@ export const PLAYER_TUNING = {
   groundAccel: 1500,
   airAccel: 950,
   groundFriction: 1700,
+  /**
+   * In the air, speed above what the keys ask for (slide-jump, wall kick, sprint released
+   * mid-jump) bleeds off this gently instead of at `airAccel`: momentum carries the jump.
+   * Pressing the opposite way still brakes at full `airAccel`.
+   */
+  airOverspeedDrag: 220,
 
   gravity: 980,
   maxFallSpeed: 430,
@@ -86,6 +92,39 @@ export const KICK = {
   height: 16,
 } as const;
 
+/** Shooting feel shared by every gun (per-gun numbers live in content/weapons/catalog.ts). */
+export const GUNPLAY = {
+  /** Extra spread (degrees, half-angle) at full bloom. Each shot adds the gun's `recoil` (0..1) to the bloom. */
+  bloomDeg: 6,
+  /**
+   * Bloom recovered per second, only once the gun is ready to fire again (cooldown over):
+   * holding the trigger or spamming at the max rate keeps it growing; pacing shots keeps them tight.
+   */
+  bloomRecoveryPerSecond: 2.5,
+  /** A semi-auto click this early (seconds before the gun is ready) still fires as soon as it can. */
+  triggerBuffer: 0.12,
+  /** Seconds after a weapon swap before the new gun can fire (matches the swap animation). */
+  switchDelay: 0.28,
+  /** Clicking with an empty magazine and nothing to reload: dry-fire pause. */
+  dryFireDelay: 0.25,
+  /**
+   * Firing during a reload with rounds still in the gun interrupts it: magazine guns only before
+   * the magazine leaves the gun (this fraction of the reload, matches the rig's drop beat);
+   * guns loaded shell by shell at any time, keeping the shells already in.
+   */
+  reloadCancelWindow: 0.15,
+} as const;
+
+/** Camera framing (real time, so it stays snappy in slow motion). */
+export const CAMERA = {
+  /** Follow stiffness (higher = tighter). */
+  followRate: 8,
+  /** Leans this far ahead of the player's horizontal velocity (seconds of travel), to see where you run. */
+  velocityLead: 0.22,
+  /** Cap on the velocity lead (px). */
+  maxVelocityLead: 40,
+} as const;
+
 /** Damage multiplier per body region (hit-tested on the rig bones, see character/hitbox.ts). */
 export const HIT_ZONES = {
   head: { multiplier: 3 },
@@ -128,6 +167,19 @@ export const AI = {
   /** Aim tracking speed, radians per second (world time: slow-mo makes them sluggish). */
   turnRate: 5,
   aimErrorDeg: 4,
+  /**
+   * Aim settles while they keep you in sight: right after the reaction time the error is
+   * `aimErrorDeg * firstShotErrorScale`, easing to `aimErrorDeg` over `aimSettleTime` seconds.
+   * Breaking line of sight resets it (and the reaction time).
+   */
+  firstShotErrorScale: 2,
+  aimSettleTime: 1.2,
+  /** Gunmen only pull the trigger while standing inside the camera view (+ this margin, px): no shots from off screen. */
+  onScreenMargin: 6,
+  /** Tanks walk at this fraction of their speed towards you between bursts (they don't take cover). */
+  tankAdvance: 0.5,
+  /** Tanks stop advancing this close (px, horizontally). */
+  tankStopDistance: 56,
   burstShots: { min: 2, max: 4 },
   burstPause: { min: 0.6, max: 1.3 },
   /** Enemy bullets deal this fraction of the gun's damage. */

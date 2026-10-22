@@ -9,7 +9,6 @@ import {
   Aim,
   Body,
   Brain,
-  Guard,
   Health,
   Intent,
   Npc,
@@ -24,7 +23,10 @@ import {
 } from '../world/components';
 import { bodyCenter } from '../world/geometry';
 import type { RunContext, RunSystem } from './context';
+import { inCameraView } from './camera';
 import { applyDamage } from './damage';
+import { fencerBrain } from './fencerAi';
+import { spaceZombies, tickZombieTimers, zombieHold, zombiePace, zombieStrike, zombieWindup } from './zombies';
 
 interface Target {
   e: Entity;
@@ -72,12 +74,12 @@ export const aiSystem: RunSystem = {
       Object.assign(intent, emptyIntent());
       const def = ENEMIES.get(npc.defId);
       const animator = world.get(e, Rig)?.animator;
-      const guard = world.get(e, Guard);
-      if (guard) guard.raised = false;
       brain.cooldownLeft = Math.max(0, brain.cooldownLeft - dt);
       // Knocked off a ladder (hit, legs shot, killed): let go and fall.
       if (brain.climb && (health.hp <= 0 || brain.staggerLeft > 0 || brain.downed)) letGo(brain, body);
       if (health.hp <= 0) continue;
+      // A zombie holding the player keeps holding until the bite, a break-free or a hit.
+      if (def.zombie && zombieHold(world, ctx, e, def, brain, bodyCenter(pos, body), vel, player?.e ?? null, dt)) continue;
 
       // Staggered by a hit: can't act, slides with the knockback.
       if (brain.staggerLeft > 0) {
@@ -93,8 +95,8 @@ export const aiSystem: RunSystem = {
       perceive(ctx, def, brain, eye, player, dt);
       const sees = brain.seeTime > 0;
       if (sees && !wasSeeing && player) shouts.push(player.center);
-      // Pathing enemies always know where the player is; the route gets them there.
-      if (def.pathing && player) {
+      // Pathing enemies, once they notice you (in range, a gunshot, a hit), never lose track; the route gets them there.
+      if (def.pathing && player && brain.alert > 0) {
         brain.alert = AI.memory;
         brain.lastSeen = { ...player.center };
       }
@@ -118,8 +120,15 @@ export const aiSystem: RunSystem = {
         case 'melee':
           melee(world, e, ctx, def, brain, aim, pos, vel, body, player, sees, dt);
           break;
+        case 'fencer':
+          fencerBrain(world, e, ctx, def, brain, intent, aim, pos, vel, body, player, sees, dt);
+          break;
       }
     }
+
+    // Zombies walking into each other queue up instead of stacking.
+    spaceZombies(world);
+    tickZombieTimers(world, dt);
 
     // Spotting the player alerts allies nearby ("ele tá aqui!").
     for (const spot of shouts) {
@@ -228,15 +237,28 @@ function shooter(
     // Lost sight: go check the last known position.
     brain.crouching = false;
     if (brain.lastSeen && Math.abs(brain.lastSeen.x - eye.x) > 16) {
+      if (def.routes && followRoute(ctx, brain, def, pos, body, vel, bodyCenter(pos, body), brain.lastSeen)) return;
       vel.x = Math.sign(brain.lastSeen.x - eye.x) * def.moveSpeed * ADVANCE_SPEED;
       if (body.onGround && body.hitWall) vel.y = -AI.melee.jumpSpeed;
     }
     return;
   }
 
+  // Fair fights: gunmen don't shoot from off screen. Out of view they walk into it, and the
+  // reaction time only starts counting once they are visible (skeleton archers keep their own rules).
+  if (!def.skeleton && !inCameraView(ctx.camera, eye.x, eye.y, AI.onScreenMargin)) {
+    brain.seeTime = Math.min(brain.seeTime, dt);
+    brain.crouching = false;
+    if (player) vel.x = Math.sign(player.center.x - eye.x) * def.moveSpeed * ADVANCE_SPEED;
+    if (body.onGround && body.hitWall) vel.y = -AI.melee.jumpSpeed;
+    return;
+  }
+
+  // Tanks don't hide: they keep walking at you between bursts.
+  const tank = def.brain === 'tank';
   // Seeing the player: get behind cover if some is close in their direction.
-  const cover = coverSpot(ctx.grid, pos, body, brain.facing);
-  if (cover === null) {
+  const cover = tank ? null : coverSpot(ctx.grid, pos, body, brain.facing);
+  if (cover === null && !tank) {
     const towards = findCoverAhead(ctx.grid, pos, body, brain.facing);
     if (towards !== null && brain.pauseLeft > 0) {
       vel.x = Math.sign(towards - (pos.x + body.w / 2)) * def.moveSpeed;
@@ -263,6 +285,14 @@ function shooter(
   if (brain.seeTime < (def.reaction ?? AI.reactionTime) || Math.abs(diff) > 0.35) return;
   if (brain.pauseLeft > 0) {
     brain.pauseLeft -= dt;
+    if (tank) {
+      brain.crouching = false;
+      const towards = (dx > 0 ? 1 : -1) as 1 | -1;
+      if (player && Math.abs(dx) > AI.tankStopDistance && body.onGround && !ledgeAhead(ctx.grid, pos, body, towards)) {
+        vel.x = towards * def.moveSpeed * AI.tankAdvance;
+      }
+      return;
+    }
     brain.crouching = cover !== null; // duck between bursts
     // Out in the open: shuffle sideways between bursts so they aren't a still target.
     if (cover === null && !tooClose && body.onGround) {
@@ -277,8 +307,10 @@ function shooter(
     return;
   }
   brain.crouching = false;
-  // Imperfect aim on top of the gun's own spread.
-  aim.angle += ctx.rng.range(-AI.aimErrorDeg, AI.aimErrorDeg) * DEG2RAD;
+  // Imperfect aim on top of the gun's own spread: wider on the first shots, settling while they keep you in sight.
+  const settle = Math.min(1, Math.max(0, (brain.seeTime - (def.reaction ?? AI.reactionTime)) / AI.aimSettleTime));
+  const error = AI.aimErrorDeg * (AI.firstShotErrorScale + (1 - AI.firstShotErrorScale) * settle);
+  aim.angle += ctx.rng.range(-error, error) * DEG2RAD;
   intent.fireHeld = true;
   intent.firePressed = true;
 }
@@ -303,24 +335,22 @@ function melee(
   aim.angle = brain.facing > 0 ? 0 : Math.PI;
   if (animator && brain.windupLeft <= 0) animator.meleeWindup = 0;
 
-  const arsenal = world.get(e, Arsenal);
-  const ws = arsenal?.weapons[arsenal.active];
-  const sword = ws?.weapon.behaviors.has('cursorSwing') ? ws : null;
-  const guard = world.get(e, Guard);
-
+  const windup = def.zombie ? zombieWindup(def, brain) : M.windup;
   if (brain.windupLeft > 0) {
     vel.x = 0;
     brain.windupLeft -= dt;
-    if (animator) animator.meleeWindup = 1 - brain.windupLeft / M.windup;
+    if (animator) animator.meleeWindup = 1 - brain.windupLeft / windup;
     if (brain.windupLeft > 0) return;
     // Strike.
     animator?.punch();
+    if (def.zombie) {
+      zombieStrike(world, ctx, e, def, brain, player?.e ?? null, me);
+      return;
+    }
     brain.cooldownLeft = M.cooldown;
     const angle = brain.facing > 0 ? -0.3 : Math.PI + 0.3;
-    const reach = sword ? sword.weapon.stats.range : M.reach;
-    const damage = sword ? sword.weapon.stats.damage : M.damage;
-    if (player && Math.abs(player.center.x - me.x) <= reach && Math.abs(player.center.y - me.y) <= 20) {
-      applyDamage(world, ctx, player.e, { amount: damage, zone: 'torso', at: player.center, angle, from: me, by: 'enemy', knockback: M.knockback });
+    if (player && Math.abs(player.center.x - me.x) <= M.reach && Math.abs(player.center.y - me.y) <= 20) {
+      applyDamage(world, ctx, player.e, { amount: M.damage, zone: 'torso', at: player.center, angle, from: me, by: 'enemy', knockback: M.knockback });
     }
     return;
   }
@@ -331,12 +361,11 @@ function melee(
     return;
   }
   const dx = target.x - me.x;
-  if (guard) guard.raised = sees && !brain.downed;
   const close = sees && player && Math.abs(dx) <= M.range && Math.abs(target.y - me.y) <= 20;
   if (close) {
     // In reach of the player: wind up a punch.
     vel.x = 0;
-    if (brain.cooldownLeft <= 0) brain.windupLeft = M.windup;
+    if (brain.cooldownLeft <= 0) brain.windupLeft = windup;
     return;
   }
   if (!sees && Math.abs(dx) < 4) {
@@ -346,33 +375,62 @@ function melee(
     return;
   }
   if (brain.downed) {
-    // Legs are gone: drag straight towards the target at a crawl, no jumps or routes.
-    vel.x = Math.abs(dx) <= CHASE_DEADZONE ? 0 : Math.sign(dx) * def.moveSpeed * AI.crawlSpeed;
+    // Legs are gone: drag along the route at a crawl (walking and dropping only: no jumps, no
+    // ladders), or straight at the target when the route needs either.
+    const step = def.pathing
+      ? ctx.nav.step(def.id, { moveSpeed: def.moveSpeed, jumpSpeed: M.jumpSpeed }, { x: me.x, y: pos.y + body.h }, { x: target.x, y: target.y + PLAYER_TUNING.standHeight / 2 })
+      : null;
+    const walkable = step !== null && step.ladderX === undefined && !step.up;
+    const sx = (walkable ? step.x : target.x) - me.x;
+    vel.x = Math.abs(sx) <= (walkable ? 2 : CHASE_DEADZONE) ? 0 : Math.sign(sx) * def.moveSpeed * AI.crawlSpeed;
     return;
   }
-  if (def.pathing) {
-    // Follow the route over the floor: walk, jump up where it says so, drop off ledges.
-    const feet = { x: me.x, y: pos.y + body.h };
-    const goal = { x: target.x, y: target.y + PLAYER_TUNING.standHeight / 2 };
-    const step = ctx.nav.step(def.id, { moveSpeed: def.moveSpeed, jumpSpeed: M.jumpSpeed }, feet, goal);
-    if (step?.ladderX !== undefined) {
-      // Walk to the ladder; close enough (still over the floor beside a hole), grab it.
-      const lx = step.ladderX - me.x;
-      if (Math.abs(lx) < LADDER_GRAB) brain.climb = { x: step.ladderX, y: step.y, exitX: step.x };
-      vel.x = Math.abs(lx) < 1 ? 0 : Math.sign(lx) * def.moveSpeed;
-      return;
-    }
-    if (step) {
-      const sx = step.x - me.x;
-      vel.x = Math.abs(sx) < 2 ? 0 : Math.sign(sx) * def.moveSpeed;
-      if (step.up && body.onGround) vel.y = -M.jumpSpeed;
-      return;
-    }
+  // Zombies: runners stop to tense up (0), then sprint (> 1).
+  const pace = def.zombie ? zombiePace(world, e, ctx, def, brain, me, pos.y + body.h, sees && player ? player.center : null, dt) : 1;
+  if (pace === 0) {
+    vel.x = 0;
+    if (animator) animator.meleeWindup = 0.5;
+    return;
+  }
+  if (def.pathing && followRoute(ctx, brain, def, pos, body, vel, me, target)) {
+    vel.x *= pace;
+    return;
   }
 
-  vel.x = Math.abs(dx) <= CHASE_DEADZONE ? 0 : Math.sign(dx) * def.moveSpeed;
+  vel.x = Math.abs(dx) <= CHASE_DEADZONE ? 0 : Math.sign(dx) * def.moveSpeed * pace;
   // Bumped into an obstacle: hop over it.
   if (vel.x !== 0 && body.onGround && body.hitWall) vel.y = -M.jumpSpeed;
+}
+
+/**
+ * Follows the nav route over the floor towards `target`: walks, jumps where it says so,
+ * drops off ledges, and grabs ladders on the way. Returns false when there is no route.
+ */
+function followRoute(
+  ctx: RunContext,
+  brain: BrainData,
+  def: EnemyDef,
+  pos: Pos,
+  body: BodyData,
+  vel: Pos,
+  me: Vec2,
+  target: Vec2,
+): boolean {
+  const feet = { x: me.x, y: pos.y + body.h };
+  const goal = { x: target.x, y: target.y + PLAYER_TUNING.standHeight / 2 };
+  const step = ctx.nav.step(def.id, { moveSpeed: def.moveSpeed, jumpSpeed: AI.melee.jumpSpeed }, feet, goal);
+  if (!step) return false;
+  if (step.ladderX !== undefined) {
+    // Walk to the ladder; close enough (still over the floor beside a hole), grab it.
+    const lx = step.ladderX - me.x;
+    if (Math.abs(lx) < LADDER_GRAB) brain.climb = { x: step.ladderX, y: step.y, exitX: step.x };
+    vel.x = Math.abs(lx) < 1 ? 0 : Math.sign(lx) * def.moveSpeed;
+    return true;
+  }
+  const sx = step.x - me.x;
+  vel.x = Math.abs(sx) < 2 ? 0 : Math.sign(sx) * def.moveSpeed;
+  if (step.up && body.onGround) vel.y = -AI.melee.jumpSpeed;
+  return true;
 }
 
 /**

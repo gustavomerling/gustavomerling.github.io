@@ -25,9 +25,9 @@ Removido de propósito para voltar a um canvas em branco: props e móveis, ilumi
 ## Próximo
 
 - [ ] Definir tema, nome e direção de arte
-- [ ] Mais chunks na grade (variedade de rotas verticais)
+- [ ] Mais chunks na grade (variedade de rotas verticais) — em andamento: Prédio 5 (escadaria), Passarela, chunks espelhados
 - [ ] Afinar proporções (altura do andar, tamanho do personagem, alcance do pulo) usando a grade
 - [x] Zumbis (inimigos com rota) sobem escadas; o grafo de pulos usa a colisão real (teto baixo, subir encostado na parede)
-- [ ] Atiradores também usarem escadas e plataformas para flanquear
+- [x] Atiradores também usarem escadas e plataformas para flanquear (sem visão, seguem a rota até a última posição conhecida)
 - [ ] Decidir munição/drops e o loop roguelite
 - [ ] Som e efeitos (quando houver direção de arte)

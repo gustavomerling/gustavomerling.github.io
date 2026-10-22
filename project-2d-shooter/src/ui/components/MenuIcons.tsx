@@ -28,10 +28,24 @@ export const MENU_ICONS: Record<string, ReactNode> = {
       <path d="M20.5 3.5l-9 9M12 7.5l4.5 4.5M10.5 12l2.5 2.5" />
     </>,
   ),
+  seed: frame(
+    <>
+      <rect x="3.5" y="3.5" width="17" height="17" />
+      <path d="M3.5 9.5h17M3.5 14.5h17M9.5 3.5v17M14.5 3.5v17" opacity="0.5" />
+      <path d="M12 9.5v5M9.5 12h5" />
+    </>,
+  ),
   controls: frame(
     <>
       <rect x="2.5" y="6.5" width="19" height="11" rx="2" />
       <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />
+    </>,
+  ),
+  options: frame(
+    <>
+      <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+      <circle cx="15" cy="7" r="2" />
+      <circle cx="9" cy="17" r="2" />
     </>,
   ),
   quit: frame(

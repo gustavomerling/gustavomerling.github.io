@@ -1,6 +1,7 @@
 import { FOCUS, SLOWMO } from '../config';
 import { Focus, Position } from '../world/components';
 import type { RunSystem } from './context';
+import { tickJuice } from './juice';
 
 /** Must run first: stores previous positions for render interpolation. */
 export const snapshotSystem: RunSystem = {
@@ -41,7 +42,7 @@ export const slowmoSystem: RunSystem = {
         if (focus.value <= 0) {
           focus.value = 0;
           clock.targetScale = 1;
-          }
+        }
       } else {
         focus.value = Math.min(1, focus.value + FOCUS.regenPerSecond * clock.realDt);
       }
@@ -50,5 +51,14 @@ export const slowmoSystem: RunSystem = {
     // The scene already stepped the clock this tick; a toggle takes effect from the next one.
     const t = (clock.scale - SLOWMO.worldScale) / (1 - SLOWMO.worldScale);
     ctx.playerDt = clock.realDt * (SLOWMO.playerScale + (1 - SLOWMO.playerScale) * t) * (clock.dt === 0 ? 0 : 1);
+
+    // Hit-stop (systems/juice.ts): a few real-time frames where everything nearly freezes.
+    // Driven only by gameplay events and counted in steps' real time, so replays stay identical.
+    const stop = tickJuice(world, clock.realDt);
+    if (stop < 1) {
+      clock.elapsed -= clock.dt * (1 - stop);
+      clock.dt *= stop;
+      ctx.playerDt *= stop;
+    }
   },
 };

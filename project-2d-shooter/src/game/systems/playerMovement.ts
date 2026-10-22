@@ -2,7 +2,7 @@ import { boxFits } from '@engine/physics/collide';
 import { isBlocking, Tile, type TileGrid } from '@engine/physics/tilegrid';
 import { approach, clamp, lerp, sign } from '@engine/math/math';
 import { IMPACT, PLAYER_TUNING as T } from '../config';
-import { Body, Health, PlayerControl, Position, Velocity, type BodyData, type PlayerControlData } from '../world/components';
+import { Body, Fencer, Health, PlayerControl, Position, Velocity, type BodyData, type PlayerControlData } from '../world/components';
 import type { RunSystem } from './context';
 import { spawnDust } from './effects';
 
@@ -46,7 +46,9 @@ export const playerMovementSystem: RunSystem = {
       if (landed && fallHeight > 24) spawnDust(world, footX, feetY, Math.min(8, 2 + Math.round(fallHeight / 24)), 40);
 
       pc.coyoteLeft = grounded ? T.coyoteTime : Math.max(0, pc.coyoteLeft - dt);
-      pc.jumpBufferLeft = input.pressed('jump') ? T.jumpBuffer : Math.max(0, pc.jumpBufferLeft - dt);
+      // Sword and shield: slower while blocking or swinging, rooted while stunned or hurt.
+      const fenceScale = world.get(e, Fencer)?.moveScale ?? 1;
+      pc.jumpBufferLeft = input.pressed('jump') && fenceScale > 0 ? T.jumpBuffer : Math.max(0, pc.jumpBufferLeft - dt);
       pc.slideCooldownLeft = Math.max(0, pc.slideCooldownLeft - dt);
       pc.wallJumpLockLeft = Math.max(0, pc.wallJumpLockLeft - dt);
       pc.wallKickLeft = Math.max(0, pc.wallKickLeft - dt);
@@ -197,12 +199,13 @@ export const playerMovementSystem: RunSystem = {
         low = true;
       } else {
         const crouching = grounded && input.isDown('crouch') && pc.takeoffLeft <= 0;
-        const speed = crouching ? T.crouchSpeed : input.isDown('sprint') ? T.sprintSpeed : grounded ? T.walkSpeed : T.airSpeed;
+        const sprint = input.isDown('sprint') && fenceScale >= 1;
+        const speed = (crouching ? T.crouchSpeed : sprint ? T.sprintSpeed : grounded ? T.walkSpeed : T.airSpeed) * fenceScale;
         const accel = !grounded ? T.airAccel : moveX !== 0 ? T.groundAccel : T.groundFriction;
         // After a wall jump the impulse owns horizontal motion for a moment.
         const control = pc.wallJumpLockLeft > 0 ? 0 : moveX;
         // A queued air-slide keeps its horizontal momentum untouched.
-        if (!pc.slideQueued) vel.x = approach(vel.x, control * speed, accel * dt);
+        if (!pc.slideQueued) vel.x = approach(vel.x, control * speed, airRate(grounded, vel.x, control * speed, accel) * dt);
         low = crouching;
       }
 
@@ -303,6 +306,18 @@ function startMantle(pc: PlayerControlData, pos: { x: number; y: number }, dir: 
 }
 
 const smoothstep = (t: number): number => t * t * (3 - 2 * t);
+
+/**
+ * Horizontal acceleration towards `target`. In the air, going faster than the keys ask for in
+ * the same direction (or with no keys) only bleeds off slowly, so slide-jumps and wall kicks carry.
+ */
+export function airRate(grounded: boolean, vx: number, target: number, accel: number): number {
+  if (grounded) return accel;
+  // Letting go of the keys at normal speeds still stops you quickly (precise landings).
+  const limit = target === 0 ? T.airSpeed : Math.abs(target);
+  const overspeed = Math.abs(vx) > limit && (target === 0 || Math.sign(target) === Math.sign(vx));
+  return overspeed ? Math.min(accel, T.airOverspeedDrag) : accel;
+}
 
 /** True while the body overlaps at least one ladder tile. */
 function touchingLadder(grid: TileGrid, pos: { x: number; y: number }, body: BodyData): boolean {

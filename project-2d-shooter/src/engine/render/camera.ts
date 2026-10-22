@@ -11,6 +11,9 @@ export class Camera {
   y = 0;
   private prevX = 0;
   private prevY = 0;
+  /** Render-only offset (screen shake), world units. Never used by simulation reads (`screenToWorldSim`). */
+  offsetX = 0;
+  offsetY = 0;
   /** World area the camera may show; null = unbounded. */
   bounds: Rect | null = null;
 
@@ -55,8 +58,8 @@ export class Camera {
 
   /** Applies the world transform to `ctx`. Pair with `end`. */
   begin(ctx: CanvasRenderingContext2D, alpha: number): void {
-    this.viewLeft = lerp(this.prevX, this.x, alpha) - this.viewWidth / 2;
-    this.viewTop = lerp(this.prevY, this.y, alpha) - this.viewHeight / 2;
+    this.viewLeft = lerp(this.prevX, this.x, alpha) - this.viewWidth / 2 + this.offsetX;
+    this.viewTop = lerp(this.prevY, this.y, alpha) - this.viewHeight / 2 + this.offsetY;
     ctx.save();
     ctx.translate(-this.viewLeft, -this.viewTop);
   }

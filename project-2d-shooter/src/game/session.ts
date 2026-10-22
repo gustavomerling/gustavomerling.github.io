@@ -9,13 +9,22 @@ import type { RunModeId } from './content/modes/catalog';
 import { VIEW } from './config';
 import type { GameEvents } from './events';
 import { DEFAULT_BINDINGS, type Action } from './input/actions';
+import type { PrefsStore } from './prefs';
 import { RunScene } from './scenes/RunScene';
+import { attachAudio } from './audio';
 
 export interface SessionOptions {
   seed?: string;
   debug?: boolean;
   /** Run mode; the campaign by default. */
   mode?: RunModeId;
+  /** Measuring grid (F2) at start; on by default. */
+  grid?: boolean;
+  /**
+   * Where to remember the last mode/seed, the grid toggle and per-mode records.
+   * Omit (tests, tools) to keep nothing.
+   */
+  prefs?: PrefsStore;
 }
 
 /**
@@ -74,6 +83,18 @@ export class GameSession {
       },
     });
     this.enterBiome(0);
+    attachAudio(this.bus);
+    const store = options.prefs;
+    if (store) {
+      store.update(() => ({ lastMode: this.mode, lastSeed: this.seed }));
+      // Replays re-run an attempt already counted: only live attempts go into the records.
+      this.bus.on('run:over', (s) => {
+        if (!this.replay) store.record(this.mode, 'death', s);
+      });
+      this.bus.on('level:exit', (s) => {
+        if (!this.replay) store.record(this.mode, 'exit', s);
+      });
+    }
   }
 
   start(): void {
@@ -106,6 +127,12 @@ export class GameSession {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    const scene = this.scenes.current;
+    const store = this.options.prefs;
+    if (store && scene instanceof RunScene && scene.gridVisible !== store.get().grid) {
+      const grid = scene.gridVisible;
+      store.update(() => ({ grid }));
+    }
     this.loop.stop();
     this.scenes.clear();
     this.input.detach();
@@ -131,7 +158,7 @@ export class GameSession {
     this.recording = [];
     const previous = this.scenes.current;
     const debug = previous instanceof RunScene ? previous.debugOverlay : (this.options.debug ?? false);
-    const grid = previous instanceof RunScene ? previous.gridVisible : true;
+    const grid = previous instanceof RunScene ? previous.gridVisible : (this.options.grid ?? true);
     this.scenes.switchTo(
       new RunScene({
         renderer: this.renderer,

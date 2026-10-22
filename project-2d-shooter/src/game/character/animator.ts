@@ -3,6 +3,7 @@ import type { Vec2 } from '@engine/math/vec2';
 import { solveTwoBone } from '@engine/rig/ik';
 import { lerpAngle, lerpPose, PoseBuilder, type BoneTransform, type Pose, type Skeleton } from '@engine/rig/skeleton';
 import { PLAYER_TUNING } from '../config';
+import type { BladeKey, FencePhase } from '../content/blades/kits';
 import { partCenter, type GunModel } from '../content/weapons/models';
 import type { PlayerState } from '../world/components';
 import { createHumanoidSkeleton, HB, proportionsFor, type HumanoidProportions } from './humanoid';
@@ -29,9 +30,54 @@ export interface RigInput {
   reload?: number;
   /** Kick progress 0..1 (absent = not kicking). */
   kick?: number;
-  /** Sword sweep: progress 0..1 and the cursor-motion direction (world radians). */
-  sword?: { progress: number; dir: number };
+  /** Sword and shield (fencing): where the blade is (local pose, see content/blades/kits.ts). */
+  blade?: BladeKey;
+  /** Carries a shield on the far arm, and whether it is raised. */
+  shield?: boolean;
+  shieldUp?: boolean;
+  /** Body drive while fencing: 1 leaning into a cut, -0.5 drawing back, -1 reeling. */
+  lunge?: number;
+  /** Fencing phase and progress 0..1 through it (body telegraphs follow it, never drive it). */
+  fencePhase?: FencePhase;
+  fenceProgress?: number;
+  /** Parry flash 0..1 (shield shoves out). */
+  parry?: number;
+  /** Zombie tells: rush phase and whether it is holding the player. */
+  zombie?: { rush: 'none' | 'tell' | 'run'; grabbing: boolean };
 }
+
+/** Body-language tunables (radians / reference px). Pure visuals: gameplay never reads them. */
+export const BODY_TELL = {
+  /** Fencing wind-up: lean back, knee load and back-foot step at full coil. */
+  windupLean: 0.14,
+  windupDip: 1.4,
+  windupStep: 2.2,
+  /** Overhead cut (hand cocked above the shoulder): extra arch back, then the crunch down on the strike. */
+  overheadArch: 0.16,
+  overheadCrunch: 2.2,
+  /** Strike: lean into the cut and lunge step. */
+  strikeLean: 0.22,
+  strikeStep: 2.6,
+  /** Reeling (stunned / hurt): lean back, knees give, wobble. */
+  reelLean: 0.32,
+  reelDip: 1.6,
+  /** Shield up: brace (knees, back foot). Parry: shield punches out. */
+  braceDip: 1,
+  parryShove: 2.5,
+  /** Zombie grab wind-up: lean forward and knee dip at full reach. */
+  grabLean: 0.35,
+  grabDip: 1.5,
+  /** Runner tell: crouched coil + tremble; sprint lean. */
+  tellDip: 3,
+  tellLean: 0.5,
+  rushLean: 0.28,
+  /** Gun recoil pushes the torso back (times the gun's kick strength). */
+  recoilLean: 0.07,
+  /** Head drops to look at the gun while reloading. */
+  reloadLook: 0.35,
+  /** Hit: knees buckle (reference px at full flinch). */
+  hitDip: 1.4,
+} as const;
 
 /**
  * Something that leaves the gun this step, for the game to spawn: a spent casing or a
@@ -187,9 +233,14 @@ export class HumanoidAnimator {
   /** Unarmed attack wind-up progress 0..1 (set by AI each step; arm pulls back). */
   meleeWindup = 0;
   private strike = 0;
-  /** Sword sweep progress 0..1 and its direction (world radians). */
-  private swordProgress = 0;
-  private swordDir = 0;
+  /** Fencing: the sword hand follows the blade pose; the far hand holds the shield. */
+  fencing = false;
+  hasShield = false;
+  /** Shield raised 0..1 (smoothed). */
+  shieldRaise = 0;
+  private handAngle = 0;
+  private handReach = 0;
+  private lungeLean = 0;
 
   /** Gun kick (arms snap back towards the shoulder, muzzle climbs), 0..1. */
   kick(amount: number): void {
@@ -208,10 +259,18 @@ export class HumanoidAnimator {
   flinch(zone: 'head' | 'torso' | 'arm' | 'leg', dirLocal: number): void {
     if (zone === 'head') this.headSnap += 0.9 * dirLocal;
     this.torsoFlinch += (zone === 'torso' ? 0.35 : zone === 'head' ? 0.2 : 0.12) * dirLocal;
+    // Knees buckle (most on a leg hit), so even a hit from straight ahead reads.
+    this.hitDip = Math.min(1, this.hitDip + (zone === 'leg' ? 1 : zone === 'arm' ? 0.4 : 0.7));
   }
 
   private headSnap = 0;
   private torsoFlinch = 0;
+  private hitDip = 0;
+  /** Zombie / fencing tells, smoothed 0..1. */
+  private zombie: RigInput['zombie'] = undefined;
+  private grabHold = 0;
+  private tell = 0;
+  private rush = 0;
 
   /** Unarmed hit: front arm shoots forward, then retracts. */
   punch(): void {
@@ -232,9 +291,13 @@ export class HumanoidAnimator {
     this.strike = approach(this.strike, 0, dt * 5);
     this.headSnap *= Math.exp(-7 * dt);
     this.torsoFlinch *= Math.exp(-7 * dt);
+    this.hitDip *= Math.exp(-9 * dt);
+    this.zombie = input.zombie;
+    this.grabHold = lerp(this.grabHold, input.zombie?.grabbing ? 1 : 0, damp(16, dt));
+    this.tell = lerp(this.tell, input.zombie?.rush === 'tell' ? 1 : 0, damp(25, dt));
+    this.rush = lerp(this.rush, input.zombie?.rush === 'run' ? 1 : 0, damp(10, dt));
     this.landing = approach(this.landing, 0, dt * 4);
-    this.swordProgress = input.sword?.progress ?? 0;
-    this.swordDir = input.sword?.dir ?? 0;
+    this.updateFencing(dt, input);
     const prevPump = 1 - this.cycle;
     this.cycle = input.cycle ?? 0;
     // Pump guns throw the spent shell when the pump is racked back.
@@ -258,6 +321,9 @@ export class HumanoidAnimator {
 
     const t = this.targets(dt, input);
     if (input.kick !== undefined) this.applyKick(t, input.kick);
+    // Fencing: lean into cuts, rear back when stunned, brace behind the shield.
+    if (this.fencing) t.lean += this.lungeLean * 0.22 - this.shieldRaise * 0.06;
+    this.applyTells(t, input);
     this.plan = t;
     const k = damp(t.rate ?? 18, dt);
     this.hipHeight = lerp(this.hipHeight, t.hipHeight, k);
@@ -389,15 +455,18 @@ export class HumanoidAnimator {
         const moving = Math.abs(localVx) > 4;
         if (moving) this.phase += ((localVx * dt) / (7 * s)) * Math.PI;
         const swing = moving ? Math.sin(this.phase) : 0;
-        const swipe = this.strike > 0 ? this.strike * 5 * s : -this.meleeWindup * 2 * s;
+        // Bite / swipe tell: the torso rears up and the claw lifts high, then slams down forward.
+        const windup = this.strike > 0 ? 0 : smoothstep(this.meleeWindup);
+        const swipe = this.strike > 0 ? this.strike * 5 * s : -windup * 2.5 * s;
+        const rear = windup * 4.5 * s;
         return {
           hipHeight: 2.4 * s,
-          lean: 1.05,
+          lean: 1.05 - windup * 0.4,
           back: { x: (-6.5 + swing * 1.5) * s, y: 0 },
           front: { x: (-3.5 - swing * 1.5) * s, y: 0 },
           hands: {
             back: () => ({ x: (4.5 - swing * 1.5) * s, y: -0.8 * s }),
-            front: () => ({ x: (8.5 + swing * 1.5) * s + swipe, y: -0.8 * s }),
+            front: () => ({ x: (8.5 + swing * 1.5) * s + swipe, y: -0.8 * s - rear }),
           },
           rate: 22,
           footRate: 18,
@@ -532,7 +601,9 @@ export class HumanoidAnimator {
     const lean = this.lean + this.torsoFlinch;
     b.setWorld(HB.torso, -Math.PI / 2 + lean);
     const look = clamp(this.aim * 0.4, -0.5, 0.5) * this.look * (1 - this.backView);
-    b.setWorld(HB.head, -Math.PI / 2 + lean * 0.4 + look + this.headSnap);
+    // Reloading: eyes on the gun (head dips) for the length of the reload.
+    const busy = this.reloading ? smoothstep(clamp(this.reload / 0.12, 0, 1)) * smoothstep(clamp((1 - this.reload) / 0.12, 0, 1)) : 0;
+    b.setWorld(HB.head, -Math.PI / 2 + lean * 0.4 + look + this.headSnap + busy * BODY_TELL.reloadLook * (1 - this.backView));
 
     const start = (bone: number): Vec2 => {
       const at = b.start(bone);
@@ -565,9 +636,11 @@ export class HumanoidAnimator {
     chain(HB.armBackUpper, HB.armBackLower, hands.back, p.upperArm, p.lowerArm, elbow(hands.back, start(HB.armBackUpper), -1));
     chain(HB.armFrontUpper, HB.armFrontLower, hands.front, p.upperArm, p.lowerArm, elbow(hands.front, start(HB.armFrontUpper), 1));
 
-    // The gun follows the aim, or the forearm while that hand is busy.
+    // The gun follows the aim, or the forearm while that hand is busy. A sword leaves the fist
+    // at a right angle to the forearm.
     const forearm = b.get(HB.armFrontLower).angle;
-    this.gunAngle = lerpAngle(this.aimedGunAngle(), forearm, this.freeWeight.front) + this.spin;
+    const held = this.fencing ? forearm - Math.PI / 2 : this.aimedGunAngle();
+    this.gunAngle = lerpAngle(held, forearm, this.freeWeight.front) + this.spin;
 
     if (this.spin !== 0) {
       // Rotate the whole body around the torso's middle (children follow the root).
@@ -586,15 +659,7 @@ export class HumanoidAnimator {
 
   /** Aim minus the muzzle climb from recoil, plus the tilt while reloading and the dip while switching. */
   private aimedGunAngle(): number {
-    // The shield stays upright in front of the body instead of tracking the cursor.
-    if (this.gun?.role === 'shield') return this.facing > 0 ? 0 : Math.PI;
     let angle = this.aim - this.recoil * 0.3 + this.shake;
-    if (this.gun?.role === 'sword' && this.swordProgress > 0) {
-      // Arc the blade through the cursor's direction: up-strokes sweep the other way.
-      const local = this.facing > 0 ? this.swordDir : Math.PI - this.swordDir;
-      const sign = Math.sin(local) < -0.2 ? -1 : 1;
-      angle += (this.swordProgress - 0.5) * 2.2 * sign;
-    }
     if (this.reload >= 0 && this.gun) {
       const envelope = smoothstep(clamp(this.reload / 0.1, 0, 1)) * smoothstep(clamp((1 - this.reload) / 0.1, 0, 1));
       // Magazine guns cant the muzzle up to show the well; the shotgun rolls down to the loading port.
@@ -602,6 +667,90 @@ export class HumanoidAnimator {
     }
     return angle + this.lowered() * 1.2;
   }
+
+  /**
+   * Body language layered on the state's targets, read from gameplay state only: fencing
+   * wind-up / strike / reel / brace, zombie grab reach and runner tell, gun recoil, hit buckle.
+   */
+  private applyTells(t: Targets, input: RigInput): void {
+    const s = this.s;
+    const B = BODY_TELL;
+    const planted = input.state === 'idle' || input.state === 'run' || input.state === 'sprint' || input.state === 'crouch';
+    // Feet only step when standing (a stride owns them while walking).
+    const still = planted && !this.isCycling(input);
+    const step = (back: number, front: number): void => {
+      if (!still) return;
+      t.back.x -= back * s;
+      t.front.x += front * s;
+    };
+
+    if (this.fencing && planted && input.fencePhase) {
+      const p = clamp(input.fenceProgress ?? 0, 0, 1);
+      // Overhead: the hand is above the shoulder (blade pose angle up), so it grows as the sword rises.
+      const oh = clamp((-this.handAngle - 0.5) / 0.6, 0, 1);
+      switch (input.fencePhase) {
+        case 'windup': {
+          const c = smoothstep(p);
+          t.lean -= (B.windupLean + oh * B.overheadArch) * c;
+          // Loads the knees for a cut; rises tall for an overhead chop.
+          t.hipHeight -= lerp(B.windupDip, -0.6, oh) * s * c;
+          step(B.windupStep * c, 0);
+          break;
+        }
+        case 'strike':
+        case 'recover': {
+          const drive = input.fencePhase === 'strike' ? smoothstep(clamp(p / 0.35, 0, 1)) : 1 - smoothstep(p);
+          const crunch = this.fenceCrunch;
+          t.lean += B.strikeLean * drive + crunch * 0.12 * drive;
+          t.hipHeight -= (0.6 + crunch * B.overheadCrunch) * s * drive;
+          step(-0.5 * drive, B.strikeStep * drive);
+          t.rate = 34;
+          break;
+        }
+        case 'stunned':
+        case 'hurt': {
+          const k = (input.fencePhase === 'stunned' ? 1 : 0.6) * (1 - p * 0.6);
+          t.lean -= (input.fencePhase === 'hurt' ? B.reelLean * 0.6 : 0.08) * k - Math.sin(this.time * 11) * 0.06 * k;
+          t.hipHeight -= B.reelDip * s * k;
+          step(1.5 * k, -0.5 * k);
+          break;
+        }
+        case 'block':
+          t.hipHeight -= B.braceDip * s * this.shieldRaise;
+          t.lean += this.parry * 0.12;
+          step(1.2 * this.shieldRaise, 0.4 * this.shieldRaise);
+          break;
+        default:
+          break;
+      }
+      // Remember whether this swing came from overhead (the strike's crunch follows the wind-up).
+      if (input.fencePhase === 'windup') this.fenceCrunch = oh;
+      else if (input.fencePhase !== 'strike' && input.fencePhase !== 'recover') this.fenceCrunch = 0;
+    }
+
+    if (this.zombie && planted) {
+      // Grab wind-up: both arms come up and out (see defaultHands), body tips forward onto the toes.
+      const reach = this.zombieReach();
+      t.lean += B.grabLean * reach + this.grabHold * 0.3 + Math.sin(this.time * 18) * 0.04 * this.grabHold;
+      t.hipHeight -= B.grabDip * s * reach;
+      // Runner tell: freezes in a low coil, trembling; then the sprint leans hard into it.
+      t.hipHeight -= B.tellDip * s * this.tell + Math.sin(this.time * 47) * 0.3 * s * this.tell;
+      t.lean += B.tellLean * this.tell + B.rushLean * this.rush;
+      step(2.2 * this.tell, 1 * this.tell);
+      if (this.tell > 0.05) t.rate = 40;
+    }
+
+    if (this.gun && !this.fencing) t.lean -= this.recoil * B.recoilLean;
+    t.hipHeight -= this.hitDip * B.hitDip * s;
+  }
+
+  /** Zombie grab reach 0..1 (the AI's wind-up; the runner's tell isn't a grab). */
+  private zombieReach(): number {
+    return this.zombie && this.zombie.rush !== 'tell' ? smoothstep(this.meleeWindup) : 0;
+  }
+
+  private fenceCrunch = 0;
+  private parry = 0;
 
   /** Front kick: the near leg chambers, snaps out at hip height and comes back; the body leans away. */
   private applyKick(t: Targets, k: number): void {
@@ -706,12 +855,43 @@ export class HumanoidAnimator {
     this.events.push({ kind: 'mag', x: at.x, y: at.y, vx: v.x, vy: v.y, angle: this.gunAngle });
   }
 
+  private updateFencing(dt: number, input: RigInput): void {
+    const blade = input.blade;
+    if (blade) {
+      // Snap on the first step, then follow closely (the poses are already eased).
+      const k = this.fencing ? damp(60, dt) : 1;
+      this.handAngle = lerp(this.handAngle, blade.angle, k);
+      this.handReach = lerp(this.handReach, blade.reach, k);
+    }
+    this.fencing = !!blade;
+    this.hasShield = input.shield === true;
+    this.shieldRaise = lerp(this.shieldRaise, input.shieldUp ? 1 : 0, damp(30, dt));
+    this.lungeLean = lerp(this.lungeLean, input.lunge ?? 0, damp(20, dt));
+    this.parry = Math.max(input.parry ?? 0, this.parry - dt * 4);
+  }
+
+  /** Sword hand where the pose puts it around the near shoulder; shield low at the hip or up in front of the face. */
+  private fencingHands(front: Vec2, back: Vec2): { back: Vec2; front: Vec2 } {
+    const s = this.s;
+    const r = this.handReach * s;
+    const sword = { x: front.x + Math.cos(this.handAngle) * r, y: front.y + Math.sin(this.handAngle) * r };
+    if (!this.hasShield) {
+      const arm = this.props.upperArm + this.props.lowerArm;
+      return { front: sword, back: { x: back.x - s, y: back.y + arm * 0.85 } };
+    }
+    const low = { x: back.x + 3 * s, y: back.y + 5.5 * s };
+    // Parry: the shield punches out to meet the blade.
+    const high = { x: back.x + (6.5 + this.parry * BODY_TELL.parryShove) * s, y: back.y + 0.5 * s };
+    return { front: sword, back: mixVec(low, high, this.shieldRaise) };
+  }
+
   /** Hands when nothing else claims them: on the gun, or swinging / punching / balancing unarmed. */
   private defaultHands(frontShoulder: Vec2, backShoulder: Vec2): { back: Vec2; front: Vec2 } {
     const p = this.props;
     const s = this.s;
     const armLength = p.upperArm + p.lowerArm;
 
+    if (this.fencing) return this.fencingHands(frontShoulder, backShoulder);
     if (this.gun) {
       const gun = this.gun;
       const angle = this.aimedGunAngle();
@@ -727,6 +907,7 @@ export class HumanoidAnimator {
     }
     this.pumpOffset = 0;
 
+    if (this.zombie && !AIRBORNE.has(this.state)) return this.zombieHands(frontShoulder, backShoulder, armLength);
     if (this.strike > 0 || this.meleeWindup > 0) {
       // Punch: wind up (fist pulled back) -> strike (arm extended), retracting as `strike` decays.
       const ext = this.strike > 0 ? armLength * 0.95 * this.strike : -armLength * 0.35 * this.meleeWindup;
@@ -744,12 +925,42 @@ export class HumanoidAnimator {
         back: { x: backShoulder.x - 3 * s, y: backShoulder.y - 1 * s - fall * 3 * s - flap },
       };
     }
-    // Arms swing opposite to the legs, wider at a sprint.
-    const swing = Math.cos(this.phase) * lerp(2.5, 4, this.gait) * s;
+    return this.swingHands(frontShoulder, backShoulder, armLength);
+  }
+
+  /** Arms swing opposite to the legs, wider at a sprint. */
+  private swingHands(frontShoulder: Vec2, backShoulder: Vec2, armLength: number, wide = 0): { back: Vec2; front: Vec2 } {
+    const s = this.s;
+    const swing = Math.cos(this.phase) * (lerp(2.5, 4, this.gait) + wide) * s;
     return {
       front: { x: frontShoulder.x - swing + s, y: frontShoulder.y + armLength * 0.85 },
       back: { x: backShoulder.x + swing - s, y: backShoulder.y + armLength * 0.85 },
     };
+  }
+
+  /**
+   * Zombie arms: hanging swing; runner tell pulls them back low; a sprint pumps them wide; the grab
+   * wind-up raises both straight out at shoulder height, they snap forward on the lunge and stay
+   * clamped while holding.
+   */
+  private zombieHands(frontShoulder: Vec2, backShoulder: Vec2, armLength: number): { back: Vec2; front: Vec2 } {
+    const s = this.s;
+    let hands = this.swingHands(frontShoulder, backShoulder, armLength, this.rush * 2);
+    const coil = {
+      front: { x: frontShoulder.x - 2.5 * s, y: frontShoulder.y + armLength * 0.75 },
+      back: { x: backShoulder.x - 3.5 * s, y: backShoulder.y + armLength * 0.7 },
+    };
+    hands = { front: mixVec(hands.front, coil.front, this.tell), back: mixVec(hands.back, coil.back, this.tell) };
+    const out = Math.max(this.zombieReach(), this.grabHold, this.strike);
+    if (out <= 0) return hands;
+    // Reach: straight out, a touch higher at full wind-up; the lunge drives them a bit further and lower.
+    const lunge = this.strike * s;
+    const claw = Math.sin(this.time * 20) * 0.4 * s * this.grabHold;
+    const reach = {
+      front: { x: frontShoulder.x + armLength * 0.92 + lunge, y: frontShoulder.y - armLength * 0.08 + lunge + claw },
+      back: { x: backShoulder.x + armLength * 0.88 + lunge, y: backShoulder.y + armLength * 0.02 + lunge - claw },
+    };
+    return { front: mixVec(hands.front, reach.front, out), back: mixVec(hands.back, reach.back, out) };
   }
 }
 

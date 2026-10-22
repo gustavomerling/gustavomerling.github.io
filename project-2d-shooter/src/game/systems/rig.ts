@@ -1,16 +1,18 @@
 import { clamp } from '@engine/math/math';
 import type { RigInput } from '../character/animator';
-import { AI, KICK, PLAYER_TUNING as T } from '../config';
+import { KICK, PLAYER_TUNING as T } from '../config';
 import { ENEMIES } from '../content/enemies/catalog';
 import { WEAPONS } from '../content/weapons/catalog';
 import { GUN_MODELS, withAttachments, type GunModel } from '../content/weapons/models';
-import { Aim, Arsenal, Body, Brain, Npc, PlayerControl, Position, Rig, SwordState, Velocity } from '../world/components';
+import { Aim, Arsenal, Body, Brain, Fencer, Npc, PlayerControl, Position, Rig, Velocity, Zombie } from '../world/components';
 import type { RunSystem } from './context';
 import { spawnDebris } from './effects';
+import { fencerPose } from './fencing';
+import { GUN } from '../render/palette';
 
 const CASINGS = {
-  brass: { shape: [-0.6, -0.25, 0.6, -0.25, 0.6, 0.25, -0.6, 0.25], color: '#d9a441' },
-  shell: { shape: [-0.9, -0.45, 0.9, -0.45, 0.9, 0.45, -0.9, 0.45], color: '#c0392b' },
+  brass: { shape: [-0.6, -0.25, 0.6, -0.25, 0.6, 0.25, -0.6, 0.25], color: GUN.brass },
+  shell: { shape: [-0.9, -0.45, 0.9, -0.45, 0.9, 0.45, -0.9, 0.45], color: GUN.shell },
 } as const;
 
 /** A gun's magazine as a loose polygon around its centre, scaled and mirrored like the rig. */
@@ -61,12 +63,18 @@ export const rigSystem: RunSystem = {
         cycle: ws ? clamp(ws.cooldown * ws.weapon.stats.fireRate, 0, 1) : 0,
         reload: ws && ws.reloadLeft > 0 ? 1 - ws.reloadLeft / ws.weapon.stats.reloadTime : undefined,
       };
-      if (brain && brain.windupLeft > 0 && ws?.weapon.behaviors.has('cursorSwing')) {
-        input.sword = {
-          progress: clamp(1 - brain.windupLeft / AI.melee.windup, 0, 1),
-          dir: facing > 0 ? 0 : Math.PI,
-        };
+      const fencer = world.get(e, Fencer);
+      if (fencer) {
+        input.blade = fencerPose(fencer);
+        input.shield = fencer.shield;
+        input.shieldUp = fencer.phase === 'block';
+        input.lunge = fencer.phase === 'strike' ? 1 : fencer.phase === 'windup' ? -0.5 : fencer.phase === 'stunned' ? -1 : 0;
+        input.fencePhase = fencer.phase;
+        input.fenceProgress = fencer.duration > 0 ? clamp(fencer.t / fencer.duration, 0, 1) : 0;
+        input.parry = clamp(fencer.parryFlash / 0.4, 0, 1);
       }
+      const zombie = world.get(e, Zombie);
+      if (zombie) input.zombie = { rush: zombie.rush, grabbing: zombie.grab !== null };
       if (pc) {
         const feetX = pos.x + body.w / 2;
         const feetY = pos.y + body.h;
@@ -77,10 +85,6 @@ export const rigSystem: RunSystem = {
         }
         if (pc.state === 'roll') input.progress = 1 - pc.rollLeft / T.rollTime;
         if (pc.kickLeft > 0) input.kick = 1 - pc.kickLeft / KICK.time;
-        const sword = world.get(e, SwordState);
-        if (sword && sword.swingLeft > 0) {
-          input.sword = { progress: 1 - sword.swingLeft / Math.max(sword.swingTotal, 0.01), dir: sword.swingAngle };
-        }
         if (pc.state === 'mantle') {
           input.progress = pc.mantleTotal > 0 ? 1 - pc.mantleLeft / pc.mantleTotal : 1;
           input.ledge = { x: pc.mantleLedgeX - feetX, y: pc.mantleLedgeY - feetY };
@@ -94,7 +98,7 @@ export const rigSystem: RunSystem = {
         const gun = anim.gun;
         if (!gun) continue;
         const f = anim.facing;
-        const base = ev.kind === 'mag' ? { shape: magShape(gun, anim.s, f), color: '#5c636e' } : CASINGS[gun.casing];
+        const base = ev.kind === 'mag' ? { shape: magShape(gun, anim.s, f), color: GUN.dark } : CASINGS[gun.casing];
         spawnDebris(world, {
           x: pos.x + body.w / 2 + f * ev.x,
           y: pos.y + body.h + ev.y,

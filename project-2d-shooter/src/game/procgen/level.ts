@@ -2,7 +2,7 @@ import { Rng } from '@engine/math/rng';
 import type { Rect } from '@engine/math/rect';
 import type { Vec2 } from '@engine/math/vec2';
 import { Tile, TileGrid, type TileKind } from '@engine/physics/tilegrid';
-import type { BiomeDef } from '../content/biomes/catalog';
+import type { BiomeDef, EncounterRules } from '../content/biomes/catalog';
 import { TILE } from '../config';
 import { linearPath, type Cell, type Dir } from './layout';
 import {
@@ -13,6 +13,7 @@ import {
   ROOM_TEMPLATES,
   SIDE_WINDOW_SILL,
   SLAB_ROWS,
+  STOREY_ROWS,
   sideWindowRows,
   type RoomStyle,
   type RoomTemplate,
@@ -29,6 +30,8 @@ export interface PlacedRoom {
   outdoor: boolean;
   /** Only the ground door is carved (flat single-storey chunk). */
   noUpperDoors: boolean;
+  /** Stamped mirrored left-right (ladders and holes swap sides; the way in is still on the left). */
+  mirrored: boolean;
   cell: Cell;
   /** Room rect in world units. */
   rect: Rect;
@@ -67,6 +70,9 @@ export function generateLevel(seed: string, biome: BiomeDef, templates: readonly
   const layoutRng = rng.fork('layout');
   const roomRng = rng.fork('rooms');
   const spawnRng = rng.fork('spawns');
+  // Forked after the older streams, so adding them changed nothing that was already generated.
+  const mirrorRng = rng.fork('mirror');
+  const encounterRng = rng.fork('encounters');
 
   const byId = (id: string) => {
     const t = templates.find((x) => x.id === id);
@@ -93,7 +99,11 @@ export function generateLevel(seed: string, biome: BiomeDef, templates: readonly
     const next = index === length - 2 && biome.endTemplate ? byId(biome.endTemplate) : undefined;
     const fresh = pool.filter((t) => t.id !== prev?.id && t.id !== next?.id);
     const kind = fresh.filter((t) => !!t.outdoor === wantsOutdoor(index));
-    return roomRng.pick(kind.length > 0 ? kind : fresh.length > 0 ? fresh : pool);
+    const options = kind.length > 0 ? kind : fresh.length > 0 ? fresh : pool;
+    // Variety: the chunks used the fewest times so far in this level go first.
+    const uses = (t: RoomTemplate) => picked.filter((p) => p.id === t.id).length;
+    const least = Math.min(...options.map(uses));
+    return roomRng.pick(options.filter((t) => uses(t) === least));
   };
 
   const grid = new TileGrid(length * ROOM_COLS, ROOM_ROWS, TILE);
@@ -105,6 +115,8 @@ export function generateLevel(seed: string, biome: BiomeDef, templates: readonly
     if (index < length - 1) connections.push('right');
     const template = pickTemplate(index);
     picked.push(template);
+    const fixedHere = (index === 0 && !!biome.startTemplate) || (index === length - 1 && !!biome.endTemplate);
+    const mirrored = !fixedHere && mirrorRng.chance(biome.mirrorChance ?? 0);
     return {
       index,
       templateId: template.id,
@@ -112,6 +124,7 @@ export function generateLevel(seed: string, biome: BiomeDef, templates: readonly
       style: template.style ?? DEFAULT_ROOM_STYLE,
       outdoor: template.outdoor === true,
       noUpperDoors: template.noUpperDoors === true,
+      mirrored,
       cell,
       rect: { x: cell.cx * ROOM_COLS * TILE, y: 0, w: ROOM_COLS * TILE, h: ROOM_ROWS * TILE },
       connections,
@@ -133,15 +146,27 @@ export function generateLevel(seed: string, biome: BiomeDef, templates: readonly
   const exit = pickStandable(grid, last, markers.get(last.index)!.exit, ROOM_COLS - 4);
 
   const enemySpawns: EnemySpawn[] = [];
+  const rules = biome.encounters ?? ALL_MARKERS;
+  const taken = new Set<string>();
   for (const room of rooms) {
     // A quiet first room; peaceful biomes have no enemy pool.
     if (room.index === 0 || biome.enemyPool.length === 0) continue;
+    // 0 in the first room with enemies, 1 in the last room.
+    const progress = rooms.length > 2 ? (room.index - 1) / (rooms.length - 2) : 1;
+    const candidates: { pos: Vec2; storey: number }[] = [];
     for (const m of markers.get(room.index)!.enemy) {
+      if (m.cx < rules.entryClearance) continue;
       const pos = standableBelow(grid, originCol(room) + m.cx, m.cy);
-      if (pos) {
-        const weighted = biome.enemyPool.map((e) => ({ item: e.id, weight: e.weight }));
-        enemySpawns.push({ enemyId: spawnRng.weighted(weighted), pos, roomIndex: room.index });
-      }
+      if (!pos) continue;
+      const key = `${pos.x},${pos.y}`;
+      if (taken.has(key) || Math.hypot(pos.x - spawn.x, pos.y - spawn.y) <= rules.safeRadius * TILE) continue;
+      taken.add(key);
+      candidates.push({ pos, storey: Math.floor(pos.y / TILE / STOREY_ROWS) });
+    }
+    const pool = biome.enemyPool.filter((e) => (e.from ?? 0) <= progress + 1e-9);
+    const weighted = (pool.length > 0 ? pool : biome.enemyPool).map((e) => ({ item: e.id, weight: e.weight }));
+    for (const c of pickEncounters(candidates, rules, progress, encounterRng)) {
+      enemySpawns.push({ enemyId: spawnRng.weighted(weighted), pos: c.pos, roomIndex: room.index });
     }
   }
 
@@ -149,6 +174,28 @@ export function generateLevel(seed: string, biome: BiomeDef, templates: readonly
 }
 
 const originCol = (room: PlacedRoom) => room.cell.cx * ROOM_COLS;
+
+/** No ramp, no clearance: every marker spawns (biomes without `encounters`). */
+const ALL_MARKERS: EncounterRules = { density: { from: 1, to: 1 }, minPerRoom: 0, entryClearance: 0, safeRadius: 0 };
+
+/**
+ * Which of a room's candidate spots get an enemy: the ramped share of them, spread over the
+ * storeys (one per storey in turn, in a shuffled order) so a fight is never all on one floor.
+ * Returned in the candidates' order, so the enemy-type draws stay in marker order.
+ */
+function pickEncounters<T extends { storey: number }>(candidates: readonly T[], rules: EncounterRules, progress: number, rng: Rng): T[] {
+  const share = rules.density.from + (rules.density.to - rules.density.from) * progress;
+  const count = Math.min(candidates.length, Math.max(rules.minPerRoom, Math.round(candidates.length * share)));
+  if (count >= candidates.length) return [...candidates];
+  const byStorey = new Map<number, number[]>();
+  candidates.forEach((c, i) => byStorey.set(c.storey, [...(byStorey.get(c.storey) ?? []), i]));
+  const queues = rng.shuffle([...byStorey.values()].map((list) => rng.shuffle(list)));
+  const chosen = new Set<number>();
+  for (let round = 0; chosen.size < count; round++) {
+    for (const q of queues) if (round < q.length && chosen.size < count) chosen.add(q[round]!);
+  }
+  return candidates.filter((_, i) => chosen.has(i));
+}
 
 /** Feet position on the first marker that has floor under it, or a fallback column. */
 function pickStandable(grid: TileGrid, room: PlacedRoom, candidates: Cell[], fallbackCol: number): Vec2 {
@@ -191,7 +238,7 @@ function stamp(grid: TileGrid, room: PlacedRoom, template: RoomTemplate) {
   const found = { spawn: [] as Cell[], exit: [] as Cell[], enemy: [] as Cell[], windows: [] as Cell[] };
   template.rows.forEach((line, r) => {
     for (let c = 0; c < line.length; c++) {
-      const ch = line[c]!;
+      const ch = line[room.mirrored ? line.length - 1 - c : c]!;
       grid.set(originCol(room) + c, r, CHAR_TILE[ch] ?? Tile.Empty);
       if (ch === 'P') found.spawn.push({ cx: c, cy: r });
       else if (ch === 'X') found.exit.push({ cx: c, cy: r });

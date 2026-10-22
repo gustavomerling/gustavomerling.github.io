@@ -1,6 +1,6 @@
-export type WeaponClass = 'pistol' | 'smg' | 'rifle' | 'shotgun' | 'bow' | 'sword' | 'shield' | 'magic';
+export type WeaponClass = 'pistol' | 'smg' | 'rifle' | 'shotgun' | 'bow' | 'sword';
 export type FireMode = 'semi' | 'burst' | 'auto';
-export type ProjectileKind = 'bullet' | 'arrow' | 'fireball';
+export type ProjectileKind = 'bullet' | 'arrow';
 
 /** Numbers an attachment can modify. */
 export interface WeaponStats {
@@ -40,10 +40,7 @@ export type WeaponBehavior =
   | 'ricochet' // bullets bounce off walls once
   | 'pierce' // armour piercing: extra penetration (see the ap-rounds modifiers)
   | 'knockback' // pushes enemies
-  | 'cursorSwing' // melee swing driven by how fast the cursor moves
-  | 'shield' // blocks damage from the front while held
-  | 'magicShield' // click casts a temporary bubble that blocks every direction
-  | 'explosive'; // the projectile explodes on impact
+  | 'blade'; // sword and shield: fights through the fencing system, never fires
 
 export type AttachmentSlot = 'muzzle' | 'underbarrel' | 'magazine' | 'ammo' | 'conversion';
 
@@ -64,9 +61,7 @@ export interface WeaponDef {
   readonly behaviors?: readonly WeaponBehavior[];
   /** What leaves the weapon; omitted = bullet. */
   readonly projectileKind?: ProjectileKind;
-  /** Fireball blast radius (px). Only used with the explosive behaviour. */
-  readonly explosionRadius?: number;
-  /** No magazine/reserve bookkeeping (bows, blades, staves). */
+  /** No magazine/reserve bookkeeping (bows, blades). */
   readonly infiniteAmmo?: boolean;
   /** Short control hint shown in the HUD. */
   readonly hint?: string;

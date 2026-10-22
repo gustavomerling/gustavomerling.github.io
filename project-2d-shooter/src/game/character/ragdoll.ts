@@ -4,6 +4,7 @@ import type { HitZone } from '../config';
 import type { HumanoidAnimator } from './animator';
 import { drawCapsule, drawDisc, mix, type RigStyle } from './draw';
 import { HB, type HumanoidProportions } from './humanoid';
+import { INK } from '../render/palette';
 
 /** Ragdoll point indices. */
 const P = {
@@ -78,6 +79,14 @@ export function createRagdoll(
   if (hit) {
     body.addVelocity(IMPULSE_POINT[hit.zone], hit.vx * 1.5, hit.vy * 1.5, dt);
     body.addVelocity(P.shoulder, hit.vx * 0.5, hit.vy * 0.5, dt);
+    // Reads by zone: a headshot whips the head back along the shot; a leg hit sweeps the feet
+    // out with the shot while the shoulders stay behind, so the body topples instead of sliding.
+    if (hit.zone === 'head') body.addVelocity(P.neck, hit.vx * 0.4, hit.vy * 0.4, dt);
+    if (hit.zone === 'leg') {
+      body.addVelocity(P.backFoot, hit.vx * 1.2, hit.vy * 0.3, dt);
+      body.addVelocity(P.frontFoot, hit.vx * 1.2, hit.vy * 0.3, dt);
+      body.addVelocity(P.head, -hit.vx * 0.3, 0, dt);
+    }
   }
   return body;
 }
@@ -85,7 +94,7 @@ export function createRagdoll(
 export function drawRagdoll(ctx: CanvasRenderingContext2D, body: VerletBody, p: HumanoidProportions, style: RigStyle, fade: number): void {
   const x = body.x;
   const y = body.y;
-  const back = mix(style.backColor, '#000000', 0.2);
+  const back = mix(style.backColor, INK.black, 0.2);
   ctx.globalAlpha = fade;
   const seg = (a: number, b: number, width: number, color: string) => drawCapsule(ctx, x[a]!, y[a]!, x[b]!, y[b]!, width, color, style.outline);
 

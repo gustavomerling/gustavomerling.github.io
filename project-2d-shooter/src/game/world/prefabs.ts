@@ -5,11 +5,13 @@ import { HumanoidAnimator } from '../character/animator';
 import { rigStyle, type RigStyle } from '../character/draw';
 import type { HumanoidProportions } from '../character/humanoid';
 import { ATTACHMENTS } from '../content/attachments/catalog';
+import { FENCING_KITS } from '../content/blades/kits';
 import type { PlayerDef } from '../content/characters/player';
 import { ENEMIES } from '../content/enemies/catalog';
 import { assembleWeapon, type AssembledWeapon } from '../content/weapons/assemble';
 import { WEAPONS } from '../content/weapons/catalog';
 import { PLAYER_TUNING, RICOCHET } from '../config';
+import { PLAYER } from '../render/palette';
 import {
   Aim,
   Arsenal,
@@ -19,7 +21,7 @@ import {
   emptyIntent,
   Faction,
   Focus,
-  Guard,
+  Fencer,
   Health,
   Intent,
   Npc,
@@ -28,9 +30,11 @@ import {
   Projectile,
   Ragdoll,
   Rig,
-  SwordState,
   Velocity,
+  Zombie,
+  zombieState,
   type BodyData,
+  type FencerData,
   type HealthData,
   type Team,
   type WeaponState,
@@ -70,13 +74,32 @@ export function weaponState(weapon: AssembledWeapon, reserve = Infinity): Weapon
   };
 }
 
-const guardState = (): { raised: boolean; flash: number; magicLeft: number; magicMax: number; magicCooldownLeft: number } => ({
-  raised: false,
-  flash: 0,
-  magicLeft: 0,
-  magicMax: 4,
-  magicCooldownLeft: 0,
-});
+/** Sword-and-shield fighter state, ready and with full stamina. */
+export function fencerState(kitId: string, shield: boolean, facing: 1 | -1 = 1): FencerData {
+  return {
+    kitId,
+    shield,
+    phase: 'ready',
+    t: 0,
+    duration: 0,
+    swing: 0,
+    queued: false,
+    comboLeft: 0,
+    facing,
+    stamina: FENCING_KITS.get(kitId).stamina,
+    regenDelay: 0,
+    hit: new Set<number>(),
+    flash: 0,
+    parryFlash: 0,
+    moveScale: 1,
+    opener: -1,
+    parryOpen: true,
+    downFor: Infinity,
+    sinceBlocked: Infinity,
+    turnLeft: 0,
+    ai: { mode: 'approach', left: 0, pace: 1, feint: false, sawSwing: false },
+  };
+}
 
 /** `feet` = bottom-centre position. */
 export function spawnPlayer(world: World, def: PlayerDef, feet: Vec2): Entity {
@@ -124,25 +147,17 @@ export function spawnPlayer(world: World, def: PlayerDef, feet: Vec2): Entity {
   world.add(e, Faction, { team: 'player' });
   world.add(e, Health, health(def.maxHp));
   world.add(e, Focus, { value: 1 });
-  world.add(e, Guard, guardState());
-  world.add(e, SwordState, {
-    lastX: feet.x + 32,
-    lastY: feet.y - h / 2,
-    speed: 0,
-    cooldownLeft: 0,
-    swingLeft: 0,
-    swingTotal: 0.18,
-    swingAngle: 0,
-    hit: new Set<number>(),
-  });
   world.add(e, Arsenal, {
     weapons: def.startingWeapons.map((w) =>
       weaponState(assembleWeapon(WEAPONS.get(w.weaponId), w.attachments.map((id) => ATTACHMENTS.get(id)))),
     ),
     active: 0,
   });
+  // A blade in the kit makes the player a sword-and-shield fighter (modo medieval).
+  const fencer = def.startingWeapons.some((w) => WEAPONS.get(w.weaponId).behaviors?.includes('blade'));
+  if (fencer) world.add(e, Fencer, fencerState('player', true));
   world.add(e, CameraTarget, { lookahead: 0.22 });
-  world.add(e, Rig, { animator: new HumanoidAnimator(h), style: rigStyle('#f2f2f2') });
+  world.add(e, Rig, { animator: new HumanoidAnimator(h), style: rigStyle(PLAYER.body, { shield: fencer }) });
   return e;
 }
 
@@ -175,7 +190,8 @@ export function spawnEnemy(world: World, enemyId: string, feet: Vec2, facing: 1 
     idleLeft: 1 + (feet.x % 3),
   });
   if (def.weaponId) world.add(e, Arsenal, { weapons: [weaponState(assembleWeapon(WEAPONS.get(def.weaponId)))], active: 0 });
-  if (def.shield) world.add(e, Guard, guardState());
+  if (def.fencingKit) world.add(e, Fencer, fencerState(def.fencingKit, def.shield === true, facing));
+  if (def.zombie) world.add(e, Zombie, zombieState(feet.x));
   world.add(e, Rig, {
     animator: new HumanoidAnimator(def.size.h),
     style: rigStyle(def.color, { skeleton: def.skeleton, shield: def.shield }),
@@ -205,7 +221,6 @@ export function spawnProjectile(
     damage: s.damage * damageScale,
     distanceLeft: s.range,
     kind,
-    explosionRadius: weapon.def.explosionRadius ?? 0,
     behaviors: weapon.behaviors,
     bouncesLeft: kind === 'bullet' ? (ricochetAmmo ? RICOCHET.ricochetAmmoBounces : RICOCHET.bounces) : 0,
     alwaysRicochet: ricochetAmmo,

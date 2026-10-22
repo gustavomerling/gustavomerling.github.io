@@ -22,24 +22,24 @@ function flatRoom(id: string, name: string, marks: readonly Mark[]): RoomTemplat
   return { id, name, tags: ['castle'], outdoor: true, noUpperDoors: true, rows };
 }
 
+// Enemies come in small groups spread across each room (the first room is always quiet), so a
+// fight is one or two blades at a time plus whoever queues up: see the attack tokens in
+// content/blades/kits.ts (FENCE_AI). The last room is the hardest.
 export const CASTLE_CHUNKS: readonly RoomTemplate[] = [
-  flatRoom('castle-gate', 'Portão do castelo', [
-    { col: 4, char: 'P' },
-    { col: 18, char: 'E' },
-    { col: 24, char: 'E' },
-  ]),
+  flatRoom('castle-gate', 'Portão do castelo', [{ col: 4, char: 'P' }]),
   flatRoom('castle-yard', 'Pátio de treino', [
-    { col: 7, char: 'E' },
-    { col: 14, char: 'E' },
+    { col: 12, char: 'E' },
     { col: 22, char: 'E' },
   ]),
   flatRoom('castle-hall', 'Salão dos ossos', [
     { col: 8, char: 'E' },
-    { col: 20, char: 'E' },
+    { col: 18, char: 'E' },
+    { col: 26, char: 'E' },
   ]),
   flatRoom('castle-bridge', 'Ponte levadiça', [
-    { col: 10, char: 'E' },
-    { col: 18, char: 'E' },
-    { col: 25, char: 'X' },
+    { col: 8, char: 'E' },
+    { col: 14, char: 'E' },
+    { col: 20, char: 'E' },
+    { col: 26, char: 'X' },
   ]),
 ];

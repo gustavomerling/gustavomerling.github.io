@@ -10,7 +10,7 @@ import { RUN_MODES } from './content/modes/catalog';
 import { TILE } from './config';
 import { floorSpots, generateLevel } from './procgen/level';
 import type { RunContext } from './systems/context';
-import { hordeSystem } from './systems/horde';
+import { createHordeState, hordeSystem } from './systems/horde';
 import { Npc, Position } from './world/components';
 import { spawnPlayer } from './world/prefabs';
 
@@ -48,12 +48,8 @@ describe('run modes', () => {
     const ctx = {
       clock: { dt: 1 } as Clock,
       rng: Rng.fromString('horde-test'),
-      horde: {
-        def: { interval: 1, maxAlive: 5, minDistance: 260, maxDistance: 420, pool: [{ id: 'zombie', weight: 1 }] },
-        // Too close, in the band (400 behind), and in front of the player: only the middle one is valid.
-        spots: [floor(900), floor(600), floor(1100)],
-        timer: 0.5,
-      },
+      // Too close, in the band (400 behind), and in front of the player: only the middle one is valid.
+      horde: { ...createHordeState({ ...RUN_MODES.get('zombie').horde!, pool: [{ id: 'zombie', weight: 1 }] }, [floor(900), floor(600), floor(1100)]), phase: 'surge', timer: 10 },
     } as unknown as RunContext;
 
     hordeSystem.update(world, ctx);
