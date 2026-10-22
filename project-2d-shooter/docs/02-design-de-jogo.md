@@ -81,7 +81,7 @@ Escolhidos no menu principal ([content/modes/catalog.ts](../src/game/content/mod
 
 ## Zumbis
 
-Os três são melee (o mesmo cérebro do estagiário) com `omniscient`: sentem o jogador **através de paredes**, dentro do `sightRange`, como se farejassem. Andam pelo chão como qualquer inimigo, mas agora param de vez quando o alvo está exatamente acima/abaixo (em vez de girar no lugar). Os valores estão em [content/enemies/catalog.ts](../src/game/content/enemies/catalog.ts).
+Os três são melee (o mesmo cérebro do estagiário) com `omniscient`: sentem o jogador **através de paredes**, dentro do `sightRange`, como se farejassem. Seguem uma rota pelo mapa ([pathing/navgraph.ts](../src/game/pathing/navgraph.ts)): andam, pulam degraus e vãos, descem de bordas e **sobem escadas** (vão até a escada, sobem e saem para o lado do andar de cima; descer é cair pelo vão da escada). Levar um tiro na escada faz soltar e cair. Sem rota possível, param de vez quando o alvo está exatamente acima/abaixo (em vez de girar no lugar). Os valores estão em [content/enemies/catalog.ts](../src/game/content/enemies/catalog.ts).
 
 - **Só a cabeça mata**: tiros no corpo, braços ou pernas nunca levam a vida abaixo de 1; um headshot mata na hora.
 - **Pernas**: um tiro nas pernas derruba o zumbi. O colisor abaixa e ele passa a se arrastar (45% da velocidade), sem pular nem subir.

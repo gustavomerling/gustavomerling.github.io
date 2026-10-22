@@ -1,5 +1,5 @@
 import type { Entity, World } from '@engine/ecs/world';
-import { DEG2RAD } from '@engine/math/math';
+import { approach, DEG2RAD } from '@engine/math/math';
 import type { Vec2 } from '@engine/math/vec2';
 import { isBlocking, Tile, type TileGrid } from '@engine/physics/tilegrid';
 import { ENEMIES, type EnemyDef } from '../content/enemies/catalog';
@@ -49,6 +49,8 @@ const COVER_SEARCH_TILES = 4;
 const FACE_DEADZONE = 2;
 /** Melee chase stops this close to the target's x: no pacing back and forth when it can't be reached. */
 const CHASE_DEADZONE = 4;
+/** Pathing enemies grab a ladder this close (px) to its centre line. */
+const LADDER_GRAB = 6;
 
 /**
  * Enemy behaviour. Perception (sight cone + line of sight through walls, hearing
@@ -73,6 +75,8 @@ export const aiSystem: RunSystem = {
       const guard = world.get(e, Guard);
       if (guard) guard.raised = false;
       brain.cooldownLeft = Math.max(0, brain.cooldownLeft - dt);
+      // Knocked off a ladder (hit, legs shot, killed): let go and fall.
+      if (brain.climb && (health.hp <= 0 || brain.staggerLeft > 0 || brain.downed)) letGo(brain, body);
       if (health.hp <= 0) continue;
 
       // Staggered by a hit: can't act, slides with the knockback.
@@ -93,6 +97,10 @@ export const aiSystem: RunSystem = {
       if (def.pathing && player) {
         brain.alert = AI.memory;
         brain.lastSeen = { ...player.center };
+      }
+      if (brain.climb) {
+        climbLadder(ctx.grid, brain, pos, vel, body, def, dt);
+        continue;
       }
       if (brain.alert > 0 && brain.lastSeen) faceTarget(brain, eye.x, brain.lastSeen.x);
 
@@ -347,6 +355,13 @@ function melee(
     const feet = { x: me.x, y: pos.y + body.h };
     const goal = { x: target.x, y: target.y + PLAYER_TUNING.standHeight / 2 };
     const step = ctx.nav.step(def.id, { moveSpeed: def.moveSpeed, jumpSpeed: M.jumpSpeed }, feet, goal);
+    if (step?.ladderX !== undefined) {
+      // Walk to the ladder; close enough (still over the floor beside a hole), grab it.
+      const lx = step.ladderX - me.x;
+      if (Math.abs(lx) < LADDER_GRAB) brain.climb = { x: step.ladderX, y: step.y, exitX: step.x };
+      vel.x = Math.abs(lx) < 1 ? 0 : Math.sign(lx) * def.moveSpeed;
+      return;
+    }
     if (step) {
       const sx = step.x - me.x;
       vel.x = Math.abs(sx) < 2 ? 0 : Math.sign(sx) * def.moveSpeed;
@@ -358,6 +373,41 @@ function melee(
   vel.x = Math.abs(dx) <= CHASE_DEADZONE ? 0 : Math.sign(dx) * def.moveSpeed;
   // Bumped into an obstacle: hop over it.
   if (vel.x !== 0 && body.onGround && body.hitWall) vel.y = -M.jumpSpeed;
+}
+
+/**
+ * Pathing up a ladder (brain.climb): snap to its centre and climb until the feet reach the
+ * floor of the exit, then step sideways onto it. Gravity stays off until the body is over
+ * that floor, so it doesn't drop back down the shaft.
+ */
+function climbLadder(grid: TileGrid, brain: BrainData, pos: Pos, vel: Pos, body: BodyData, def: EnemyDef, dt: number): void {
+  const climb = brain.climb!;
+  const centre = pos.x + body.w / 2;
+  const feet = pos.y + body.h;
+  body.climbing = true;
+  if (feet > climb.y + 0.5) {
+    // Going up. Lost the ladder (knocked aside, end of the rungs): give up and fall.
+    if (grid.atPixel(climb.x, feet - 1) !== Tile.Ladder && grid.atPixel(climb.x, pos.y + 1) !== Tile.Ladder) {
+      letGo(brain, body);
+      return;
+    }
+    pos.x = approach(pos.x, climb.x - body.w / 2, PLAYER_TUNING.climbSnapSpeed * dt);
+    vel.x = 0;
+    vel.y = -Math.min(PLAYER_TUNING.climbSpeed, def.moveSpeed);
+    return;
+  }
+  // At the top: hold the height and step off towards the exit.
+  pos.y = climb.y - body.h;
+  vel.y = 0;
+  const dir = climb.exitX > climb.x ? 1 : -1;
+  brain.facing = dir;
+  vel.x = dir * def.moveSpeed;
+  if (Math.abs(centre - climb.x) >= (TILE - body.w) / 2 + 2 || body.hitWall) letGo(brain, body);
+}
+
+function letGo(brain: BrainData, body: BodyData): void {
+  brain.climb = null;
+  body.climbing = false;
 }
 
 /** Turns towards a target, ignoring tiny offsets (straight above/below is not a side to face). */

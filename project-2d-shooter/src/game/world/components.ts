@@ -239,6 +239,8 @@ export interface BrainData {
   downed: boolean;
   /** Patrol: seconds left standing still before walking again. */
   idleLeft: number;
+  /** Pathing up a ladder: its centre x, the feet height to reach, and the floor x to step off to. */
+  climb: { x: number; y: number; exitX: number } | null;
 }
 export const Brain = defineComponent<BrainData>('Brain');
 

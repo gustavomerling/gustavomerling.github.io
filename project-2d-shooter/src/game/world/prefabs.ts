@@ -171,6 +171,7 @@ export function spawnEnemy(world: World, enemyId: string, feet: Vec2, facing: 1 
     staggerLeft: 0,
     crouching: false,
     downed: false,
+    climb: null,
     idleLeft: 1 + (feet.x % 3),
   });
   if (def.weaponId) world.add(e, Arsenal, { weapons: [weaponState(assembleWeapon(WEAPONS.get(def.weaponId)))], active: 0 });

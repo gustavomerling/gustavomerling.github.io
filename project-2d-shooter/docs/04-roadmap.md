@@ -27,6 +27,7 @@ Removido de propósito para voltar a um canvas em branco: props e móveis, ilumi
 - [ ] Definir tema, nome e direção de arte
 - [ ] Mais chunks na grade (variedade de rotas verticais)
 - [ ] Afinar proporções (altura do andar, tamanho do personagem, alcance do pulo) usando a grade
-- [ ] IA que usa escadas e plataformas para flanquear
+- [x] Zumbis (inimigos com rota) sobem escadas; o grafo de pulos usa a colisão real (teto baixo, subir encostado na parede)
+- [ ] Atiradores também usarem escadas e plataformas para flanquear
 - [ ] Decidir munição/drops e o loop roguelite
 - [ ] Som e efeitos (quando houver direção de arte)

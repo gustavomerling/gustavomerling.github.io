@@ -1,4 +1,5 @@
 import type { Vec2 } from '@engine/math/vec2';
+import { moveAndCollide } from '@engine/physics/collide';
 import { Tile, type TileGrid } from '@engine/physics/tilegrid';
 import { PLAYER_TUNING, TILE } from '../config';
 
@@ -38,19 +39,25 @@ export interface NavGraph {
   out: number[][];
   /** Reverse edges, to search backwards from the goal. */
   into: number[][];
+  /** Edges a -> b that need a jump (up a step or across a gap), keyed a * nodes.length + b. */
+  jumps: Set<number>;
+  /** Edges a -> b taken by climbing a ladder, same key: the ladder's centre x. */
+  ladders: Map<number, number>;
 }
 
 /**
  * Floor tiles a body can stand on (two free tiles above a solid or one-way top), and the moves
- * between them: walk, step off a ledge, jump up (or across a gap). A jump is only an edge when
- * its arc, at the body's own speed, clears the walls.
+ * between them: walk, step off a ledge, jump up (or across a gap), climb a ladder. A jump is
+ * only an edge when its arc, at the body's own speed, clears the walls. Ladders don't block
+ * (walking past one or dropping down its shaft are plain edges); climbing one goes from the
+ * floor at its foot, or any floor beside it, up to every higher floor beside it.
  */
 export function buildNavGraph(grid: TileGrid, motor: NavMotor): NavGraph {
   const { cols, rows } = grid;
   // Off the map counts as solid: the sides and bottom of a level are walls.
   const tile = (c: number, r: number) => (c < 0 || r < 0 || c >= cols || r >= rows ? Tile.Solid : grid.get(c, r));
   const floor = (c: number, r: number) => tile(c, r) === Tile.Solid || tile(c, r) === Tile.OneWay;
-  const clear = (c: number, r: number) => tile(c, r) === Tile.Empty;
+  const clear = (c: number, r: number) => tile(c, r) === Tile.Empty || tile(c, r) === Tile.Ladder;
   const standable = (c: number, r: number) => floor(c, r) && clear(c, r - 1) && clear(c, r - 2);
 
   const nodes: NavNode[] = [];
@@ -65,10 +72,9 @@ export function buildNavGraph(grid: TileGrid, motor: NavMotor): NavGraph {
   const idx = (c: number, r: number): number | undefined =>
     c < 0 || r < 0 || c >= cols || r >= rows ? undefined : at.get(r * cols + c);
 
-  const { jumpSpeed: vy } = motor;
   const g = PLAYER_TUNING.gravity;
-  const peak = (vy * vy) / (2 * g);
   const out: number[][] = nodes.map(() => []);
+  const jumps = new Set<number>();
   const link = (a: number, b: number | undefined) => {
     if (b !== undefined) out[a]!.push(b);
   };
@@ -82,31 +88,95 @@ export function buildNavGraph(grid: TileGrid, motor: NavMotor): NavGraph {
         link(a, idx(x, R));
       } else if (clear(x, R) && clear(x, R - 1) && clear(x, R - 2)) {
         for (let r = R + 1; r <= Math.min(rows - 1, R + MAX_FALL); r++) {
-          if (tile(x, r) === Tile.Empty) continue;
+          if (clear(x, r)) continue;
           if (standable(x, r)) link(a, idx(x, r));
           break;
         }
       }
     }
     // Jumps: same height across a gap (k = 0), or up to the highest ledge the jump clears.
+    // A low ceiling cuts the jump short (the head bonks it), so the arc is capped to the room above.
+    let free = 0;
+    while (free < 8 && clear(c, R - 1 - free)) free++;
+    const room = Math.max(0, free * TILE - HEIGHT - 1);
+    const vy = Math.min(motor.jumpSpeed, Math.sqrt(2 * g * room));
+    const peak = (vy * vy) / (2 * g);
     for (let k = 0; k === 0 || k * TILE < peak * RISE_MARGIN; k++) {
       const h = k * TILE;
       // Time to reach the landing height on the way down.
       const t2 = (vy + Math.sqrt(vy * vy - 2 * g * h)) / g;
       const maxCols = Math.floor((motor.moveSpeed * t2 * REACH_MARGIN) / TILE);
       for (const s of [-1, 1]) {
-        for (let dc = k === 0 ? 2 : 1; dc <= maxCols; dc++) {
+        for (let dc = k === 0 ? 2 : 1; dc <= Math.max(1, maxCols); dc++) {
           const b = idx(c + s * dc, R - k);
           if (b === undefined) continue;
-          if (arcClear(grid, from.x, from.y, s * dc * TILE, vy, g, t2)) link(a, b);
+          // Gaps: the arc must clear the walls. Steps up: replay the jump with the real collision
+          // (the body may slide up a wall or bonk a low ceiling and still make it).
+          const ok = k === 0 ? arcClear(grid, from.x, from.y, s * dc * TILE, vy, g, t2) : jumpLands(grid, from, nodes[b]!, motor);
+          if (ok && !out[a]!.includes(b)) {
+            link(a, b);
+            jumps.add(a * nodes.length + b);
+          }
         }
       }
     }
   });
 
+  // Ladders: one column segment at a time, from its foot up to every floor beside it.
+  const ladders = new Map<number, number>();
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      if (tile(c, r) !== Tile.Ladder || tile(c, r - 1) === Tile.Ladder) continue;
+      let bottom = r;
+      while (tile(c, bottom + 1) === Tile.Ladder) bottom++;
+      // Stops, lowest first: the floor at the foot, then the floors beside the ladder.
+      const stops: number[][] = [];
+      const foot = idx(c, bottom + 1);
+      if (foot !== undefined) stops.push([foot]);
+      for (let rr = bottom; rr >= r; rr--) {
+        const side = [idx(c - 1, rr), idx(c + 1, rr)].filter((n): n is number => n !== undefined);
+        if (side.length > 0) stops.push(side);
+      }
+      const x = (c + 0.5) * TILE;
+      for (let i = 0; i < stops.length; i++) {
+        for (let j = i + 1; j < stops.length; j++) {
+          for (const a of stops[i]!) {
+            for (const b of stops[j]!) {
+              out[a]!.push(b);
+              ladders.set(a * nodes.length + b, x);
+            }
+          }
+        }
+      }
+    }
+  }
+
   const into: number[][] = nodes.map(() => []);
   out.forEach((list, a) => list.forEach((b) => into[b]!.push(a)));
-  return { cols, nodes, at, out, into };
+  return { cols, nodes, at, out, into, jumps, ladders };
+}
+
+/**
+ * Simulates a jump from `from` steered like the AI does (full speed towards the target's
+ * centre, stopping over it) and checks the body ends up standing on `to`'s tile.
+ */
+function jumpLands(grid: TileGrid, from: NavNode, to: NavNode, motor: NavMotor): boolean {
+  const dt = 1 / 60;
+  const speed = motor.moveSpeed * REACH_MARGIN;
+  const box = { x: from.x - HALF_WIDTH, y: from.y - HEIGHT, w: HALF_WIDTH * 2, h: HEIGHT };
+  let vy = -motor.jumpSpeed;
+  for (let i = 0; i < 90; i++) {
+    const dx = to.x - (box.x + HALF_WIDTH);
+    const vx = Math.abs(dx) < 2 ? 0 : Math.sign(dx) * speed;
+    vy = Math.min(vy + PLAYER_TUNING.gravity * dt, PLAYER_TUNING.maxFallSpeed);
+    const hit = moveAndCollide(box, vx * dt, vy * dt, grid);
+    if (hit.hitCeiling && vy < 0) vy = 0;
+    if (hit.onGround && vy >= 0) {
+      const col = Math.floor((box.x + HALF_WIDTH) / TILE);
+      return col === to.col && Math.abs(box.y + HEIGHT - to.y) < 0.5;
+    }
+  }
+  return false;
 }
 
 /** Samples the jump arc (feet at x0, y0) and checks the body box against solid tiles. */
@@ -147,11 +217,15 @@ export function nodeNear(graph: NavGraph, x: number, y: number): number | null {
   return bestGap <= 2 * TILE ? best : null;
 }
 
-/** Where to steer next: a floor point, and whether it is a jump up (the body must jump there). */
+/**
+ * Where to steer next: a floor point, and whether it is a jump (up a step or across a gap)
+ * or a ladder climb (walk to `ladderX`, climb until the feet reach `y`, then step off to `x`).
+ */
 export interface NavStep {
   x: number;
   y: number;
   up: boolean;
+  ladderX?: number;
 }
 
 /**
@@ -191,7 +265,10 @@ export class NavCache {
     }
     if (best < 0) return null;
     const next = graph.nodes[best]!;
-    return { x: next.x, y: next.y, up: next.row < graph.nodes[a]!.row };
+    const edge = a * graph.nodes.length + best;
+    const ladderX = graph.ladders.get(edge);
+    if (ladderX !== undefined) return { x: next.x, y: next.y, up: false, ladderX };
+    return { x: next.x, y: next.y, up: graph.jumps.has(edge) };
   }
 
   private distances(key: string, graph: NavGraph, goal: number): Int32Array {

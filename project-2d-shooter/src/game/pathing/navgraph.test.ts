@@ -76,6 +76,37 @@ describe('navigation graph', () => {
   });
 });
 
+/**
+ * Two storeys: ground at row 12, a slab at row 6 with a ladder through it at column 8
+ * (rows 5-11), cols 0-23. The slab is out of jump reach.
+ */
+function storeys(): TileGrid {
+  const g = grid(24, 14, (c, r) => r >= 12 || (r === 6 && c > 0 && c < 23));
+  for (let r = 5; r <= 11; r++) g.set(8, r, Tile.Ladder);
+  return g;
+}
+
+describe('ladders', () => {
+  it('climbs from the foot to the floor beside the top, and walks past the shaft', () => {
+    const g = buildNavGraph(storeys(), WALKER);
+    const node = (c: number, r: number) => g.at.get(r * g.cols + c)!;
+    expect(g.out[node(8, 12)]).toContain(node(9, 6));
+    expect(g.out[node(8, 12)]).toContain(node(7, 6));
+    expect(g.ladders.get(node(8, 12) * g.nodes.length + node(9, 6))).toBe(8.5 * TILE);
+    expect(g.out[node(7, 12)]).toContain(node(8, 12));
+    // Down is a plain drop through the shaft.
+    expect(g.out[node(7, 6)]).toContain(node(8, 12));
+  });
+
+  it('routes up the ladder', () => {
+    const nav = new NavCache(storeys());
+    const s = nav.step('walker', WALKER, { x: 2.5 * TILE, y: 12 * TILE }, { x: 18.5 * TILE, y: 6 * TILE });
+    expect(s?.ladderX).toBeUndefined(); // first walk towards it
+    const atFoot = nav.step('walker', WALKER, { x: 8.5 * TILE, y: 12 * TILE }, { x: 18.5 * TILE, y: 6 * TILE });
+    expect(atFoot).toMatchObject({ ladderX: 8.5 * TILE, x: 9.5 * TILE, y: 6 * TILE });
+  });
+});
+
 describe('NavCache', () => {
   it('walks a route up the step and reaches the goal', () => {
     const nav = new NavCache(stepped());
@@ -102,8 +133,8 @@ describe('NavCache', () => {
 });
 
 describe('zombies on a generated level', () => {
-  /** Puts the player at the far end, a zombie at the start, and checks it gets there. */
-  function chase(seed: string, enemy: string, seconds: number): number {
+  /** Puts the player at `where` (default: the far end), a zombie at the start, and checks it gets there. */
+  function chase(seed: string, enemy: string, seconds: number, where?: (level: RunScene['level']) => { x: number; y: number }): number {
     const input = new Input(DEFAULT_BINDINGS);
     const scene = new RunScene({
       renderer: { width: 480, height: 270 } as Renderer,
@@ -122,8 +153,9 @@ describe('zombies on a generated level', () => {
     const w = scene.world;
     const { level } = scene;
     const player = w.first(Position, Health, PlayerControl)!;
-    player[1].x = level.exit.x - 20;
-    player[1].y = level.exit.y - 24;
+    const target = where?.(level) ?? { x: level.exit.x - 20, y: level.exit.y };
+    player[1].x = target.x;
+    player[1].y = target.y - 24;
     player[2].hp = 1e9;
     const zombie = spawnEnemy(w, enemy, { x: level.spawn.x, y: level.spawn.y }, 1);
     const zPos = w.get(zombie, Position)!;
@@ -139,6 +171,17 @@ describe('zombies on a generated level', () => {
 
   it('a zombie walks the level to the player', () => {
     expect(chase('PATH-A', 'zombie', 240)).toBeLessThan(240);
+  }, 15_000);
+
+  it('a zombie climbs a ladder to the storey above', () => {
+    const time = chase('PATH-A', 'zombie', 120, (level) => {
+      // Straight above the start, on the first slab (the start building only goes up by ladder).
+      const col = Math.floor(level.spawn.x / TILE) + 8;
+      let row = Math.floor(level.spawn.y / TILE) - 1;
+      while (level.grid.get(col, row) !== Tile.Solid) row--;
+      return { x: col * TILE + 3, y: row * TILE };
+    });
+    expect(time).toBeLessThan(120);
   }, 15_000);
 
   it('a runner walks the level to the player', () => {
