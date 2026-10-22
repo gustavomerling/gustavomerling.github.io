@@ -43,6 +43,39 @@ interface Painted {
   anims: Anim[];
 }
 const cache = new WeakMap<LevelData, Painted>();
+
+/** Solid-looking parts of the props (every outlined box), so bullets can chip them. */
+interface PropPart {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string;
+  hp: number;
+}
+const parts = new WeakMap<LevelData, PropPart[]>();
+let recording: PropPart[] | null = null;
+
+/**
+ * A bullet moved from (x0,y0) to (x1,y1): if it crosses a prop part, punch a hole in the cached
+ * picture there and return the hit point and colour for debris. Visual only: the bullet flies on.
+ */
+export function chipProps(level: LevelData, x0: number, y0: number, x1: number, y1: number): { x: number; y: number; color: string } | null {
+  const list = parts.get(level);
+  const hit = cache.get(level);
+  if (!list || !hit) return null;
+  const mx = (x0 + x1) / 2;
+  const my = (y0 + y1) / 2;
+  for (const p of list) {
+    if (p.hp <= 0 || mx < p.x || mx >= p.x + p.w || my < p.y || my >= p.y + p.h) continue;
+    p.hp--;
+    const g = hit.canvas.getContext('2d')!;
+    if (p.hp <= 0) g.clearRect(p.x, p.y, p.w, p.h);
+    else g.clearRect(Math.round(mx) - 1, Math.round(my) - 1, 3, 3);
+    return { x: mx, y: my, color: p.color };
+  }
+  return null;
+}
 /** Collector for the level being painted (prop fns push their animated spots here). */
 let rec: Anim[] = [];
 let curStyle: PropStyle = 'city';
@@ -54,7 +87,10 @@ export function drawProps(ctx: G, level: LevelData, view: Rect, style: PropStyle
   if (!hit || hit.style !== style) {
     rec = [];
     curStyle = style;
+    recording = [];
     const canvas = paintLevel(level, style);
+    parts.set(level, recording);
+    recording = null;
     hit = { style, canvas, anims: rec };
     rec = [];
     cache.set(level, hit);
@@ -143,6 +179,13 @@ function paintLevel(level: LevelData, style: PropStyle): HTMLCanvasElement {
   const nearLadder = (c: number, r: number) =>
     grid.get(c - 1, r) === Tile.Ladder || grid.get(c + 1, r) === Tile.Ladder || grid.get(c, r + 1) === Tile.Ladder;
 
+  // Window openings in back walls: nothing may hang over them.
+  const windows = new Set<number>();
+  for (const rm of level.rooms) for (const w of rm.windows) windows.add(w.cy * grid.cols + w.cx);
+  const nearWindow = (c: number, r: number) => {
+    for (let dc = -1; dc <= 1; dc++) for (let dr = -3; dr <= 0; dr++) if (windows.has((r + dr) * grid.cols + c + dc)) return true;
+    return false;
+  };
   const sets = SETS[style];
   for (let r = 1; r < grid.rows - 1; r++) {
     for (let c = 1; c < grid.cols - 1; c++) {
@@ -154,7 +197,7 @@ function paintLevel(level: LevelData, style: PropStyle): HTMLCanvasElement {
       const dens = DENSITY[style];
       const h = hash(c, r, 1);
       // Wall decoration on the back wall (indoors only), independent of the floor prop.
-      if (!outdoor && free(c, r - 1) && free(c, r - 2) && hash(c, r, 7) < dens.wall) {
+      if (!outdoor && !nearWindow(c, r) && free(c, r - 1) && free(c, r - 2) && hash(c, r, 7) < dens.wall) {
         pick(sets.wall, hash(c, r, 8)).fn(g, x, floor, hash(c, r, 9));
       }
       if (used.has(r * grid.cols + c)) continue;
@@ -187,6 +230,8 @@ function rect(g: G, x: number, y: number, w: number, h: number, color: string): 
 
 /** Filled box with a 1 px outline. */
 function box(g: G, x: number, y: number, w: number, h: number, fill: string, light?: string): void {
+  // Big parts take a few hits before they're blown away; small ones go in one.
+  recording?.push({ x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h), color: fill, hp: Math.max(1, Math.round((w * h) / 40)) });
   rect(g, x, y, w, h, P.outline);
   rect(g, x + 1, y + 1, w - 2, h - 2, fill);
   if (light) rect(g, x + 1, y + 1, w - 2, 1, light);

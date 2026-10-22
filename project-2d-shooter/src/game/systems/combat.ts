@@ -1,3 +1,4 @@
+import { chipProps } from '../render/props';
 import type { Entity } from '@engine/ecs/world';
 import { DEG2RAD } from '@engine/math/math';
 import { segmentDistance } from '@engine/math/segment';
@@ -13,7 +14,7 @@ import { bodyRect, shoulder } from '../world/geometry';
 import { spawnProjectile } from '../world/prefabs';
 import type { RunSystem } from './context';
 import { applyDamage } from './damage';
-import { dropSlug, spawnBlood, spawnImpact, spawnShieldFx, spawnShotFx } from './effects';
+import { dropSlug, spawnBlood, spawnImpact, spawnPropChip, spawnShieldFx, spawnShotFx } from './effects';
 
 /** Moves that set the facing themselves (the mouse can't turn the body mid-move). */
 const FACING_LOCKED: ReadonlySet<PlayerState> = new Set(['roll', 'mantle', 'wallSlide']);
@@ -260,6 +261,10 @@ export const projectileSystem: RunSystem = {
         const nx = pos.x + (vel.x * dt) / steps;
         const ny = pos.y + (vel.y * dt) / steps;
         const angle = Math.atan2(vel.y, vel.x);
+
+        // Decoration: bullets chip props in passing (visual only, never stops the bullet).
+        const chip = chipProps(ctx.level, pos.x, pos.y, nx, ny);
+        if (chip) spawnPropChip(world, chip.x, chip.y, angle, chip.color);
 
         // Characters first (a bullet grazing a wall can still hit someone standing at it).
         for (const [t, tpos, tbody, health, faction] of targets) {

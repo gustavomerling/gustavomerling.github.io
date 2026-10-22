@@ -304,3 +304,23 @@ export const effectsSystem: RunSystem = {
     });
   },
 };
+
+/** Splinters of a decoration prop hit by a bullet, in the prop's own colour. */
+export function spawnPropChip(world: World, x: number, y: number, angle: number, color: string): void {
+  if (!particles()) return;
+  for (let i = 0; i < 3; i++) {
+    const a = angle + Math.PI + (Math.random() - 0.5) * 1.6;
+    const sp = 40 + Math.random() * 70;
+    spawnDebris(world, {
+      x,
+      y,
+      vx: Math.cos(a) * sp,
+      vy: Math.sin(a) * sp - 30,
+      angle: a,
+      spin: (Math.random() - 0.5) * 30,
+      shape: [-0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5],
+      color,
+      life: 5,
+    });
+  }
+}
