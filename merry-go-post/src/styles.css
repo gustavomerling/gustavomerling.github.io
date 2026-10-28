@@ -1,0 +1,279 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Cor do sistema: tudo deriva de --brand (a primária do cliente aberto; violeta fora dele).
+ * Os tons misturam com --color-white / --color-zinc-950, que se invertem no modo escuro,
+ * então "brand-50" continua sendo um fundo suave e "brand-700" um texto legível nos dois temas.
+ */
+:root {
+  --brand: #7c3aed;
+  --brand-fg: #ffffff;
+}
+
+@theme {
+  --color-brand-50: color-mix(in oklab, var(--brand) 9%, var(--color-white));
+  --color-brand-100: color-mix(in oklab, var(--brand) 16%, var(--color-white));
+  --color-brand-200: color-mix(in oklab, var(--brand) 32%, var(--color-white));
+  --color-brand-500: color-mix(in oklab, var(--brand) 82%, var(--color-white));
+  --color-brand-600: var(--brand);
+  --color-brand-700: color-mix(in oklab, var(--brand) 78%, var(--color-zinc-950));
+  --color-brand-fg: var(--brand-fg);
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Modo escuro: inverte a escala de cinza e o "branco" vira a superfície escura. */
+.dark {
+  color-scheme: dark;
+  --color-white: #18181b;
+  --color-zinc-50: #0c0c0e;
+  --color-zinc-100: #232327;
+  --color-zinc-200: #2e2e33;
+  --color-zinc-300: #3f3f46;
+  --color-zinc-400: #6b6b75;
+  --color-zinc-500: #9a9aa3;
+  --color-zinc-600: #b4b4bc;
+  --color-zinc-700: #d4d4d8;
+  --color-zinc-800: #e4e4e7;
+  --color-zinc-900: #f4f4f5;
+  --color-zinc-950: #fafafa;
+  --color-red-50: #3a1414;
+  --color-amber-50: #2a2210;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-zinc-50);
+  color: var(--color-zinc-900);
+}
+
+input[type='range'] {
+  accent-color: var(--color-brand-600);
+}
+
+/* Caixa de texto rico do formulário de post. */
+.rich-editor p {
+  margin: 0 0 0.25rem;
+  min-height: 1.4em;
+}
+
+.rich-editor strong {
+  font-weight: 700;
+  color: var(--color-brand-700);
+}
+
+.rich-editor mark {
+  background: #fde68a;
+  color: inherit;
+  padding: 0 0.15em;
+  border-radius: 0.2em;
+}
+
+.rich-editor ul,
+.rich-editor ol {
+  padding-left: 1.4rem;
+  margin: 0 0 0.25rem;
+}
+
+.rich-editor ul {
+  list-style: disc;
+}
+
+.rich-editor ol {
+  list-style: decimal;
+}
+
+.rich-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-zinc-400);
+  white-space: pre-line;
+  pointer-events: none;
+}
+
+.checker {
+  background-color: #fff;
+  background-image: linear-gradient(45deg, #e4e4e7 25%, transparent 25%), linear-gradient(-45deg, #e4e4e7 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e4e4e7 75%), linear-gradient(-45deg, transparent 75%, #e4e4e7 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+/* Logotipo: letras paradas numa onda, como os cavalinhos do carrossel. */
+.mgp-letter {
+  display: inline-block;
+  transform: translateY(var(--y0)) rotate(var(--r0));
+}
+
+/* Abertura (uma vez): o cavalinho entra girando e as letras caem uma a uma, quicando até encaixar. */
+@keyframes mgp-letter-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-0.9em) rotate(-18deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(calc(var(--y0) + 0.08em)) rotate(calc(var(--r0) * 1.6));
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(var(--y0)) rotate(var(--r0));
+  }
+}
+
+@keyframes mgp-horse-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-40%) rotate(-200deg) scale(0.4);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(4%) rotate(12deg) scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.mgp-intro .mgp-letter {
+  animation: mgp-letter-in 0.7s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  animation-delay: calc(0.35s + var(--i) * 0.055s);
+}
+
+.mgp-intro .mgp-horse {
+  animation: mgp-horse-in 0.8s cubic-bezier(0.34, 1.3, 0.64, 1) both;
+}
+
+@keyframes mgp-hop {
+  0%,
+  100% {
+    transform: translateY(var(--y0)) rotate(var(--r0));
+  }
+  40% {
+    transform: translateY(calc(var(--y0) - 0.22em)) rotate(calc(var(--r0) * -1.5));
+  }
+}
+
+@keyframes mgp-horse-hop {
+  0%,
+  100% {
+    transform: none;
+  }
+  30% {
+    transform: translateY(-14%) rotate(-10deg);
+  }
+  60% {
+    transform: translateY(0) rotate(6deg);
+  }
+}
+
+.mgp-hover:hover .mgp-letter {
+  animation: mgp-hop 0.6s cubic-bezier(0.3, 1.5, 0.6, 1) both;
+  animation-delay: calc(var(--i) * 0.035s);
+}
+
+.mgp-hover:hover .mgp-horse {
+  animation: mgp-horse-hop 0.7s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mgp-letter,
+  .mgp-horse {
+    animation: none !important;
+  }
+}
+
+/* Landing: toldo de carrossel (listras + borda recortada) usado como detalhe de seção. */
+.canopy-stripes {
+  height: 18px;
+  background: repeating-linear-gradient(90deg, var(--color-brand-600) 0 28px, var(--color-brand-200) 28px 56px);
+}
+
+.canopy-edge {
+  height: 14px;
+  background:
+    radial-gradient(circle at 14px 0, var(--color-brand-600) 13.5px, transparent 14px) 0 0 / 56px 14px repeat-x,
+    radial-gradient(circle at 42px 0, var(--color-brand-200) 13.5px, transparent 14px) 0 0 / 56px 14px repeat-x;
+}
+
+.font-fun {
+  font-family: 'Grandstander', ui-rounded, 'Nunito', system-ui, sans-serif;
+}
+
+/* O preflight do Tailwind v4 deixa botões com cursor padrão. */
+@layer base {
+  button:not(:disabled),
+  [role='button'],
+  summary,
+  select,
+  label:has(> input[type='checkbox']),
+  label:has(> input[type='color']) {
+    cursor: pointer;
+  }
+}
+
+/* Entrada ao rolar (estilo AOS): ver o componente Reveal da landing. */
+.reveal {
+  opacity: 0;
+  transition:
+    opacity 0.7s ease,
+    transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+  will-change: opacity, transform;
+}
+
+.reveal-up {
+  transform: translateY(32px);
+}
+
+.reveal-zoom {
+  transform: scale(0.92);
+}
+
+.reveal-left {
+  transform: translateX(-40px);
+}
+
+.reveal-right {
+  transform: translateX(40px);
+}
+
+.reveal-tilt {
+  transform: translateY(28px) rotate(-3deg);
+}
+
+.reveal.reveal-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Slides do playground surgindo quando o texto ou o layout muda. */
+@keyframes lp-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*='animate-[lp-pop'] {
+    animation: none !important;
+  }
+}

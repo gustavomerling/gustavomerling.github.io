@@ -1,0 +1,76 @@
+/* Estilos do conteúdo dos slides (fora do Tailwind para ficarem idênticos na exportação). */
+.wp-slide {
+  position: relative;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wp-text {
+  overflow-wrap: break-word;
+}
+
+.wp-text p {
+  margin: 0 0 0.45em;
+}
+
+.wp-text p:last-child,
+.wp-text ul:last-child,
+.wp-text ol:last-child {
+  margin-bottom: 0;
+}
+
+.wp-text strong {
+  font-family: var(--wp-font-highlight);
+  font-weight: 800;
+  color: var(--wp-em);
+}
+
+.wp-text em {
+  font-style: italic;
+}
+
+.wp-text mark {
+  font-family: var(--wp-font-ultra);
+  font-weight: inherit;
+  background: var(--wp-mark-bg);
+  color: var(--wp-mark-fg);
+  padding: 0 0.18em;
+  border-radius: 0.12em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.wp-text ul,
+.wp-text ol {
+  margin: 0 0 0.45em;
+  padding-left: 1.15em;
+}
+
+/* O reset do Tailwind tira os marcadores das listas; nos slides eles fazem parte do design. */
+.wp-text ul {
+  list-style: disc;
+}
+
+.wp-text ol {
+  list-style: decimal;
+}
+
+.wp-text li {
+  margin-bottom: 0.35em;
+  padding-left: 0.15em;
+}
+
+.wp-text li::marker {
+  color: var(--wp-em);
+  font-weight: 800;
+}
+
+.wp-text[contenteditable='true'] {
+  outline: none;
+  cursor: text;
+}
+
+.wp-placeholder {
+  opacity: 0.35;
+  font-style: italic;
+}
