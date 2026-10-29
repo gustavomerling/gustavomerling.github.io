@@ -25,6 +25,11 @@ export function resolveBox(t: TemplateDef, slide: Slide, key: TextKey): TextBoxD
   const def = t.boxes.find((b) => b.key === key);
   if (!def) return null;
   const o = slide.boxes[key] ?? {};
+  // Texto todo em negrito (comum em títulos colados do Docs): o negrito é o texto inteiro,
+  // então trocar a cor da caixa precisa trocar também a do destaque.
+  const html = slide.content[key] ?? '';
+  const outside = html.replace(/<(strong|mark)>[\s\S]*?<\/\1>/g, '').replace(/<[^>]+>/g, '').trim();
+  const fullyBold = !outside && /<strong>/.test(html);
   return {
     ...def,
     x: o.x ?? def.x,
@@ -34,7 +39,10 @@ export function resolveBox(t: TemplateDef, slide: Slide, key: TextKey): TextBoxD
     size: def.size * (o.scale ?? 1),
     align: o.align ?? def.align,
     color: o.color ?? def.color,
+    emphasis: o.emphasis ?? (o.color && fullyBold ? o.color : def.emphasis),
     font: o.font ?? def.font,
+    fixedSize: o.scale !== undefined,
+    strongInheritsFont: o.font !== undefined || o.family !== undefined,
     // Escolher um papel da marca desfaz a fonte avulsa do template.
     family: o.family ?? (o.font ? undefined : def.family),
     lineHeight: o.lineHeight ?? def.lineHeight,

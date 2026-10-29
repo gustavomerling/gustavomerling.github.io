@@ -258,6 +258,16 @@ function BoxPanel({ slide, brand, textKey, editingKey, onEdit, updateSlide }: In
         <ColorSwatches allowAuto value={o.color ?? def?.color ?? 'auto'} palette={brand.colors} onChange={(c) => patch({ color: c === 'auto' ? undefined : c })} />
       </div>
       <div>
+        <Label>Cor do destaque (negrito)</Label>
+        <ColorSwatches
+          allowAuto
+          autoLabel="Do template"
+          value={o.emphasis ?? 'auto'}
+          palette={brand.colors}
+          onChange={(c) => patch({ emphasis: c === 'auto' ? undefined : c })}
+        />
+      </div>
+      <div>
         <Label>Fonte</Label>
         <FontChoice
           fonts={brand.fonts}

@@ -97,6 +97,8 @@ export interface BoxOverride {
   /** Em em. */
   letterSpacing?: number;
   uppercase?: boolean;
+  /** Cor do destaque (negrito). */
+  emphasis?: ColorRef;
 }
 
 export interface IconElement {

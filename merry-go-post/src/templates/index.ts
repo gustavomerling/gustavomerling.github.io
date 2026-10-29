@@ -26,6 +26,10 @@ export interface TextBoxDef extends Rect {
   lineHeight?: number;
   /** Em em. */
   letterSpacing?: number;
+  /** Tamanho escolhido pelo usuário: não encolhe para caber (avisa se estourar). */
+  fixedSize?: boolean;
+  /** O negrito usa a fonte da caixa em vez da de destaque (o usuário trocou a fonte). */
+  strongInheritsFont?: boolean;
 }
 
 export interface ImageSlotDef extends Rect {

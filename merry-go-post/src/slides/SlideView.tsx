@@ -186,7 +186,8 @@ function TextBox({ def, html, tone, brand, editing, showEmpty, onCommit, onStop 
     if (!o || !i || editing) return;
     let s = def.size;
     i.style.fontSize = `${s}px`;
-    const min = def.size * 0.4;
+    // Tamanho escolhido pelo usuário vale como está; o aviso "Texto não cabe" mostra se estourar.
+    const min = def.fixedSize ? def.size : def.size * 0.4;
     const over = () => i.scrollHeight > o.clientHeight + 1 || i.scrollWidth > o.clientWidth + 1;
     while (s > min && over()) {
       s *= 0.95;
@@ -194,7 +195,7 @@ function TextBox({ def, html, tone, brand, editing, showEmpty, onCommit, onStop 
     }
     setSize(s);
     setOverflow(over());
-  }, [html, def.size, def.w, def.h, def.font, def.family, def.weight, def.lineHeight, def.letterSpacing, def.uppercase, fontsVersion, editing, brand.fonts.base, brand.fonts.highlight, brand.fonts.ultra]);
+  }, [html, def.size, def.fixedSize, def.w, def.h, def.font, def.family, def.weight, def.lineHeight, def.letterSpacing, def.uppercase, fontsVersion, editing, brand.fonts.base, brand.fonts.highlight, brand.fonts.ultra]);
 
   // Ao entrar em edição: conteúdo atual + cursor no fim.
   useEffect(() => {
@@ -240,6 +241,7 @@ function TextBox({ def, html, tone, brand, editing, showEmpty, onCommit, onStop 
   const innerStyle = {
     fontSize: editing ? def.size : size,
     '--wp-em': em,
+    '--wp-strong-font': def.strongInheritsFont ? (def.family ? fontStack(def.family) : `var(--wp-font-${def.font})`) : undefined,
     '--wp-mark-bg': markBg,
     '--wp-mark-fg': palette[textRoleOn(markBg, palette)],
   } as CSSProperties;

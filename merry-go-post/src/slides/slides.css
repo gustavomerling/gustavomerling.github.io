@@ -20,7 +20,8 @@
 }
 
 .wp-text strong {
-  font-family: var(--wp-font-highlight);
+  /* A caixa com fonte trocada pelo usuário define --wp-strong-font. */
+  font-family: var(--wp-strong-font, var(--wp-font-highlight));
   font-weight: 800;
   color: var(--wp-em);
 }
