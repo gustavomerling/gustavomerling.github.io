@@ -1,6 +1,7 @@
 import { type CSSProperties, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react'
 import { ensureAudio, holdNote, playClick, playUi, TIMBRES } from '../audio'
 import { NOTE_COUNT, NOTE_NAMES, noteName } from '../music'
+import { quantizeFaithful, quantizeRefined, type Refined, type Take } from '../music/quantize'
 import type { Melody } from '../types'
 import { Icon } from './Icon'
 import { isTypingTarget, noteColor } from './ui'
@@ -20,38 +21,15 @@ const SPAN = 17 // semitons visíveis: de dó até o mi da oitava seguinte
 const OCTAVES = [0, 1, 2] // dó3, dó4, dó5
 const BLACK = [1, 3, 6, 8, 10]
 const COUNT_IN = 4 // batidas de contagem antes de gravar
-const GRID = 0.5 // grade da quantização, em batidas
-const MAX_BEATS = 4 // nota mais longa (pausas longas encurtam)
-
-export type Recording = Melody & { bpm: number; id: number }
-
-// beat é quando a tecla desceu; end, quando subiu (em batidas desde o primeiro tempo).
-type Take = { beat: number; note: number; end?: number }
-type RecState = { phase: 'idle' } | { phase: 'count' | 'rec'; start: number; beat: number }
-
-const snap = (beat: number) => Math.round(beat / GRID) * GRID
-
-// Transforma as notas tocadas (em batidas, sem grade) em melodia: quantiza, tira repetições
-// no mesmo ponto da grade e começa na primeira nota. Cada nota dura até a próxima começar
-// (é o tempo que a bolinha leva até o próximo bloco). Uma nota segurada além disso empurra
-// a próxima para depois, e a última dura o tempo que a tecla ficou pressionada.
-function toMelody(takes: Take[]): Melody {
-  const byBeat = new Map<number, Take>()
-  for (const t of takes) {
-    const beat = Math.max(0, snap(t.beat))
-    if (!byBeat.has(beat)) byBeat.set(beat, t)
-  }
-  const onsets = [...byBeat.keys()].sort((a, b) => a - b)
-  const notes = onsets.map((b) => byBeat.get(b)!.note)
-  const durations = onsets.map((b, i) => {
-    const take = byBeat.get(b)!
-    const held = take.end === undefined ? GRID : Math.max(GRID, snap(take.end - take.beat))
-    const next = onsets[i + 1]
-    const gap = next === undefined ? held : Math.max(next - b, held)
-    return Math.min(MAX_BEATS, Math.max(GRID, gap))
-  })
-  return { notes, beats: durations }
+// Gravação pronta: a versão fiel (como foi tocada) e a refinada (tempo e grade ajustados).
+export type Recording = {
+  id: number
+  bpm: number // tempo do metrônomo na gravação
+  faithful: Melody
+  refined: Refined
 }
+
+type RecState = { phase: 'idle' } | { phase: 'count' | 'rec'; start: number; beat: number }
 
 export function PianoDock({
   open,
@@ -110,12 +88,10 @@ export function PianoDock({
     releases.current.set(note, holdNote(note, timbre, pan))
     setActive((set) => new Set(set).add(note))
     const beat = recBeat()
+    // Notas tocadas já na contagem também valem (anacruse): a melodia começa na primeira nota.
     if (beat !== null) {
-      // Uma nota um pouco antes do primeiro tempo ainda conta como o primeiro tempo.
-      if (beat >= -GRID) {
-        takes.current.push({ beat, note })
-        setTakeCount(takes.current.length)
-      }
+      takes.current.push({ beat, note })
+      setTakeCount(takes.current.length)
     }
   }
 
@@ -165,14 +141,15 @@ export function PianoDock({
     if (now !== null) for (const t of takes.current) t.end ??= now
     stopTimer()
     setRec({ phase: 'idle' })
-    const melody = toMelody(takes.current)
+    const faithful = quantizeFaithful(takes.current)
+    const refined = quantizeRefined(takes.current, bpm)
     takes.current = []
     setTakeCount(0)
-    if (melody.notes.length === 0) {
+    if (faithful.notes.length === 0) {
       playUi('error')
       return
     }
-    onRecorded({ ...melody, bpm, id: Date.now() })
+    onRecorded({ id: Date.now(), bpm, faithful, refined })
   }
 
   const cancelRecording = () => {

@@ -574,7 +574,7 @@ function App() {
           setRecording(take)
           setPiano(false)
           setPanel('compose')
-          toast(`Gravei ${take.notes.length} notas. Sua melodia está no Compor!`, 'success')
+          toast(`Gravei ${take.faithful.notes.length} notas. Sua melodia está no Compor!`, 'success')
         }}
       />
 

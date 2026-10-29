@@ -66,6 +66,19 @@ function useMelodyPreview(timbre: string) {
   return { playingIndex, play, stop, playing: playingIndex !== null }
 }
 
+// Explica o que o refinamento mudou na gravação.
+function refinedSummary(recording: Recording) {
+  const { refined, bpm } = recording
+  const parts = [
+    refined.bpm === bpm ? `No tempo do metrônomo (${bpm} BPM)` : `Você tocou a ${refined.bpm} BPM (metrônomo: ${bpm})`,
+  ]
+  if (Math.abs(refined.offsetMs) >= 15) {
+    parts.push(`sempre ${Math.abs(refined.offsetMs)} ms ${refined.offsetMs > 0 ? 'atrasado' : 'adiantado'}, compensado`)
+  }
+  parts.push(`notas encaixadas na batida (ajuste médio de ${refined.averageShiftMs} ms)`)
+  return parts.join(' · ') + '.'
+}
+
 export function ComposePanel({
   timbre,
   recording,
@@ -82,6 +95,8 @@ export function ComposePanel({
 }) {
   // Fonte da melodia: 'mood' (composta na hora), 'recorded' (gravada no piano) ou o índice de uma música pronta.
   const [source, setSource] = useState<'mood' | 'recorded' | number>('mood')
+  // Gravação: a versão refinada (encaixada na batida) ou como foi tocada.
+  const [refine, setRefine] = useState(true)
   const [mood, setMood] = useState(MOODS[0]?.id ?? 'happy')
   const [bars, setBars] = useState(4)
   const [seed, setSeed] = useState(newSeed)
@@ -98,6 +113,7 @@ export function ComposePanel({
       preview.stop()
       setBpmOverride(null)
       setSource('recorded')
+      setRefine(true)
     }
   }
 
@@ -107,13 +123,15 @@ export function ComposePanel({
   const melody: Melody = useMemo(
     () =>
       recorded
-        ? { notes: recorded.notes, beats: recorded.beats }
+        ? refine
+          ? recorded.refined
+          : recorded.faithful
         : song
           ? songMelody(song)
           : { notes: composition.notes, beats: composition.beats },
-    [recorded, song, composition],
+    [recorded, refine, song, composition],
   )
-  const suggestedBpm = recorded ? recorded.bpm : song ? song.bpm : composition.bpm
+  const suggestedBpm = recorded ? (refine ? recorded.refined.bpm : recorded.bpm) : song ? song.bpm : composition.bpm
   const bpm = bpmOverride ?? suggestedBpm
   const scaleIndex = recorded || song ? scaleForNotes(melody.notes) : composition.scaleIndex
   const title = recorded ? 'Gravada por você' : song ? song.title : composition.title
@@ -181,7 +199,7 @@ export function ComposePanel({
             >
               <span className="song-title">Gravada por você</span>
               <span className="song-sub">
-                {recording.notes.length} notas · {recording.bpm} BPM
+                {recording.faithful.notes.length} notas · {recording.bpm} BPM
               </span>
             </button>
           )}
@@ -215,6 +233,27 @@ export function ComposePanel({
       <Section title="Sua melodia" hint={`${melody.notes.length} notas · ~${seconds} s`}>
         <div className="melody-card">
           <div className="melody-title">{title}</div>
+          {recorded && (
+            <>
+              <ChipGroup
+                label="Ritmo"
+                options={[
+                  { value: 1, label: 'Refinada' },
+                  { value: 0, label: 'Como toquei' },
+                ]}
+                value={refine ? 1 : 0}
+                onChange={(v) => {
+                  playUi('click')
+                  changeMelody(() => setRefine(v === 1))
+                }}
+              />
+              <p className="muted small">
+                {refine
+                  ? refinedSummary(recorded)
+                  : 'Cada nota na semicolcheia mais perto de onde você tocou, no tempo do metrônomo.'}
+              </p>
+            </>
+          )}
           {melody.notes.length > 0 ? (
             <MelodyRoll melody={melody} playingIndex={preview.playingIndex} onNoteClick={onPreviewNote} />
           ) : (

@@ -34,7 +34,10 @@ O botão **Piano** abre um teclado na tela, tocável com mouse, dedo (arrastar f
 - **W E T Y U O P** = sustenidos.
 - **Z / X** = oitava abaixo / acima (Dó3, Dó4 ou Dó5).
 
-O piano também tem timbre e BPM. **Gravar** conta 4 batidas e grava com metrônomo (acento no 1º tempo). Ao parar (botão ou Espaço), as notas são quantizadas em ½ tempo e a melodia entra no Compor como **Gravada por você**, pronta para ouvir e gerar a pista.
+O piano também tem timbre e BPM. **Gravar** conta 4 batidas e grava com metrônomo (acento no 1º tempo). Ao parar (botão ou Espaço), a melodia entra no Compor como **Gravada por você**, pronta para ouvir e gerar a pista. Nenhuma nota tocada se perde (notas no mesmo ponto viram um arpejo rápido), e há duas versões do ritmo:
+
+- **Refinada** (padrão): descobre o tempo em que você realmente tocou e o seu atraso ou adiantamento constante, e escolhe para cada batida a divisão mais simples que explica as notas (semínima, colcheia, tercina ou semicolcheia). A última nota fecha o compasso. O painel mostra o que foi ajustado.
+- **Como toquei**: cada nota na semicolcheia mais perto, no tempo do metrônomo.
 
 ## Controles
 
