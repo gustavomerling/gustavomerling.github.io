@@ -43,6 +43,8 @@ export type PanelId = 'compose' | 'sound' | 'tools' | 'file'
 
 export const STORAGE_WELCOME = 'ball-drop-notes:welcome-dismissed'
 export const STORAGE_VOLUME = 'ball-drop-notes:volume'
+export const STORAGE_PIANO_EASY = 'ball-drop-notes:piano-easy'
+export const STORAGE_PIANO_SCALE = 'ball-drop-notes:piano-scale'
 
 // Escala mais estreita (depois da cromática) que contém todas as notas; senão, cromática.
 export function scaleForNotes(notes: number[]) {

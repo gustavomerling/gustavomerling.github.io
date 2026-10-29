@@ -5,7 +5,7 @@
   z-index: 20;
   left: 50%;
   bottom: calc(var(--bar-h) + 2 * var(--gutter));
-  width: min(720px, calc(100vw - 2 * var(--gutter)));
+  width: min(840px, calc(100vw - 2 * var(--gutter)));
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -208,7 +208,7 @@
 @media (min-width: 761px) {
   .app[data-panel-open='true'] .piano-dock {
     left: var(--gutter);
-    width: min(720px, calc(100vw - 380px - 3 * var(--gutter)));
+    width: min(840px, calc(100vw - 380px - 3 * var(--gutter)));
     transform: none;
   }
 }
@@ -221,6 +221,10 @@
 
   .piano-keys {
     height: 112px;
+  }
+
+  .easy-row {
+    height: 40px;
   }
 
   .key-kbd {
@@ -242,4 +246,48 @@
   .piano-rec.is-recording {
     animation: none;
   }
+}
+
+/* Modo fácil: botão ligado e teclas de xilofone, cada uma na cor da sua nota. */
+.piano-easy.is-on {
+  background: var(--gradient);
+  border-color: transparent;
+  color: #fff;
+}
+
+.piano-keys.is-easy {
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.easy-row {
+  display: flex;
+  gap: 3px;
+  height: 46px;
+}
+
+.easy-slot {
+  flex: 1;
+}
+
+.piano-key.easy {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  padding: 0 0 4px;
+  gap: 0;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  background: linear-gradient(color-mix(in srgb, var(--note) 30%, #f4f3ff), color-mix(in srgb, var(--note) 55%, #dcdaf0));
+  color: #3a3858;
+}
+
+.piano-key.easy.is-tonic {
+  box-shadow: inset 0 -4px 0 var(--note);
+}
+
+.piano-key.easy.is-down {
+  background: var(--note);
 }

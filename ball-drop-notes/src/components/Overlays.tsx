@@ -126,6 +126,7 @@ const KEY_TIPS: [string, string][] = [
   ['A S D F G H J K', 'piano: Dó Ré Mi Fá Sol Lá Si Dó'],
   ['W E T Y U', 'piano: sustenidos'],
   ['Z / X', 'piano: oitava abaixo / acima'],
+  ['Fácil', 'piano só com as notas de uma escala: A…K, Q…I e 1…8 são três oitavas'],
   ['?', 'esta ajuda'],
   ['Esc', 'fechar painéis'],
 ]

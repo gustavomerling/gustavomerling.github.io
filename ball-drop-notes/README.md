@@ -34,6 +34,14 @@ O botão **Piano** abre um teclado na tela, tocável com mouse, dedo (arrastar f
 - **W E T Y U O P** = sustenidos.
 - **Z / X** = oitava abaixo / acima (Dó3, Dó4 ou Dó5).
 
+**Modo fácil:** o botão **Fácil** troca o piano por um xilofone só com as notas de uma escala (Pentatônica maior por padrão, ou qualquer outra). Cada fileira do teclado é uma oitava, subindo pela escala a partir do Dó:
+
+- `A S D F G H J K`: a partir do Dó3 (grave);
+- `Q W E R T Y U I`: a partir do Dó4;
+- `1 2 3 4 5 6 7 8`: a partir do Dó5 (agudo).
+
+Cada fileira vai do Dó ao Dó seguinte, então o número de teclas acompanha a escala (6 nas pentatônicas, 7 no blues, 8 nas escalas de 7 notas). A mesma coluna é sempre o mesmo grau, e nada do que se tocar soa errado. As fileiras de cima valem com o piano aberto; aí `R` é nota, não o atalho de reiniciar. O modo e a escala ficam lembrados.
+
 O piano também tem timbre e BPM. **Gravar** conta 4 batidas e grava com metrônomo (acento no 1º tempo). Ao parar (botão ou Espaço), a melodia entra no Compor como **Gravada por você**, pronta para ouvir e gerar a pista. Nenhuma nota tocada se perde, e o que você segura é respeitado:
 
 - **Nota segurada:** soa pelo tempo que a tecla ficou pressionada, inclusive por baixo das notas seguintes (um baixo ou pedal enquanto a melodia anda).

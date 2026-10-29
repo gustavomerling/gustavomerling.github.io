@@ -1,10 +1,10 @@
 import { type CSSProperties, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react'
 import { ensureAudio, holdNote, playClick, playUi, TIMBRES } from '../audio'
-import { NOTE_COUNT, NOTE_NAMES, noteName } from '../music'
+import { NOTE_COUNT, NOTE_NAMES, noteName, SCALES } from '../music'
 import { quantizeFaithful, quantizeRefined, type Refined, type Take } from '../music/quantize'
 import type { Melody } from '../types'
 import { Icon } from './Icon'
-import { isTypingTarget, noteColor } from './ui'
+import { isTypingTarget, noteColor, STORAGE_PIANO_EASY, STORAGE_PIANO_SCALE, storageGet, storageSet } from './ui'
 
 // Teclado do computador como piano, no layout de DAW: fileira do meio são as teclas brancas,
 // a de cima os sustenidos. O número é o semitom a partir do dó da oitava escolhida.
@@ -21,6 +21,37 @@ const SPAN = 17 // semitons visíveis: de dó até o mi da oitava seguinte
 const OCTAVES = [0, 1, 2] // dó3, dó4, dó5
 const BLACK = [1, 3, 6, 8, 10]
 const COUNT_IN = 4 // batidas de contagem antes de gravar
+
+// Modo fácil: só as notas de uma escala, nada do que se tocar soa errado. Cada fileira do teclado
+// do computador é uma oitava, subindo pela escala a partir do dó: a de baixo (A…K) começa no dó3,
+// a do meio (Q…I) no dó4 e a dos números (1…8) no dó5. A mesma coluna é sempre o mesmo grau, e
+// cada fileira vai do dó ao dó seguinte, então tem uma coluna a mais que as notas da escala
+// (6 nas pentatônicas, 7 no blues, 8 nas de 7 notas); as teclas que sobram não tocam.
+const EASY_ROWS = [
+  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k'],
+  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i'],
+  ['1', '2', '3', '4', '5', '6', '7', '8'],
+]
+const EASY_ROW_BASES = [0, 12, 24] // dó3, dó4, dó5
+const easyLabel = (key: string) => key.toUpperCase()
+// Escalas oferecidas no modo fácil (a cromática não faz sentido aqui).
+const EASY_SCALES = SCALES.map((s, i) => ({ ...s, index: i })).filter((s) => s.intervals.length < 12)
+const EASY_DEFAULT_SCALE = 3 // pentatônica maior: tudo combina com tudo
+
+// Notas da escala numa oitava, do dó da base até o dó seguinte (inclusive).
+function easyNotes(base: number, scaleIndex: number) {
+  const intervals = SCALES[scaleIndex]?.intervals ?? SCALES[EASY_DEFAULT_SCALE].intervals
+  const notes: number[] = []
+  for (let n = base; n <= base + 12 && n < NOTE_COUNT && notes.length < EASY_ROWS[0].length; n++) {
+    if (intervals.includes(n % 12)) notes.push(n)
+  }
+  return notes
+}
+
+function readEasyScale() {
+  const stored = Number(storageGet(STORAGE_PIANO_SCALE))
+  return EASY_SCALES.some((s) => s.index === stored) ? stored : EASY_DEFAULT_SCALE
+}
 // Gravação pronta: a versão fiel (como foi tocada) e a refinada (tempo e grade ajustados).
 export type Recording = {
   id: number
@@ -52,6 +83,8 @@ export function PianoDock({
   onRecorded: (recording: Recording) => void
 }) {
   const [octave, setOctave] = useState(1)
+  const [easy, setEasy] = useState(() => storageGet(STORAGE_PIANO_EASY) === '1')
+  const [easyScale, setEasyScale] = useState(readEasyScale)
   const [active, setActive] = useState<Set<number>>(() => new Set())
   const [rec, setRecState] = useState<RecState>({ phase: 'idle' })
   const [takeCount, setTakeCount] = useState(0)
@@ -171,6 +204,23 @@ export function PianoDock({
     setRecState(recRef.current)
   }, [open])
 
+  // Notas de cada fileira do modo fácil (de baixo para cima).
+  const easyRows = EASY_ROW_BASES.map((rowBase) => easyNotes(rowBase, easyScale))
+  // Nota de uma tecla do teclado do computador, no modo atual. Com o piano fechado, só a fileira
+  // de baixo toca, para R (reiniciar) continuar sendo atalho.
+  const noteForKey = (key: string): number | undefined => {
+    if (easy) {
+      const rows = open ? EASY_ROWS.length : 1
+      for (let r = 0; r < rows; r++) {
+        const column = EASY_ROWS[r].indexOf(key)
+        if (column >= 0) return easyRows[r][column]
+      }
+      return undefined
+    }
+    const semitone = KEY_MAP[key]
+    return semitone === undefined ? undefined : base + semitone
+  }
+
   // Teclado: na fase de captura, para o Espaço parar a gravação antes do play/pause do App.
   const handlers = useRef({
     down: (_e: KeyboardEvent) => {},
@@ -190,18 +240,20 @@ export function PianoDock({
         return
       }
       const key = e.key.toLowerCase()
-      if (key === 'z' || key === 'x') {
+      if (!easy && (key === 'z' || key === 'x')) {
         if (!e.repeat) changeOctave(key === 'z' ? -1 : 1)
         return
       }
-      const semitone = KEY_MAP[key]
-      if (semitone === undefined) return
+      const note = noteForKey(key)
+      if (note === undefined) return
       e.preventDefault()
-      if (!e.repeat) press(base + semitone)
+      // No modo fácil com o piano aberto, R é tecla do piano, não atalho.
+      e.stopImmediatePropagation()
+      if (!e.repeat) press(note)
     }
     handlers.current.up = (e) => {
-      const semitone = KEY_MAP[e.key.toLowerCase()]
-      if (semitone !== undefined) release(base + semitone)
+      const note = noteForKey(e.key.toLowerCase())
+      if (note !== undefined) release(note)
     }
   })
   useEffect(() => {
@@ -219,6 +271,19 @@ export function PianoDock({
       blur()
     }
   }, [])
+
+  const toggleEasy = () => {
+    handlers.current.releaseAll()
+    playUi('toggle')
+    storageSet(STORAGE_PIANO_EASY, easy ? '0' : '1')
+    setEasy(!easy)
+  }
+
+  const changeEasyScale = (index: number) => {
+    handlers.current.releaseAll()
+    setEasyScale(index)
+    storageSet(STORAGE_PIANO_SCALE, String(index))
+  }
 
   // Mouse e toque: arrastar por cima das teclas toca cada uma (glissando).
   const onKeyPointerDown = (note: number) => (e: ReactPointerEvent) => {
@@ -240,36 +305,66 @@ export function PianoDock({
       ? `Prepare-se… ${-rec.beat}`
       : rec.phase === 'rec'
         ? `Gravando · compasso ${Math.floor(rec.beat / 4) + 1} · ${takeCount} ${takeCount === 1 ? 'nota' : 'notas'}`
-        : 'Toque com o mouse ou com o teclado'
+        : easy
+          ? `Modo fácil: só notas de ${SCALES[easyScale].label.toLowerCase()}, tudo combina`
+          : 'Toque com o mouse ou com o teclado'
 
   return (
     <section className="piano-dock glass" data-open={open} aria-label="Piano" aria-hidden={!open}>
       <header className="piano-head">
+        {!easy && (
+          <div className="piano-group">
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Oitava abaixo (Z)"
+              title="Oitava abaixo (Z)"
+              disabled={octave === OCTAVES[0]}
+              onClick={() => changeOctave(-1)}
+            >
+              <Icon name="minus" size={16} />
+            </button>
+            <span className="piano-octave" title="Oitava">
+              {NOTE_NAMES[0]}
+              {octave + 3}
+            </span>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Oitava acima (X)"
+              title="Oitava acima (X)"
+              disabled={octave === OCTAVES[OCTAVES.length - 1]}
+              onClick={() => changeOctave(1)}
+            >
+              <Icon name="plus" size={16} />
+            </button>
+          </div>
+        )}
+
         <div className="piano-group">
           <button
             type="button"
-            className="icon-btn"
-            aria-label="Oitava abaixo (Z)"
-            title="Oitava abaixo (Z)"
-            disabled={octave === OCTAVES[0]}
-            onClick={() => changeOctave(-1)}
+            className={`btn btn-small piano-easy${easy ? ' is-on' : ''}`}
+            aria-pressed={easy}
+            title="Só as notas de uma escala: nada soa errado"
+            onClick={toggleEasy}
           >
-            <Icon name="minus" size={16} />
+            Fácil
           </button>
-          <span className="piano-octave" title="Oitava">
-            {NOTE_NAMES[0]}
-            {octave + 3}
-          </span>
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Oitava acima (X)"
-            title="Oitava acima (X)"
-            disabled={octave === OCTAVES[OCTAVES.length - 1]}
-            onClick={() => changeOctave(1)}
-          >
-            <Icon name="plus" size={16} />
-          </button>
+          {easy && (
+            <select
+              className="piano-select"
+              aria-label="Escala do modo fácil"
+              value={easyScale}
+              onChange={(e) => changeEasyScale(Number(e.target.value))}
+            >
+              {EASY_SCALES.map((s) => (
+                <option key={s.index} value={s.index}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <select
@@ -331,8 +426,34 @@ export function PianoDock({
         {status}
       </div>
 
-      <div className="piano-keys" role="group" aria-label={`Teclas, a partir de ${noteName(base)}`}>
-        {whites.map((s, i) => {
+      <div className={`piano-keys${easy ? ' is-easy' : ''}`} role="group" aria-label={`Teclas, a partir de ${noteName(base)}`}>
+        {easy &&
+          [...EASY_ROWS.keys()].reverse().map((r) => (
+            <div key={r} className="easy-row">
+              {EASY_ROWS[r].slice(0, easyRows[r].length).map((key, column) => {
+                const note = easyRows[r][column]
+                if (note === undefined) return <span key={key} className="easy-slot" aria-hidden="true" />
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    tabIndex={-1}
+                    className={`piano-key easy${note % 12 === 0 ? ' is-tonic' : ''}${active.has(note) ? ' is-down' : ''}`}
+                    style={{ '--note': noteColor(note) } as CSSProperties}
+                    onPointerDown={onKeyPointerDown(note)}
+                    onPointerEnter={onKeyPointerEnter(note)}
+                    onPointerUp={() => release(note)}
+                    onPointerLeave={() => release(note)}
+                    aria-label={noteName(note)}
+                  >
+                    <span className="key-note">{noteName(note)}</span>
+                    <kbd className="key-kbd">{easyLabel(key)}</kbd>
+                  </button>
+                )
+              })}
+            </div>
+          ))}
+        {!easy && whites.map((s, i) => {
           const note = base + s
           return (
             <button
@@ -353,7 +474,7 @@ export function PianoDock({
             </button>
           )
         })}
-        {semitones
+        {!easy && semitones
           .filter((s) => BLACK.includes(s % 12))
           .map((s) => {
             const note = base + s
