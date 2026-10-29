@@ -23,6 +23,7 @@ import {
 } from './components/ui'
 import { createSim } from './engine'
 import { generateTrack, TRACK_STYLES, validateTrack } from './generator'
+import { applyVoicing } from './voicing'
 import { NOTE_DEFAULT, SONGS, songMelody, suggestNextNotes } from './music'
 import type { Selection, Settings, Sim, StartMode } from './types'
 
@@ -269,7 +270,7 @@ function App() {
       style: request.style,
       finish: request.finish,
     })
-    if (!sim.loadBlocks(segments)) {
+    if (!sim.loadBlocks(applyVoicing(segments, request.melody, request.bpm))) {
       toast('Não deu para gerar a pista. Tente de novo.', 'error')
       return
     }

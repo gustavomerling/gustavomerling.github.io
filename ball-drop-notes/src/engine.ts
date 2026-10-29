@@ -332,7 +332,10 @@ export function createSim(
     const strength = Math.min(1, impact / IMPACT_MAX_SPEED)
     // Panorâmica pela posição da bolinha na tela: esquerda soa à esquerda.
     const pan = Math.max(-1, Math.min(1, ((ball.x - view.x) * view.zoom) / (window.innerWidth / 2)))
-    playNote(seg.note, impact, segmentLength(seg), timbre, pan)
+    // A duração vem da largura do bloco, ou do sustain próprio da nota (nota segurada).
+    const width = seg.sustain === undefined ? segmentLength(seg) : seg.sustain / NOTE_SUSTAIN_PER_PX
+    playNote(seg.note, impact, width, timbre, pan)
+    for (const extra of seg.chord ?? []) playNote(extra.note, impact * 0.85, extra.sustain / NOTE_SUSTAIN_PER_PX, timbre, pan)
     flashes.set(seg, { t: simTime, strength })
     fxHit({ x: ball.x, y: ball.y }, seg, strength)
     callbacks.onNote?.(seg.note, impact)
@@ -390,7 +393,16 @@ export function createSim(
     JSON.stringify(
       {
         version: 1,
-        blocks: segments.map(({ x1, y1, x2, y2, note, finish }) => ({ x1, y1, x2, y2, note, finish })),
+        blocks: segments.map(({ x1, y1, x2, y2, note, finish, sustain, chord }) => ({
+          x1,
+          y1,
+          x2,
+          y2,
+          note,
+          finish,
+          ...(sustain === undefined ? {} : { sustain }),
+          ...(chord?.length ? { chord } : {}),
+        })),
       },
       null,
       2,
@@ -421,7 +433,10 @@ export function createSim(
         (b) =>
           b &&
           [b.x1, b.y1, b.x2, b.y2, b.note].every((n) => typeof n === 'number') &&
-          typeof b.finish === 'boolean',
+          typeof b.finish === 'boolean' &&
+          (b.sustain === undefined || typeof b.sustain === 'number') &&
+          (b.chord === undefined ||
+            (Array.isArray(b.chord) && b.chord.every((c) => typeof c?.note === 'number' && typeof c?.sustain === 'number'))),
       )
     if (!valid) return false
     replaceBlocks(blocks)

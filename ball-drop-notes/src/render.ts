@@ -78,7 +78,12 @@ const toScreenY = (y: number) => (y - camY) * camZoom + lastHeight / 2 + camOffY
 const NOTE_LABELS: string[] = []
 for (let i = 0; i < 37; i++) NOTE_LABELS.push(noteName(i))
 const FINISH_LABEL = 'Chegada'
-const labelOf = (seg: Segment) => (seg.finish ? FINISH_LABEL : (NOTE_LABELS[seg.note] ?? noteName(seg.note)))
+const nameOf = (note: number) => NOTE_LABELS[note] ?? noteName(note)
+const labelOf = (seg: Segment) => {
+  if (seg.finish) return FINISH_LABEL
+  if (!seg.chord?.length) return nameOf(seg.note)
+  return seg.chord.length === 1 ? `${nameOf(seg.note)} + ${nameOf(seg.chord[0].note)}` : `${nameOf(seg.note)} +${seg.chord.length}`
+}
 
 // Vibração de corda de cada bloco tocado (tempo real).
 type Wobble = { t: number; amp: number; u: number; nx: number; ny: number; strength: number; textT: number }

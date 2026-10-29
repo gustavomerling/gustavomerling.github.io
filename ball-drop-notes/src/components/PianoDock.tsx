@@ -141,7 +141,7 @@ export function PianoDock({
     if (now !== null) for (const t of takes.current) t.end ??= now
     stopTimer()
     setRec({ phase: 'idle' })
-    const faithful = quantizeFaithful(takes.current)
+    const faithful = quantizeFaithful(takes.current, bpm)
     const refined = quantizeRefined(takes.current, bpm)
     takes.current = []
     setTakeCount(0)

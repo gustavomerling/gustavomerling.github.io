@@ -1,6 +1,20 @@
 // Tipos compartilhados entre motor, render, áudio, composição e gerador.
 
-export type Segment = { x1: number; y1: number; x2: number; y2: number; note: number; finish: boolean }
+// Nota extra tocada junto com a nota do bloco (acorde), com duração própria em segundos.
+export type ChordNote = { note: number; sustain: number }
+
+// sustain: duração do som em segundos; sem ele, vem da largura do bloco.
+// chord: notas que soam junto com a nota do bloco.
+export type Segment = {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  note: number
+  finish: boolean
+  sustain?: number
+  chord?: ChordNote[]
+}
 export type Point = { x: number; y: number }
 export type Ball = { x: number; y: number; vx: number; vy: number }
 export type MovingBall = Ball & { touching: number[] }
@@ -30,8 +44,15 @@ export type Gesture =
   | { kind: 'paint' }
   | null
 
-// Melodia planejada: notas (índices de nota, 0 = dó3) e duração de cada uma em batidas.
-export type Melody = { notes: number[]; beats: number[] }
+// Melodia planejada: notas (índices de nota, 0 = dó3) e o tempo até a próxima nota, em batidas.
+// Opcionais: holds, quanto cada nota soa (em batidas, pode passar da próxima nota), e extras,
+// notas que soam junto com cada uma, com a própria duração.
+export type Melody = {
+  notes: number[]
+  beats: number[]
+  holds?: number[]
+  extras?: { note: number; hold: number }[][]
+}
 
 // Configurações que a interface muda e o motor lê a cada quadro.
 export type Settings = {

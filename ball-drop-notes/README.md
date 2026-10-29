@@ -34,7 +34,12 @@ O botão **Piano** abre um teclado na tela, tocável com mouse, dedo (arrastar f
 - **W E T Y U O P** = sustenidos.
 - **Z / X** = oitava abaixo / acima (Dó3, Dó4 ou Dó5).
 
-O piano também tem timbre e BPM. **Gravar** conta 4 batidas e grava com metrônomo (acento no 1º tempo). Ao parar (botão ou Espaço), a melodia entra no Compor como **Gravada por você**, pronta para ouvir e gerar a pista. Nenhuma nota tocada se perde (notas no mesmo ponto viram um arpejo rápido), e há duas versões do ritmo:
+O piano também tem timbre e BPM. **Gravar** conta 4 batidas e grava com metrônomo (acento no 1º tempo). Ao parar (botão ou Espaço), a melodia entra no Compor como **Gravada por você**, pronta para ouvir e gerar a pista. Nenhuma nota tocada se perde, e o que você segura é respeitado:
+
+- **Nota segurada:** soa pelo tempo que a tecla ficou pressionada, inclusive por baixo das notas seguintes (um baixo ou pedal enquanto a melodia anda).
+- **Acorde:** notas tocadas juntas (até 70 ms de diferença) viram um bloco só, que toca todas. A nota mais aguda é a principal, com o nome no bloco; as outras aparecem como "+ Mi3" ou "+2".
+
+Há duas versões do ritmo:
 
 - **Refinada** (padrão): descobre o tempo em que você realmente tocou e o seu atraso ou adiantamento constante, e escolhe para cada batida a divisão mais simples que explica as notas (semínima, colcheia, tercina ou semicolcheia). A última nota fecha o compasso. O painel mostra o que foi ajustado.
 - **Como toquei**: cada nota na semicolcheia mais perto, no tempo do metrônomo.
@@ -73,7 +78,7 @@ Voltar 5 s, Passo, Play/Pausar, Reiniciar, Desfazer, Enquadrar e os painéis **C
 ## Blocos
 
 - Cada bloco é uma reta com uma nota, de Dó3 a Dó6. A cor vem da nota.
-- A largura define a duração da nota (100 px = 1 s, de 0,15 s a 4 s). Com o **Encaixe**, o comprimento vai a frações de batida.
+- A largura define a duração da nota (100 px = 1 s, de 0,15 s a 8 s). Blocos vindos de uma gravação podem ter duração própria e notas de acorde, que são salvas no arquivo. Com o **Encaixe**, o comprimento vai a frações de batida.
 - Notas de blocos novos sobem na escala ou repetem a anterior; com uma música aplicada, seguem a ordem da música.
 
 ## Som

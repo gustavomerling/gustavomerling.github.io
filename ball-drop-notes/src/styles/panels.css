@@ -262,6 +262,11 @@
   transition: transform 0.15s var(--ease), opacity 0.15s, box-shadow 0.15s;
 }
 
+/* Nota de acorde: mesma cor, mais discreta, para a melodia continuar em destaque. */
+.roll-note.is-extra {
+  opacity: 0.6;
+}
+
 .roll-note:hover {
   opacity: 1;
 }

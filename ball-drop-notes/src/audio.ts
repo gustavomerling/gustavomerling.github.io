@@ -27,7 +27,7 @@ const LEGACY_TIMBRES: Record<string, string> = {
 }
 
 const NOTE_SUSTAIN_MIN = 0.15 // segundos
-const NOTE_SUSTAIN_MAX = 4 // segundos
+const NOTE_SUSTAIN_MAX = 8 // segundos (notas seguradas podem soar por baixo de várias outras)
 const NOTE_VOLUME = 0.3 // volume máximo de uma voz, para impactos fortes
 export const IMPACT_MAX_SPEED = 1500 // px/s; impactos mais fortes que isso tocam no volume máximo
 const MAX_VOICES = 24 // vozes simultâneas; acima disso a mais antiga some rapidinho

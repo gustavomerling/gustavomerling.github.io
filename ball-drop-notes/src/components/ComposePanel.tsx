@@ -44,12 +44,14 @@ function useMelodyPreview(timbre: string) {
     let t = 0
     melody.notes.forEach((note, i) => {
       const seconds = (melody.beats[i] ?? 1) * beatSeconds
-      // A duração da nota vem da "largura" equivalente, como na pista.
-      const width = (seconds * 0.9) / NOTE_SUSTAIN_PER_PX
+      // A duração da nota vem da "largura" equivalente, como na pista; notas seguradas soam mais.
+      const width = (beats: number) => (Math.max(beats, melody.beats[i] ?? 1) * beatSeconds * 0.9) / NOTE_SUSTAIN_PER_PX
+      const chord = melody.extras?.[i] ?? []
       const at = t
       timers.current.push(
         window.setTimeout(() => {
-          playNote(note, 1000, width, timbre)
+          playNote(note, 1000, width(melody.holds?.[i] ?? 0), timbre)
+          for (const c of chord) playNote(c.note, 850, width(c.hold), timbre)
           setPlayingIndex(i)
         }, at * 1000),
       )
