@@ -1,17 +1,29 @@
+import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { DEFAULT_PALETTE } from '../lib/color';
 import { DEFAULT_FONTS } from '../lib/fonts';
-import { fillPlaceholders } from '../lib/generate';
+import { applyTemplate, fillPlaceholders } from '../lib/generate';
 import { uid } from '../lib/id';
 import { collectGarbage } from '../lib/images';
+import { CUSTOM_PREFIX, FALLBACK_TEMPLATE_ID, getTemplate, setCustomTemplates, type TemplateDef } from '../templates';
 import type { Brand, Client, Post, User } from '../types';
+
+/** Template criado (ou clonado) pelo usuário; vale para todos os clientes dele. */
+export interface CustomTemplate extends TemplateDef {
+  userId: string;
+  /** Template de origem do clone. */
+  basedOn?: string;
+  createdAt: number;
+  updatedAt: number;
+}
 
 interface DbState {
   users: User[];
   clients: Client[];
   posts: Post[];
+  templates: CustomTemplate[];
   currentUserId: string | null;
 
   createUser: (name: string) => string;
@@ -28,8 +40,15 @@ interface DbState {
   addPostImages: (id: string, imageIds: string[]) => void;
   duplicatePost: (id: string) => string | null;
   deletePost: (id: string) => void;
+
+  /** Novo template do usuário, em branco ou clonado de `from`. */
+  createTemplate: (from?: TemplateDef) => string;
+  updateTemplate: (id: string, recipe: (t: CustomTemplate) => void) => void;
+  /** Apaga o template; os slides que o usavam voltam para o template de origem (ou o padrão). */
+  deleteTemplate: (id: string) => void;
+
   /** Substitui todos os dados (restauração de backup). */
-  replaceAll: (data: Pick<DbState, 'users' | 'clients' | 'posts'>) => void;
+  replaceAll: (data: Pick<DbState, 'users' | 'clients' | 'posts' | 'templates'>) => void;
 }
 
 export type ClientData = Pick<Client, 'name' | 'logos' | 'profile' | 'colors' | 'fonts' | 'favoriteTemplates' | 'hashtags'>;
@@ -50,6 +69,7 @@ export const useDb = create<DbState>()(
       users: [],
       clients: [],
       posts: [],
+      templates: [],
       currentUserId: null,
 
       createUser: (name) => {
@@ -149,19 +169,64 @@ export const useDb = create<DbState>()(
         });
         runGarbageCollection();
       },
+      createTemplate: (from) => {
+        const id = `${CUSTOM_PREFIX}${uid()}`;
+        const userId = get().currentUserId;
+        if (!userId) throw new Error('Sem usuário logado');
+        const base: TemplateDef = from ? structuredClone(from) : blankTemplate();
+        set((s) => {
+          s.templates.push({
+            ...base,
+            id,
+            name: from ? `${from.name} (cópia)` : base.name,
+            style: base.style ?? (from?.id.startsWith('social-') ? 'social' : 'design'),
+            userId,
+            // Clone de clone aponta para o padrão original.
+            basedOn: from ? ((from as Partial<CustomTemplate>).basedOn ?? from.id) : undefined,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+        });
+        return id;
+      },
+      updateTemplate: (id, recipe) =>
+        set((s) => {
+          const t = s.templates.find((x) => x.id === id);
+          if (t) {
+            recipe(t);
+            t.updatedAt = Date.now();
+          }
+        }),
+      deleteTemplate: (id) => {
+        const gone = get().templates.find((t) => t.id === id);
+        if (!gone) return;
+        set((s) => {
+          s.templates = s.templates.filter((t) => t.id !== id);
+        });
+        // Já fora do registro: getTemplate devolve o de origem ou o padrão.
+        const fallback = getTemplate(gone.basedOn ?? FALLBACK_TEMPLATE_ID);
+        set((s) => {
+          s.clients.forEach((c) => (c.favoriteTemplates = c.favoriteTemplates.filter((f) => f !== id)));
+          s.posts.forEach((p) => {
+            if (!p.slides.some((sl) => sl.templateId === id)) return;
+            p.slides = p.slides.map((sl) => (sl.templateId === id ? applyTemplate(sl, fallback) : sl));
+          });
+        });
+      },
       replaceAll: (data) => {
         set((s) => {
           s.users = data.users;
           s.clients = data.clients;
           s.posts = data.posts;
+          s.templates = data.templates;
           if (!s.users.some((u) => u.id === s.currentUserId)) s.currentUserId = null;
         });
       },
     })),
     {
       name: 'merry-go-post:db',
-      version: 2,
-      partialize: (s) => ({ users: s.users, clients: s.clients, posts: s.posts, currentUserId: s.currentUserId }),
+      version: 3,
+      partialize: (s) => ({ users: s.users, clients: s.clients, posts: s.posts, templates: s.templates, currentUserId: s.currentUserId }),
       migrate: (persisted, version) => migrateDb(persisted as Record<string, unknown>, version) as unknown as DbState,
     },
   ),
@@ -179,7 +244,38 @@ export function migrateDb(data: Record<string, unknown>, _version = 0) {
     p.caption ??= '';
     p.style ??= 'design';
   });
-  return { ...data, clients, posts, users: (data.users as User[] | undefined) ?? [] };
+  return { ...data, clients, posts, users: (data.users as User[] | undefined) ?? [], templates: (data.templates as CustomTemplate[] | undefined) ?? [] };
+}
+
+/** Ponto de partida de um template novo: título e texto, fundo claro. */
+function blankTemplate(): TemplateDef {
+  return {
+    id: '',
+    name: 'Novo template',
+    style: 'design',
+    roles: ['content'],
+    bg: 'light',
+    capacity: 400,
+    images: [],
+    boxes: [
+      { key: 'title', x: 8, y: 10, w: 84, h: 22, size: 72, font: 'highlight', weight: 800, valign: 'bottom', color: 'auto', emphasis: 'accent', lineHeight: 1.05 },
+      { key: 'body', x: 8, y: 36, w: 84, h: 54, size: 40, font: 'base', color: 'auto', emphasis: 'primary', lineHeight: 1.4 },
+    ],
+  };
+}
+
+// Mantém o registro de templates (getTemplate) em dia com o banco.
+const syncTemplates = (s: DbState) => setCustomTemplates(s.templates, s.templates.filter((t) => t.userId === s.currentUserId));
+syncTemplates(useDb.getState());
+useDb.subscribe((s, prev) => {
+  if (s.templates !== prev.templates || s.currentUserId !== prev.currentUserId) syncTemplates(s);
+});
+
+/** Templates criados pelo usuário logado, mais recentes primeiro. */
+export function useMyTemplates() {
+  const templates = useDb((s) => s.templates);
+  const userId = useDb((s) => s.currentUserId);
+  return useMemo(() => templates.filter((t) => t.userId === userId).sort((a, b) => b.updatedAt - a.updatedAt), [templates, userId]);
 }
 
 /** Imagens referenciadas por clientes (logos) e posts; o resto pode sair do IndexedDB. */

@@ -1,9 +1,9 @@
-import { Copy, LayoutTemplate, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Copy, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { AppHeader } from '../components/AppHeader';
 import { SearchInput, matches } from '../components/SearchInput';
 import { StoredImage } from '../components/StoredImage';
-import { Button, EmptyState } from '../components/ui';
+import { Button, NewItemCard } from '../components/ui';
 import { ensureFonts } from '../lib/fonts';
 import { FORMATS } from '../lib/formats';
 import { navigate } from '../lib/router';
@@ -73,15 +73,9 @@ export function ClientPostsScreen({ clientId }: { clientId: string }) {
           </div>
         )}
         {all.length > 0 && posts.length === 0 && <p className="py-10 text-center text-sm text-zinc-500">Nenhum post encontrado para “{query}”.</p>}
-        {all.length === 0 ? (
-          <EmptyState icon={<LayoutTemplate size={22} />} title="Nenhum post ainda">
-            <p>Cole o texto, envie as imagens e o carrossel é montado na hora.</p>
-            <Button variant="primary" className="mt-4" icon={<Plus size={16} />} onClick={newPost}>
-              Criar post
-            </Button>
-          </EmptyState>
-        ) : (
+        {(
           <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+            <NewItemCard shape="slide" label="Criar post" hint={all.length ? undefined : 'Cole o texto e o carrossel é montado na hora'} onClick={newPost} />
             {posts.map((p) => (
               <div key={p.id} className="group">
                 <a href={`#/posts/${p.id}`} className="block overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 shadow-sm transition group-hover:shadow-md">

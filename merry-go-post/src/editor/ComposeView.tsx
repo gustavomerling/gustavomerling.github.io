@@ -1,16 +1,18 @@
-import { AlertTriangle, ArrowRight, Copy, Images, Info, Sparkles, Wand2, X } from 'lucide-react';
-import { useDeferredValue, useMemo } from 'react';
+import { AlertTriangle, ArrowRight, Copy, Images, Info, LayoutGrid, Lock, Shuffle, Sparkles, Unlock, Wand2, X } from 'lucide-react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { ImageDrop } from '../components/ImageDrop';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { StoredImage } from '../components/StoredImage';
-import { Button, Field, Input, Segmented } from '../components/ui';
+import { TemplatePickerModal } from '../components/TemplatePicker';
+import { Button, Field, Input, Segmented, cx } from '../components/ui';
 import { FORMATS, FORMAT_LIST } from '../lib/formats';
 import { captionFromSlides } from '../lib/caption';
 import { buildSlides, contentLength } from '../lib/generate';
+import { uid } from '../lib/id';
 import { splitText } from '../lib/split';
 import { ScaledSlide } from '../slides/ScaledSlide';
 import { SlideView } from '../slides/SlideView';
-import { ROLE_LABELS } from '../templates';
+import { ROLE_LABELS, getTemplate } from '../templates';
 import { runGarbageCollection, useDb } from '../store/db';
 import { toast } from '../store/ui';
 import type { Brand, Client, ImageMode, Post, PostStyle } from '../types';
@@ -39,6 +41,8 @@ export function ComposeView({ post, client, brand, onDone }: ComposeViewProps) {
 
   // A prévia é recalculada com atraso para não travar a digitação.
   const source = useDeferredValue(post.sourceHtml);
+  const [picking, setPicking] = useState<number | null>(null);
+  const pins = post.pins;
   const options = useMemo(
     () => ({
       style: post.style,
@@ -46,18 +50,33 @@ export function ComposeView({ post, client, brand, onDone }: ComposeViewProps) {
       mode: post.imageMode,
       imageIds: post.imageIds,
       favorites: client.favoriteTemplates,
-      seed: post.id,
+      seed: post.seed ?? post.id,
+      pins,
     }),
-    [source, post.style, post.imageMode, post.imageIds, client.favoriteTemplates, post.id],
+    [source, post.style, post.imageMode, post.imageIds, client.favoriteTemplates, post.seed, post.id, pins],
   );
   const preview = useMemo(() => buildSlides(options), [options]);
   const chars = useMemo(() => preview.reduce((n, s) => n + contentLength(s.content), 0), [preview]);
   const captionSource = post.slides.length ? post.slides : preview;
+  const pinnedCount = Object.keys(pins ?? {}).filter((k) => Number(k) < preview.length).length;
+
+  const setPin = (i: number, templateId: string | null) =>
+    update((p) => {
+      const next = { ...p.pins };
+      if (templateId) next[i] = templateId;
+      else delete next[i];
+      p.pins = next;
+    });
 
   const commit = () => {
     if (post.slides.length && !confirm('Substituir os slides atuais (e os ajustes feitos neles) por este novo carrossel?')) return;
     // Mesma semente da prévia: o carrossel salvo é exatamente o que foi mostrado.
-    const slides = buildSlides({ ...options, drafts: splitText(post.sourceHtml) });
+    const fresh = buildSlides({ ...options, drafts: splitText(post.sourceHtml) });
+    // Slide travado que continua com o mesmo template: mantém os ajustes feitos no editor (imagens, posições, ícones, fundo).
+    const slides = fresh.map((s, i) => {
+      const old = post.slides[i];
+      return pins?.[i] && old?.templateId === s.templateId ? { ...old, role: s.role, content: s.content } : s;
+    });
     update((p) => {
       p.slides = slides;
     });
@@ -191,6 +210,7 @@ export function ComposeView({ post, client, brand, onDone }: ComposeViewProps) {
             <div className="font-semibold text-zinc-900">Prévia</div>
             <div className="text-xs text-zinc-500">
               {preview.length ? `${preview.length} slides · ${FORMATS[post.format].label} · ${chars} caracteres` : 'Comece a escrever para ver o carrossel'}
+              {pinnedCount > 0 && ` · ${pinnedCount} travado${pinnedCount > 1 ? 's' : ''}`}
             </div>
             {preview.length > MAX_SLIDES && (
               <div className="mt-1 flex items-center gap-1 text-xs text-amber-600">
@@ -198,26 +218,63 @@ export function ComposeView({ post, client, brand, onDone }: ComposeViewProps) {
               </div>
             )}
           </div>
-          <Button variant="primary" icon={<Wand2 size={16} />} disabled={!preview.length} onClick={commit}>
-            {post.slides.length ? 'Substituir slides' : 'Usar este carrossel'}
-            <ArrowRight size={16} />
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              icon={<Shuffle size={16} />}
+              disabled={!preview.length || pinnedCount === preview.length}
+              title="Sorteia outros templates para os slides sem cadeado"
+              onClick={() => update((p) => void (p.seed = uid()))}
+            >
+              Sortear de novo
+            </Button>
+            <Button variant="primary" icon={<Wand2 size={16} />} disabled={!preview.length} onClick={commit}>
+              {post.slides.length ? 'Substituir slides' : 'Usar este carrossel'}
+              <ArrowRight size={16} />
+            </Button>
+          </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
           {preview.length ? (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4">
-              {preview.map((s, i) => (
-                <div key={i}>
-                  <div className="overflow-hidden rounded-lg shadow-sm ring-1 ring-black/5">
-                    <ScaledSlide format={post.format}>
-                      <SlideView slide={s} index={i} total={preview.length} format={post.format} brand={brand} pagination={post.pagination} />
-                    </ScaledSlide>
+              {preview.map((s, i) => {
+                const locked = !!pins?.[i];
+                return (
+                  <div key={i} className="group">
+                    <div className={cx('relative overflow-hidden rounded-lg shadow-sm ring-2', locked ? 'ring-brand-500' : 'ring-black/5')}>
+                      <ScaledSlide format={post.format}>
+                        <SlideView slide={s} index={i} total={preview.length} format={post.format} brand={brand} pagination={post.pagination} />
+                      </ScaledSlide>
+                      <div className="absolute right-1.5 top-1.5 flex gap-1">
+                        <button
+                          type="button"
+                          title="Trocar template (trava este slide)"
+                          onClick={() => setPicking(i)}
+                          className="grid h-7 w-7 place-items-center rounded-full bg-white/95 text-zinc-600 opacity-0 shadow transition group-hover:opacity-100 hover:text-brand-700"
+                        >
+                          <LayoutGrid size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          title={locked ? 'Destravar: volta a ser sorteado' : 'Travar: o sorteio não mexe neste slide'}
+                          onClick={() => setPin(i, locked ? null : s.templateId)}
+                          className={cx(
+                            'grid h-7 w-7 place-items-center rounded-full shadow transition',
+                            locked ? 'bg-brand-600 text-brand-fg' : 'bg-white/95 text-zinc-600 opacity-0 group-hover:opacity-100 hover:text-brand-700',
+                          )}
+                        >
+                          {locked ? <Lock size={13} /> : <Unlock size={13} />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-1.5 flex items-baseline justify-between gap-2 text-xs text-zinc-500">
+                      <span className="shrink-0">
+                        {i + 1}. {ROLE_LABELS[s.role]}
+                      </span>
+                      <span className="truncate text-zinc-400">{getTemplate(s.templateId).name}</span>
+                    </div>
                   </div>
-                  <div className="mt-1.5 text-xs text-zinc-500">
-                    {i + 1}. {ROLE_LABELS[s.role]}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="grid h-full place-items-center text-center text-zinc-400">
@@ -229,6 +286,18 @@ export function ComposeView({ post, client, brand, onDone }: ComposeViewProps) {
           )}
         </div>
       </section>
+      {picking !== null && preview[picking] && (
+        <TemplatePickerModal
+          slide={preview[picking]}
+          index={picking}
+          total={preview.length}
+          format={post.format}
+          brand={brand}
+          pagination={post.pagination}
+          onPick={(tpl) => setPin(picking, tpl.id)}
+          onClose={() => setPicking(null)}
+        />
+      )}
     </div>
   );
 }

@@ -107,6 +107,8 @@ interface BuildOptions {
   favorites: string[];
   /** Com semente, o resultado é estável (prévia ao vivo); sem, é sorteado de novo. */
   seed?: string;
+  /** Slides travados: índice → template fixo (fica de fora do sorteio). */
+  pins?: Record<string, string>;
 }
 
 export function buildSlides(o: BuildOptions): Slide[] {
@@ -120,7 +122,8 @@ export function buildSlides(o: BuildOptions): Slide[] {
   let prev: string | undefined;
   return o.drafts.map((d, i) => {
     const rand = o.seed !== undefined ? seededRandom(hashString(`${o.seed}:${i}:${d.role}`)) : Math.random;
-    const t = pickTemplate({
+    const pinned = o.pins?.[i];
+    const t = pinned ? getTemplate(pinned) : pickTemplate({
       style: o.style,
       role: d.role,
       images: flags[i] ? 'any' : 0,

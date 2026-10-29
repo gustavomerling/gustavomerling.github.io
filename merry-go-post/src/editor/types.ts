@@ -1,4 +1,5 @@
 import type { PointerEvent as ReactPointerEvent } from 'react';
+import type { Rect } from '../templates';
 import type { Slide, TextKey } from '../types';
 
 export type Selection =
@@ -79,3 +80,54 @@ export function snapTargets(axis: 'x' | 'y', heightPx: number, grid: boolean) {
 export type HandleDir = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
 export const HANDLE_DIRS: HandleDir[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+
+/** Move um retângulo com encaixe nas bordas/centro; devolve a nova origem. */
+export function moveRectSnapped(start: Rect, dx: number, dy: number, free: boolean, tx: number[], ty: number[]) {
+  let x = start.x + dx;
+  let y = start.y + dy;
+  const lines = { x: [] as number[], y: [] as number[] };
+  if (!free) {
+    const sx = snapEdges([x, x + start.w / 2, x + start.w], tx);
+    const sy = snapEdges([y, y + start.h / 2, y + start.h], ty);
+    x += sx.shift;
+    y += sy.shift;
+    if (sx.line !== null) lines.x.push(sx.line);
+    if (sy.line !== null) lines.y.push(sy.line);
+  }
+  return { x, y, lines };
+}
+
+/** Redimensiona pela alça `dir`, ancorando o lado oposto e encaixando a aresta que se move. */
+export function resizeRectSnapped(start: Rect, dir: HandleDir, dx: number, dy: number, free: boolean, tx: number[], ty: number[]) {
+  let { x, y, w, h } = start;
+  const lines = { x: [] as number[], y: [] as number[] };
+  const snap = (v: number, targets: number[], axis: 'x' | 'y') => {
+    if (free) return v;
+    const s = snapEdges([v], targets);
+    if (s.line !== null) lines[axis].push(s.line);
+    return v + s.shift;
+  };
+  if (dir.includes('e')) w = snap(start.x + start.w + dx, tx, 'x') - x;
+  if (dir.includes('w')) {
+    const left = snap(start.x + dx, tx, 'x');
+    w = start.x + start.w - left;
+    x = left;
+  }
+  if (dir.includes('s')) h = snap(start.y + start.h + dy, ty, 'y') - y;
+  if (dir.includes('n')) {
+    const top = snap(start.y + dy, ty, 'y');
+    h = start.y + start.h - top;
+    y = top;
+  }
+  // Tamanho mínimo sem deixar a caixa "virar" ao passar do lado oposto.
+  if (w < 6) {
+    if (dir.includes('w')) x = start.x + start.w - 6;
+    w = 6;
+  }
+  if (h < 3) {
+    if (dir.includes('n')) y = start.y + start.h - 3;
+    h = 3;
+  }
+  return { rect: { x, y, w, h }, lines };
+}
+

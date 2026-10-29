@@ -10,9 +10,16 @@ interface UiState {
   showGrid: boolean;
   snapToGrid: boolean;
   showGuides: boolean;
+  /** Últimas fontes escolhidas na janela de fontes (mais recente primeiro). */
+  recentFonts: string[];
+  favoriteFonts: string[];
   setTheme: (t: Theme) => void;
   toggle: (key: 'showGrid' | 'snapToGrid' | 'showGuides') => void;
+  rememberFont: (family: string) => void;
+  toggleFavoriteFont: (family: string) => void;
 }
+
+const RECENT_FONTS = 12;
 
 /** Preferências da interface (por navegador). */
 export const useUi = create<UiState>()(
@@ -22,8 +29,13 @@ export const useUi = create<UiState>()(
       showGrid: false,
       snapToGrid: false,
       showGuides: false,
+      recentFonts: [],
+      favoriteFonts: [],
       setTheme: (theme) => set({ theme }),
       toggle: (key) => set((s) => ({ [key]: !s[key] }) as Partial<UiState>),
+      rememberFont: (family) => set((s) => ({ recentFonts: [family, ...s.recentFonts.filter((f) => f !== family)].slice(0, RECENT_FONTS) })),
+      toggleFavoriteFont: (family) =>
+        set((s) => ({ favoriteFonts: s.favoriteFonts.includes(family) ? s.favoriteFonts.filter((f) => f !== family) : [...s.favoriteFonts, family] })),
     }),
     { name: 'merry-go-post:ui' },
   ),

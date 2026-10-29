@@ -12,6 +12,8 @@ interface LayersPanelProps {
   slide: Slide;
   selection: Selection;
   onSelect: (s: Selection) => void;
+  /** Camada sob o mouse: destacada no slide. */
+  onHover?: (s: Selection) => void;
   updateSlide: SlideUpdater;
 }
 
@@ -45,7 +47,7 @@ function rowsOf(post: Post, slide: Slide): Row[] {
   return rows;
 }
 
-export function LayersPanel({ post, slide, selection, onSelect, updateSlide }: LayersPanelProps) {
+export function LayersPanel({ post, slide, selection, onSelect, onHover, updateSlide }: LayersPanelProps) {
   const rows = rowsOf(post, slide);
 
   const toggle = (id: LayerId) =>
@@ -73,6 +75,8 @@ export function LayersPanel({ post, slide, selection, onSelect, updateSlide }: L
             <li
               key={r.id}
               onClick={() => r.select && !hidden && onSelect(r.select)}
+              onMouseEnter={() => onHover?.(r.select && !hidden ? r.select : null)}
+              onMouseLeave={() => onHover?.(null)}
               className={cx(
                 'group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm',
                 r.select && !hidden && 'cursor-pointer',

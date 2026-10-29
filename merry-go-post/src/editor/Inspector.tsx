@@ -4,6 +4,7 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
+  Check,
   Copy,
   Eraser,
   FlipHorizontal2,
@@ -24,19 +25,19 @@ import {
   Unlock,
   WandSparkles,
 } from 'lucide-react';
-import { useState, type MouseEvent, type ReactNode } from 'react';
-import { IconPicker } from '../components/IconPicker';
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { FontChoice } from '../components/FontChoice';
+import { IconPickerModal } from '../components/IconPicker';
+import { TemplatePickerModal } from '../components/TemplatePicker';
 import { ImageDrop } from '../components/ImageDrop';
 import { StoredImage } from '../components/StoredImage';
-import { Button, Segmented, Slider, cx } from '../components/ui';
+import { Button, Label, Segmented, Slider, cx } from '../components/ui';
 import { DEFAULT_FILTER, applyTemplate, regenerateSlide, unusedImages } from '../lib/generate';
 import { uid } from '../lib/id';
 import { toggleMark } from '../lib/paste';
 import { removeImageBackground } from '../lib/removeBackground';
-import { ScaledSlide } from '../slides/ScaledSlide';
-import { SlideView } from '../slides/SlideView';
-import { ROLE_LABELS, TEMPLATES, getTemplate, templateStyle } from '../templates';
-import type { Brand, Client, FontRole, ImageFilter, PaginationStyle, Post, Slide, SlideRole, TextKey } from '../types';
+import { ROLE_LABELS, getTemplate } from '../templates';
+import type { Brand, Client, ImageFilter, PaginationStyle, Post, Slide, SlideRole, TextKey } from '../types';
 import { ColorSwatches } from './ColorSwatches';
 import { LayersPanel } from './LayersPanel';
 import type { Selection, SlideUpdater } from './types';
@@ -49,6 +50,7 @@ interface InspectorProps {
   index: number;
   selection: Selection;
   onSelect: (s: Selection) => void;
+  onHover?: (s: Selection) => void;
   editingKey: TextKey | null;
   onEdit: (k: TextKey | null) => void;
   updateSlide: SlideUpdater;
@@ -59,6 +61,12 @@ interface InspectorProps {
 export function Inspector(props: InspectorProps) {
   const { selection } = props;
   const [tab, setTab] = useState<'props' | 'layers'>('props');
+  const scroller = useRef<HTMLDivElement>(null);
+  // Outro slide ou outra camada: o painel volta para o topo.
+  const focusKey = `${props.slide.id}|${JSON.stringify(selection)}|${tab}`;
+  useEffect(() => {
+    scroller.current?.scrollTo({ top: 0 });
+  }, [focusKey]);
   return (
     <aside className="flex min-h-0 flex-col border-l border-zinc-200 bg-white">
       <div className="flex shrink-0 border-b border-zinc-100 p-2">
@@ -72,7 +80,7 @@ export function Inspector(props: InspectorProps) {
           ]}
         />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
         {tab === 'layers' && <LayersPanel {...props} />}
         {selection?.kind === 'box' && <BoxPanel {...props} textKey={selection.key} />}
         {selection?.kind === 'image' && <ImagePanel {...props} imageIndex={selection.index} />}
@@ -96,86 +104,83 @@ function Panel({ title, children, actions }: { title: string; children: ReactNod
   );
 }
 
-const Label = ({ children }: { children: ReactNode }) => <div className="mb-1.5 text-xs font-medium text-zinc-600">{children}</div>;
-
 // ——— Slide ———
 
 function SlidePanel({ post, client, brand, slide, index, replaceSlide, updateSlide, onSelect }: InspectorProps) {
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [showIcons, setShowIcons] = useState(false);
+  const [modal, setModal] = useState<'templates' | 'icons' | null>(null);
   const t = getTemplate(slide.templateId);
   const spare = unusedImages(post.slides, post.imageIds);
+  const roleName = ROLE_LABELS[slide.role].toLowerCase();
 
   return (
     <Panel title={`Slide ${index + 1}`}>
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
+          <div className="text-[11px] text-zinc-500">Template</div>
           <div className="truncate text-sm font-medium text-zinc-900">{t.name}</div>
-          <select
-            value={slide.role}
-            onChange={(e) => updateSlide((s) => void (s.role = e.target.value as SlideRole))}
-            className="mt-0.5 rounded border-none bg-transparent p-0 text-xs text-zinc-500 outline-none"
-            title="Papel do slide (define quais templates o Regerar sorteia)"
-          >
-            {Object.entries(ROLE_LABELS).map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
-              </option>
-            ))}
-          </select>
         </div>
-        <Button variant="primary" size="sm" icon={<RefreshCw size={14} />} onClick={() => replaceSlide(regenerateSlide(slide, post.style, client.favoriteTemplates))}>
-          Regerar
+        <Button size="sm" icon={<LayoutGrid size={14} />} onClick={() => setModal('templates')}>
+          Trocar
         </Button>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Button size="sm" icon={<LayoutGrid size={14} />} onClick={() => setShowTemplates((v) => !v)}>
-          Templates
+
+      <div className="space-y-2 rounded-lg bg-zinc-50 p-3">
+        <Label>Tipo do slide</Label>
+        <div className="flex flex-wrap gap-1">
+          {(Object.entries(ROLE_LABELS) as [SlideRole, string][]).map(([v, l]) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => updateSlide((s) => void (s.role = v))}
+              className={cx(
+                'rounded-full px-2.5 py-1 text-xs font-medium transition',
+                slide.role === v ? 'bg-brand-600 text-brand-fg' : 'bg-white text-zinc-600 ring-1 ring-zinc-200 hover:text-zinc-900',
+              )}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          className="w-full"
+          icon={<RefreshCw size={14} />}
+          onClick={() => replaceSlide(regenerateSlide(slide, post.style, client.favoriteTemplates))}
+        >
+          Regerar como {roleName}
         </Button>
-        <Button size="sm" icon={<Shapes size={14} />} onClick={() => setShowIcons((v) => !v)}>
-          Ícone
-        </Button>
+        <p className="text-[11px] leading-snug text-zinc-500">Sorteia outro template feito para {roleName}, com o mesmo texto e a mesma quantidade de imagens.</p>
       </div>
-      {showIcons && (
-        <IconPicker
+
+      <Button size="sm" className="w-full" icon={<Shapes size={14} />} onClick={() => setModal('icons')}>
+        Adicionar ícone
+      </Button>
+      {modal === 'icons' && (
+        <IconPickerModal
+          onClose={() => setModal(null)}
           onPick={(icon) => {
             const id = uid();
             updateSlide((s) => {
               s.elements.push({ id, icon, x: 50, y: 50, size: 12, rotate: 0, color: 'accent' });
             });
             onSelect({ kind: 'icon', id });
-            setShowIcons(false);
           }}
         />
       )}
-      {showTemplates &&
-        (['design', 'social'] as const).map((group) => (
-          <div key={group}>
-            <Label>{group === 'design' ? 'Design' : 'Formato de post'}</Label>
-            <div className="grid grid-cols-3 gap-2">
-          {TEMPLATES.filter((tpl) => templateStyle(tpl) === group).map((tpl) => (
-            <button
-              key={tpl.id}
-              type="button"
-              title={tpl.name}
-              onClick={() => replaceSlide(applyTemplate(slide, tpl, spare))}
-              className={cx('overflow-hidden rounded-md ring-2', tpl.id === slide.templateId ? 'ring-brand-500' : 'ring-transparent hover:ring-zinc-300')}
-            >
-              <ScaledSlide format={post.format}>
-                <SlideView
-                  slide={applyTemplate(slide, tpl, spare)}
-                  index={index}
-                  total={post.slides.length}
-                  format={post.format}
-                  brand={brand}
-                  pagination={post.pagination}
-                />
-              </ScaledSlide>
-            </button>
-          ))}
-            </div>
-          </div>
-        ))}
+      {modal === 'templates' && (
+        <TemplatePickerModal
+          slide={slide}
+          index={index}
+          total={post.slides.length}
+          format={post.format}
+          brand={brand}
+          pagination={post.pagination}
+          spare={spare}
+          onPick={(tpl) => replaceSlide(applyTemplate(slide, tpl, spare))}
+          onClose={() => setModal(null)}
+        />
+      )}
       <div>
         <Label>Fundo do slide</Label>
         <ColorSwatches
@@ -194,6 +199,8 @@ function SlidePanel({ post, client, brand, slide, index, replaceSlide, updateSli
 }
 
 // ——— Texto ———
+
+const plainText = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
 const keepFocus = (fn: () => void) => (e: MouseEvent) => {
   e.preventDefault();
@@ -214,9 +221,18 @@ function BoxPanel({ slide, brand, textKey, editingKey, onEdit, updateSlide }: In
         <Button size="sm" variant="ghost" title="Restaurar posição e estilo" icon={<RotateCcw size={14} />} onClick={() => updateSlide((s) => void delete s.boxes[textKey])} />
       }
     >
-      <div className="flex items-center gap-1">
-        <Button size="sm" variant={editing ? 'primary' : 'secondary'} icon={<Pencil size={14} />} onClick={() => onEdit(editing ? null : textKey)}>
-          {editing ? 'Editando' : 'Editar texto'}
+      {/* data-keep-editing: clicar aqui não encerra a edição do texto (ver DesignView). */}
+      <div className="flex items-center gap-1" data-keep-editing>
+        <Button
+          size="sm"
+          variant={editing ? 'primary' : 'secondary'}
+          icon={editing ? <Check size={14} /> : <Pencil size={14} />}
+          title={editing ? 'Concluir edição (Esc)' : 'Editar texto (dois cliques no slide)'}
+          // Sem tirar o foco do texto: senão o blur encerra e o clique religa a edição.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onEdit(editing ? null : textKey)}
+        >
+          {editing ? 'Concluir' : 'Editar texto'}
         </Button>
         <span className="mx-1 h-5 w-px bg-zinc-200" />
         <Button size="sm" variant="ghost" title="Destaque" disabled={!editing} icon={<Bold size={15} />} onMouseDown={keepFocus(() => document.execCommand('bold'))} />
@@ -243,15 +259,14 @@ function BoxPanel({ slide, brand, textKey, editingKey, onEdit, updateSlide }: In
       </div>
       <div>
         <Label>Fonte</Label>
-        <Segmented<FontRole>
-          size="sm"
-          value={o.font ?? def?.font ?? 'base'}
-          onChange={(font) => patch({ font })}
-          options={[
-            { value: 'base', label: 'Base', title: brand.fonts.base },
-            { value: 'highlight', label: 'Destaque', title: brand.fonts.highlight },
-            { value: 'ultra', label: 'Ultra', title: brand.fonts.ultra },
-          ]}
+        <FontChoice
+          fonts={brand.fonts}
+          role={o.font ?? def?.font ?? 'base'}
+          family={o.family ?? (o.font ? undefined : def?.family)}
+          onRole={(font) => patch({ font, family: undefined })}
+          onFamily={(family) => patch({ family })}
+          previewText={plainText(slide.content[textKey])}
+          previewStyle={{ weight: def?.weight, italic: def?.italic, uppercase: o.uppercase ?? def?.uppercase }}
         />
       </div>
       <Slider label="Entrelinha" value={o.lineHeight ?? def?.lineHeight ?? 1.25} min={0.8} max={2.2} step={0.05} onChange={(v) => patch({ lineHeight: v })} />
@@ -467,7 +482,7 @@ function IconPanel({ slide, brand, iconId, updateSlide, onSelect }: InspectorPro
         </div>
       }
     >
-      <button type="button" onClick={() => setPicking((v) => !v)} className="flex w-full items-center gap-3 rounded-lg border border-zinc-200 p-2 text-left hover:bg-zinc-50">
+      <button type="button" onClick={() => setPicking(true)} className="flex w-full items-center gap-3 rounded-lg border border-zinc-200 p-2 text-left hover:bg-zinc-50">
         <span className="grid h-10 w-10 place-items-center rounded-md bg-zinc-100">
           <Icon icon={el.icon} width={24} height={24} />
         </span>
@@ -476,14 +491,7 @@ function IconPanel({ slide, brand, iconId, updateSlide, onSelect }: InspectorPro
           <span className="text-xs text-brand-700">Trocar ícone</span>
         </span>
       </button>
-      {picking && (
-        <IconPicker
-          onPick={(icon) => {
-            set({ icon });
-            setPicking(false);
-          }}
-        />
-      )}
+      {picking && <IconPickerModal title="Trocar ícone" onPick={(icon) => set({ icon })} onClose={() => setPicking(false)} />}
       <Slider label="Tamanho" value={Math.round(el.size)} min={2} max={90} unit="%" onChange={(v) => set({ size: v })} />
       <Slider label="Rotação" value={el.rotate} min={-180} max={180} unit="°" onChange={(v) => set({ rotate: v })} />
       <div>

@@ -17,6 +17,8 @@ import {
   snapEdges,
   snapTargets,
   startDrag,
+  moveRectSnapped,
+  resizeRectSnapped,
   type HandleDir,
   type Selection,
   type SlideUpdater,
@@ -28,6 +30,8 @@ interface StageProps {
   index: number;
   brand: Brand;
   selection: Selection;
+  /** Destaque vindo do painel de camadas. */
+  hovered?: Selection;
   onSelect: (s: Selection) => void;
   editingKey: TextKey | null;
   onEdit: (key: TextKey | null) => void;
@@ -48,7 +52,7 @@ function useElementSize<T extends HTMLElement>() {
   return [ref, size] as const;
 }
 
-export function Stage({ post, slide, index, brand, selection, onSelect, editingKey, onEdit, updateSlide, updatePost }: StageProps) {
+export function Stage({ post, slide, index, brand, selection, hovered, onSelect, editingKey, onEdit, updateSlide, updatePost }: StageProps) {
   const [ref, size] = useElementSize<HTMLDivElement>();
   const height = slideHeight(post.format);
   const width = Math.max(0, Math.min(size.w - 64, ((size.h - 64) * SLIDE_WIDTH) / height));
@@ -76,6 +80,7 @@ export function Stage({ post, slide, index, brand, selection, onSelect, editingK
                 post={post}
                 slide={slide}
                 selection={selection}
+                hovered={hovered}
                 onSelect={onSelect}
                 editingKey={editingKey}
                 onEdit={onEdit}
@@ -113,66 +118,20 @@ interface Active {
   showSize: boolean;
 }
 
-function Handles({ post, slide, selection, onSelect, editingKey, onEdit, updateSlide, updatePost }: HandlesProps) {
+function Handles({ post, slide, selection, hovered, onSelect, editingKey, onEdit, updateSlide, updatePost }: HandlesProps) {
   const frame = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<Active | null>(null);
   const { showGrid, snapToGrid, showGuides } = useUi();
   const t = getTemplate(slide.templateId);
   const height = slideHeight(post.format);
   const is = (s: Selection) => sameSelection(s, selection);
+  const lit = (s: Selection) => !!hovered && sameSelection(s, hovered);
   const tx = snapTargets('x', height, snapToGrid);
   const ty = snapTargets('y', height, snapToGrid);
   const end = () => setActive(null);
 
-  /** Move um retângulo com encaixe nas bordas/centro; devolve a nova origem. */
-  const moveRect = (start: Rect, dx: number, dy: number, free: boolean) => {
-    let x = start.x + dx;
-    let y = start.y + dy;
-    const lines = { x: [] as number[], y: [] as number[] };
-    if (!free) {
-      const sx = snapEdges([x, x + start.w / 2, x + start.w], tx);
-      const sy = snapEdges([y, y + start.h / 2, y + start.h], ty);
-      x += sx.shift;
-      y += sy.shift;
-      if (sx.line !== null) lines.x.push(sx.line);
-      if (sy.line !== null) lines.y.push(sy.line);
-    }
-    return { x, y, lines };
-  };
-
-  /** Redimensiona pela alça `dir`, ancorando o lado oposto e encaixando a aresta que se move. */
-  const resizeRect = (start: Rect, dir: HandleDir, dx: number, dy: number, free: boolean) => {
-    let { x, y, w, h } = start;
-    const lines = { x: [] as number[], y: [] as number[] };
-    const snap = (v: number, targets: number[], axis: 'x' | 'y') => {
-      if (free) return v;
-      const s = snapEdges([v], targets);
-      if (s.line !== null) lines[axis].push(s.line);
-      return v + s.shift;
-    };
-    if (dir.includes('e')) w = snap(start.x + start.w + dx, tx, 'x') - x;
-    if (dir.includes('w')) {
-      const left = snap(start.x + dx, tx, 'x');
-      w = start.x + start.w - left;
-      x = left;
-    }
-    if (dir.includes('s')) h = snap(start.y + start.h + dy, ty, 'y') - y;
-    if (dir.includes('n')) {
-      const top = snap(start.y + dy, ty, 'y');
-      h = start.y + start.h - top;
-      y = top;
-    }
-    // Tamanho mínimo sem deixar a caixa "virar" ao passar do lado oposto.
-    if (w < 6) {
-      if (dir.includes('w')) x = start.x + start.w - 6;
-      w = 6;
-    }
-    if (h < 3) {
-      if (dir.includes('n')) y = start.y + start.h - 3;
-      h = 3;
-    }
-    return { rect: { x, y, w, h }, lines };
-  };
+  const moveRect = (start: Rect, dx: number, dy: number, free: boolean) => moveRectSnapped(start, dx, dy, free, tx, ty);
+  const resizeRect = (start: Rect, dir: HandleDir, dx: number, dy: number, free: boolean) => resizeRectSnapped(start, dir, dx, dy, free, tx, ty);
 
   // Editando texto: só o contorno da caixa, sem interceptar cliques no contentEditable.
   if (editingKey) {
@@ -199,6 +158,7 @@ function Handles({ post, slide, selection, onSelect, editingKey, onEdit, updateS
             key={`img-${i}`}
             rect={def}
             selected={is(sel)}
+            highlighted={lit(sel)}
             label="Imagem"
             cursor={is(sel) ? 'grab' : 'pointer'}
             onPointerDown={(e) => {
@@ -236,6 +196,7 @@ function Handles({ post, slide, selection, onSelect, editingKey, onEdit, updateS
             key={key}
             rect={box}
             selected={is(sel)}
+            highlighted={lit(sel)}
             label={key === 'title' ? 'Título' : 'Texto'}
             cursor="move"
             onDoubleClick={() => onEdit(key)}
@@ -285,6 +246,7 @@ function Handles({ post, slide, selection, onSelect, editingKey, onEdit, updateS
             key={el.id}
             rect={b}
             selected={is(sel)}
+            highlighted={lit(sel)}
             label="Ícone"
             cursor="move"
             square
@@ -330,6 +292,7 @@ function Handles({ post, slide, selection, onSelect, editingKey, onEdit, updateS
         <Frame
           rect={{ x: post.pagination.x - PAGINATION_BOX.w / 2, y: post.pagination.y - PAGINATION_BOX.h / 2, ...PAGINATION_BOX }}
           selected={is({ kind: 'pagination' })}
+          highlighted={lit({ kind: 'pagination' })}
           label="Paginação (todos os slides)"
           cursor="move"
           onPointerDown={(e) => {
@@ -386,7 +349,7 @@ function Handles({ post, slide, selection, onSelect, editingKey, onEdit, updateS
   );
 }
 
-function GridOverlay({ height }: { height: number }) {
+export function GridOverlay({ height }: { height: number }) {
   const stepY = gridStepY(height);
   const rows = Math.floor(100 / stepY);
   return (
@@ -402,7 +365,7 @@ function GridOverlay({ height }: { height: number }) {
 }
 
 /** Margem segura, centro e (em 9:16) as áreas cobertas pela interface do Stories. */
-function GuidesOverlay({ format }: { format: Post['format'] }) {
+export function GuidesOverlay({ format }: { format: Post['format'] }) {
   return (
     <div className="pointer-events-none absolute inset-0">
       <div className="absolute border border-dashed border-pink-500/70" style={{ inset: `${SAFE_MARGIN}%` }} />
@@ -423,6 +386,8 @@ interface FrameProps {
   selected: boolean;
   label: string;
   cursor: string;
+  /** Destaque vindo de fora (mouse sobre a camada na lista). */
+  highlighted?: boolean;
   /** Ícones: só as alças dos cantos. */
   square?: boolean;
   onPointerDown: (e: ReactPointerEvent) => void;
@@ -442,7 +407,7 @@ const HANDLE_POS: Record<HandleDir, string> = {
   w: 'left-0 top-1/2 cursor-ew-resize',
 };
 
-function Frame({ rect, selected, label, cursor, square, onPointerDown, onDoubleClick, onResize, onWheel }: FrameProps) {
+export function Frame({ rect, selected, highlighted, label, cursor, square, onPointerDown, onDoubleClick, onResize, onWheel }: FrameProps) {
   return (
     <div
       data-handle
@@ -451,11 +416,15 @@ function Frame({ rect, selected, label, cursor, square, onPointerDown, onDoubleC
       onWheel={onWheel}
       className={cx(
         'group pointer-events-auto absolute',
-        selected ? 'outline-2 outline-brand-500' : 'hover:outline-1 hover:outline-dashed hover:outline-brand-500/70',
+        selected
+          ? 'outline-2 outline-brand-500'
+          : highlighted
+            ? 'bg-brand-500/20 outline-2 outline-dashed outline-brand-500'
+            : 'hover:outline-1 hover:outline-dashed hover:outline-brand-500/70',
       )}
       style={{ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.w}%`, height: `${rect.h}%`, cursor }}
     >
-      {selected && (
+      {(selected || highlighted) && (
         <span className="pointer-events-none absolute -top-6 left-0 whitespace-nowrap rounded bg-brand-600 px-1.5 py-0.5 text-[10px] font-medium leading-none text-brand-fg">
           {label}
         </span>

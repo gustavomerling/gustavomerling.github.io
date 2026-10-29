@@ -12,6 +12,8 @@ export interface TextBoxDef extends Rect {
   key: TextKey;
   size: number;
   font: FontRole;
+  /** Fonte fora da marca (nome do Google Fonts); manda sobre `font`. */
+  family?: string;
   weight?: number;
   align?: 'left' | 'center' | 'right';
   valign?: 'top' | 'center' | 'bottom';
@@ -53,6 +55,8 @@ export interface LogoDef {
 export interface TemplateDef {
   id: string;
   name: string;
+  /** Padrão: pelo prefixo do id ("social-" = formato de post). */
+  style?: 'design' | 'social';
   roles: SlideRole[];
   bg: ColorRef;
   /** Tom forçado (templates com imagem de fundo). */
@@ -182,6 +186,34 @@ export const TEMPLATES: TemplateDef[] = [
     boxes: [
       { key: 'title', x: 8, y: 26, w: 84, h: 48, size: 58, font: 'highlight', weight: 700, italic: true, valign: 'center', color: 'light', emphasis: 'accent', lineHeight: 1.2 },
       { key: 'body', x: 8, y: 77, w: 84, h: 14, size: 32, font: 'base', color: 'accent' },
+    ],
+  },
+  // Preto e branco absolutos existem em toda marca (ver FIXED_COLORS).
+  {
+    id: 'text-black',
+    name: 'Texto · Preto',
+    roles: ['content', 'quote', 'closing'],
+    bg: 'black',
+    capacity: 480,
+    images: [],
+    decorations: [{ kind: 'rect', x: 8, y: 35, w: 10, h: 0.7, color: 'accent', radius: 99 }],
+    boxes: [
+      { key: 'title', x: 8, y: 10, w: 84, h: 23, size: 72, font: 'highlight', weight: 800, valign: 'bottom', color: 'white', emphasis: 'accent', lineHeight: 1.05 },
+      { key: 'body', x: 8, y: 39, w: 84, h: 50, size: 40, font: 'base', color: 'white', emphasis: 'accent', lineHeight: 1.4 },
+    ],
+  },
+  {
+    id: 'statement-white',
+    needsTitle: true,
+    name: 'Frase · Branco',
+    roles: ['content', 'quote', 'cover'],
+    bg: 'white',
+    capacity: 150,
+    images: [],
+    decorations: [{ kind: 'rect', x: 8, y: 8, w: 16, h: 1.4, color: 'black' }],
+    boxes: [
+      { key: 'title', x: 8, y: 12, w: 84, h: 66, size: 124, font: 'ultra', valign: 'center', color: 'black', emphasis: 'primary', lineHeight: 1, uppercase: true },
+      { key: 'body', x: 8, y: 80, w: 84, h: 12, size: 34, font: 'base', color: 'black' },
     ],
   },
   // ——— Imagem + texto ———
@@ -322,26 +354,26 @@ export const TEMPLATES: TemplateDef[] = [
     id: 'social-text',
     name: 'Post · Texto',
     roles: ['content', 'quote', 'cover', 'closing'],
-    bg: 'light',
+    bg: 'white',
     capacity: 420,
     images: [],
-    decorations: [{ kind: 'profile', x: 8, y: 8, w: 84, size: 120, color: 'dark', muted: '#71767b', layout: 'row' }],
+    decorations: [{ kind: 'profile', x: 8, y: 8, w: 84, size: 120, color: 'black', muted: '#71767b', layout: 'row' }],
     boxes: [
-      { key: 'title', x: 8, y: 19, w: 84, h: 14, size: 54, font: 'base', weight: 700, valign: 'bottom', color: 'dark', emphasis: 'primary', lineHeight: 1.2 },
-      { key: 'body', x: 8, y: 35, w: 84, h: 56, size: 44, font: 'base', color: 'dark', emphasis: 'primary', lineHeight: 1.4 },
+      { key: 'title', x: 8, y: 19, w: 84, h: 14, size: 54, font: 'base', weight: 700, valign: 'bottom', color: 'black', emphasis: 'primary', lineHeight: 1.2 },
+      { key: 'body', x: 8, y: 35, w: 84, h: 56, size: 44, font: 'base', color: 'black', emphasis: 'primary', lineHeight: 1.4 },
     ],
   },
   {
     id: 'social-image',
     name: 'Post · Com imagem',
     roles: ['content', 'cover'],
-    bg: 'light',
+    bg: 'white',
     capacity: 240,
     images: [{ x: 8, y: 50, w: 84, h: 42, radius: 28 }],
-    decorations: [{ kind: 'profile', x: 8, y: 6, w: 84, size: 110, color: 'dark', muted: '#71767b', layout: 'row' }],
+    decorations: [{ kind: 'profile', x: 8, y: 6, w: 84, size: 110, color: 'black', muted: '#71767b', layout: 'row' }],
     boxes: [
-      { key: 'title', x: 8, y: 17, w: 84, h: 12, size: 46, font: 'base', weight: 700, valign: 'bottom', color: 'dark', emphasis: 'primary', lineHeight: 1.2 },
-      { key: 'body', x: 8, y: 30.5, w: 84, h: 17, size: 36, font: 'base', color: 'dark', emphasis: 'primary', lineHeight: 1.4 },
+      { key: 'title', x: 8, y: 17, w: 84, h: 12, size: 46, font: 'base', weight: 700, valign: 'bottom', color: 'black', emphasis: 'primary', lineHeight: 1.2 },
+      { key: 'body', x: 8, y: 30.5, w: 84, h: 17, size: 36, font: 'base', color: 'black', emphasis: 'primary', lineHeight: 1.4 },
     ],
   },
   {
@@ -349,17 +381,17 @@ export const TEMPLATES: TemplateDef[] = [
     needsTitle: true,
     name: 'Capa · Perfil',
     roles: ['cover', 'closing'],
-    bg: 'light',
+    bg: 'white',
     capacity: 160,
     images: [],
     decorations: [
-      { kind: 'profile', x: 8, y: 7, w: 84, size: 260, color: 'dark', muted: '#71767b', layout: 'stacked' },
-      { kind: 'stats', x: 8, y: 42, w: 84, size: 34, color: 'dark', muted: '#71767b' },
+      { kind: 'profile', x: 8, y: 7, w: 84, size: 260, color: 'black', muted: '#71767b', layout: 'stacked' },
+      { kind: 'stats', x: 8, y: 42, w: 84, size: 34, color: 'black', muted: '#71767b' },
       { kind: 'rect', x: 8, y: 52, w: 84, h: 0.25, color: '#cfd9de' },
     ],
     boxes: [
       { key: 'title', x: 8, y: 56, w: 84, h: 26, size: 72, font: 'highlight', weight: 800, align: 'center', color: 'primary', emphasis: 'accent', lineHeight: 1.05 },
-      { key: 'body', x: 8, y: 83, w: 84, h: 10, size: 32, font: 'base', align: 'center', color: 'dark' },
+      { key: 'body', x: 8, y: 83, w: 84, h: 10, size: 32, font: 'base', align: 'center', color: 'black' },
     ],
   },
   {
@@ -441,11 +473,31 @@ export const TEMPLATES: TemplateDef[] = [
 
 export const TEMPLATE_MAP = new Map(TEMPLATES.map((t) => [t.id, t]));
 
-export const templateStyle = (t: TemplateDef): PostStyle => (t.id.startsWith('social-') ? 'social' : 'design');
+// ——— Templates criados pelo usuário ———
+// Ficam no banco (useDb.templates); o banco avisa aqui quando mudam, para getTemplate seguir síncrono.
 
-export const templatesForStyle = (style: PostStyle) => (style === 'mixed' ? TEMPLATES : TEMPLATES.filter((t) => templateStyle(t) === style));
+let customList: TemplateDef[] = [];
+const customMap = new Map<string, TemplateDef>();
 
-export const getTemplate = (id: string) => TEMPLATE_MAP.get(id) ?? TEMPLATES[4];
+/** `all` = todos (para achar pelo id); `mine` = os do usuário logado (entram no sorteio). */
+export function setCustomTemplates(all: TemplateDef[], mine: TemplateDef[]) {
+  customMap.clear();
+  all.forEach((t) => customMap.set(t.id, t));
+  customList = mine;
+}
+
+export const CUSTOM_PREFIX = 'custom-';
+export const isCustomTemplate = (id: string) => id.startsWith(CUSTOM_PREFIX);
+
+export const allTemplates = () => [...TEMPLATES, ...customList];
+
+export const templateStyle = (t: TemplateDef): 'design' | 'social' => t.style ?? (t.id.startsWith('social-') ? 'social' : 'design');
+
+export const templatesForStyle = (style: PostStyle) => (style === 'mixed' ? allTemplates() : allTemplates().filter((t) => templateStyle(t) === style));
+
+export const FALLBACK_TEMPLATE_ID = 'text-classic';
+
+export const getTemplate = (id: string) => customMap.get(id) ?? TEMPLATE_MAP.get(id) ?? TEMPLATE_MAP.get(FALLBACK_TEMPLATE_ID)!;
 
 export const ROLE_LABELS: Record<SlideRole, string> = {
   cover: 'Capa',

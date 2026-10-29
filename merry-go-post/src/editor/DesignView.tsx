@@ -1,5 +1,5 @@
 import { ChevronDown, Download, Eye, Grid3x3, Loader2, Magnet, Redo2, Ruler, Undo2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Segmented, cx } from '../components/ui';
 import { FORMATS, FORMAT_LIST } from '../lib/formats';
 import { applyTemplate } from '../lib/generate';
@@ -10,6 +10,7 @@ import { useDb } from '../store/db';
 import { toast, useUi } from '../store/ui';
 import type { Brand, Client, Post, Slide, TextKey } from '../types';
 import { ExportStage } from './ExportStage';
+import { RecentColorsContext, collectHexColors } from './ColorSwatches';
 import { Inspector, PaginationStylePicker } from './Inspector';
 import { InstagramPreview } from './InstagramPreview';
 import { ShortcutsHelp } from './ShortcutsHelp';
@@ -36,11 +37,14 @@ export function DesignView({ post, client, brand }: DesignViewProps) {
   const [currentId, setCurrentId] = useState(post.slides[0]?.id ?? '');
   const [selection, setSelection] = useState<Selection>(null);
   const [editingKey, setEditingKey] = useState<TextKey | null>(null);
+  /** Camada sob o mouse no painel de camadas. */
+  const [hovered, setHovered] = useState<Selection>(null);
   const [exporting, setExporting] = useState<ExportJob | null>(null);
   const [preview, setPreview] = useState(false);
   const [exportMenu, setExportMenu] = useState(false);
   const exportRoot = useRef<HTMLDivElement>(null);
   const history = usePostHistory(post);
+  const recentColors = useMemo(() => collectHexColors([post.slides, post.pagination]), [post.slides, post.pagination]);
 
   const index = Math.max(0, post.slides.findIndex((s) => s.id === currentId));
   const slide = post.slides[index];
@@ -61,6 +65,7 @@ export function DesignView({ post, client, brand }: DesignViewProps) {
     setCurrentId(id);
     setSelection(null);
     setEditingKey(null);
+    setHovered(null);
   };
 
   const duplicate = (id: string) => {
@@ -134,6 +139,18 @@ export function DesignView({ post, client, brand }: DesignViewProps) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
+
+  // Editando texto: qualquer clique fora do texto (e fora da barra de formatação) encerra a edição,
+  // mesmo quando o foco já tinha saído do texto e o blur não dispara.
+  useEffect(() => {
+    if (!editingKey) return;
+    const onDown = (e: PointerEvent) => {
+      if ((e.target as HTMLElement).closest?.('[contenteditable="true"],[data-keep-editing]')) return;
+      setEditingKey(null);
+    };
+    window.addEventListener('pointerdown', onDown, true);
+    return () => window.removeEventListener('pointerdown', onDown, true);
+  }, [editingKey]);
 
   useEffect(() => {
     if (!exportMenu) return;
@@ -252,6 +269,7 @@ export function DesignView({ post, client, brand }: DesignViewProps) {
           index={index}
           brand={brand}
           selection={selection}
+          hovered={hovered}
           onSelect={setSelection}
           editingKey={editingKey}
           onEdit={(k) => {
@@ -261,6 +279,7 @@ export function DesignView({ post, client, brand }: DesignViewProps) {
           updateSlide={updateSlide}
           updatePost={updatePost}
         />
+        <RecentColorsContext.Provider value={recentColors}>
         <Inspector
           post={post}
           client={client}
@@ -269,6 +288,7 @@ export function DesignView({ post, client, brand }: DesignViewProps) {
           index={index}
           selection={selection}
           onSelect={setSelection}
+          onHover={setHovered}
           editingKey={editingKey}
           onEdit={setEditingKey}
           updateSlide={updateSlide}
@@ -279,6 +299,7 @@ export function DesignView({ post, client, brand }: DesignViewProps) {
           }}
           updatePost={updatePost}
         />
+        </RecentColorsContext.Provider>
       </div>
 
       {preview && <InstagramPreview post={post} brand={brand} start={index} onClose={() => setPreview(false)} />}

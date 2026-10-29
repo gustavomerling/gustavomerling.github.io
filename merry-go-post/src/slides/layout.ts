@@ -35,6 +35,8 @@ export function resolveBox(t: TemplateDef, slide: Slide, key: TextKey): TextBoxD
     align: o.align ?? def.align,
     color: o.color ?? def.color,
     font: o.font ?? def.font,
+    // Escolher um papel da marca desfaz a fonte avulsa do template.
+    family: o.family ?? (o.font ? undefined : def.family),
     lineHeight: o.lineHeight ?? def.lineHeight,
     letterSpacing: o.letterSpacing ?? def.letterSpacing,
     uppercase: o.uppercase ?? def.uppercase,

@@ -1,4 +1,4 @@
-import type { ColorRef, ColorRole, Palette } from '../types';
+import type { ColorRef, ColorRole, FixedColor, Palette } from '../types';
 
 export const COLOR_ROLES: ColorRole[] = ['primary', 'secondary', 'accent', 'dark', 'light'];
 
@@ -18,8 +18,14 @@ export const DEFAULT_PALETTE: Palette = {
   light: '#ffffff',
 };
 
+/** Toda marca tem preto e branco absolutos, além das cinco cores da paleta. */
+export const FIXED_COLORS: Record<FixedColor, { hex: string; label: string }> = {
+  black: { hex: '#000000', label: 'Preto' },
+  white: { hex: '#ffffff', label: 'Branco' },
+};
+
 export const resolveColor = (ref: ColorRef, palette: Palette) =>
-  ref.startsWith('#') ? ref : palette[ref as ColorRole];
+  ref.startsWith('#') ? ref : ref === 'black' || ref === 'white' ? FIXED_COLORS[ref].hex : palette[ref as ColorRole];
 
 function luminance(hex: string) {
   const m = hex.replace('#', '');

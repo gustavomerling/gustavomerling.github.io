@@ -1,6 +1,8 @@
 export type ColorRole = 'primary' | 'secondary' | 'accent' | 'dark' | 'light';
-/** Papel da paleta do cliente ou cor livre em hex. */
-export type ColorRef = ColorRole | `#${string}`;
+/** Preto e branco absolutos: valem para toda marca, sem depender da paleta. */
+export type FixedColor = 'black' | 'white';
+/** Papel da paleta do cliente, preto/branco absolutos ou cor livre em hex. */
+export type ColorRef = ColorRole | FixedColor | `#${string}`;
 
 export type Palette = Record<ColorRole, string>;
 
@@ -89,6 +91,8 @@ export interface BoxOverride {
   align?: 'left' | 'center' | 'right';
   color?: ColorRef;
   font?: FontRole;
+  /** Fonte fora da marca (nome do Google Fonts); manda sobre `font`. */
+  family?: string;
   lineHeight?: number;
   /** Em em. */
   letterSpacing?: number;
@@ -152,6 +156,10 @@ export interface Post {
   slides: Slide[];
   pagination: Pagination;
   caption: string;
+  /** Semente do sorteio de templates na aba Conteúdo ("Sortear de novo" troca). */
+  seed?: string;
+  /** Slides travados na aba Conteúdo: índice → template fixo. */
+  pins?: Record<string, string>;
   createdAt: number;
   updatedAt: number;
 }

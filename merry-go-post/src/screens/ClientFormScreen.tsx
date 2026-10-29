@@ -6,15 +6,16 @@ import { FontPicker } from '../components/FontPicker';
 import { ImageDrop } from '../components/ImageDrop';
 import { StoredImage } from '../components/StoredImage';
 import { Button, Card, Field, Input, SectionTitle, cx } from '../components/ui';
-import { COLOR_LABELS, COLOR_ROLES } from '../lib/color';
+import { COLOR_LABELS, COLOR_ROLES, FIXED_COLORS } from '../lib/color';
 import { ensureFonts } from '../lib/fonts';
 import { navigate } from '../lib/router';
 import { sampleSlide } from '../lib/sample';
 import { harmonize } from '../lib/systemColor';
 import { ScaledSlide } from '../slides/ScaledSlide';
 import { SlideView } from '../slides/SlideView';
-import { TEMPLATES, getTemplate, templateStyle } from '../templates';
-import { brandOf, newClientDefaults, runGarbageCollection, useDb, type ClientData } from '../store/db';
+import { CarouselItem, HorizontalCarousel, TemplateThumb } from '../components/TemplateThumb';
+import { TEMPLATES, getTemplate, templateStyle, type TemplateDef } from '../templates';
+import { brandOf, newClientDefaults, runGarbageCollection, useDb, useMyTemplates, type ClientData } from '../store/db';
 import type { Brand, Client, SocialProfile } from '../types';
 import { NotFound } from './NotFound';
 
@@ -43,6 +44,7 @@ export function ClientFormScreen({ clientId }: { clientId?: string }) {
   useEffect(() => ensureFonts(Object.values(draft.fonts)), [draft.fonts]);
 
   const brand: Brand = useMemo(() => brandOf(draft), [draft]);
+  const myTemplates = useMyTemplates();
 
   if (clientId && !existing) return <NotFound message="Esse cliente não existe mais." />;
 
@@ -153,6 +155,12 @@ export function ClientFormScreen({ clientId }: { clientId?: string }) {
               <ColorField key={r} label={COLOR_LABELS[r]} value={draft.colors[r]} onChange={(hex) => set('colors', { ...draft.colors, [r]: hex })} />
             ))}
           </div>
+          <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+            {Object.values(FIXED_COLORS).map((c) => (
+              <span key={c.hex} className="h-4 w-4 rounded-full border border-black/15" style={{ background: c.hex }} title={c.label} />
+            ))}
+            Preto e branco absolutos já fazem parte de toda marca: aparecem nas opções de cor dos slides e dos templates.
+          </p>
           <SystemColorNote primary={draft.colors.primary} />
         </Card>
 
@@ -167,8 +175,12 @@ export function ClientFormScreen({ clientId }: { clientId?: string }) {
 
         <Card>
           <SectionTitle hint="Favoritos aparecem com mais frequência quando o carrossel é gerado.">Templates favoritos</SectionTitle>
-          <TemplateGroup title="Design" brand={brand} favorites={draft.favoriteTemplates} onToggle={toggleFavorite} style="design" />
-          <TemplateGroup title="Formato de post" brand={brand} favorites={draft.favoriteTemplates} onToggle={toggleFavorite} style="social" />
+          {myTemplates.length > 0 && <TemplateGroup title="Meus templates" brand={brand} favorites={draft.favoriteTemplates} onToggle={toggleFavorite} list={myTemplates} />}
+          <TemplateGroup title="Design" brand={brand} favorites={draft.favoriteTemplates} onToggle={toggleFavorite} list={TEMPLATES.filter((t) => templateStyle(t) === 'design')} />
+          <TemplateGroup title="Formato de post" brand={brand} favorites={draft.favoriteTemplates} onToggle={toggleFavorite} list={TEMPLATES.filter((t) => templateStyle(t) === 'social')} />
+          <p className="text-xs text-zinc-500">
+            Para criar ou clonar templates, use a aba <a href="#/templates" className="font-medium text-brand-700 hover:underline">Templates</a> do painel.
+          </p>
         </Card>
       </main>
 
@@ -251,42 +263,48 @@ function TemplatePreview({ templateId, brand, children }: { templateId: string; 
 
 function TemplateGroup({
   title,
-  style,
+  list,
   brand,
   favorites,
   onToggle,
 }: {
   title: string;
-  style: 'design' | 'social';
+  list: TemplateDef[];
   brand: Brand;
   favorites: string[];
   onToggle: (id: string) => void;
 }) {
+  const count = list.filter((t) => favorites.includes(t.id)).length;
   return (
-    <div className="mb-6 last:mb-0">
-      <div className="mb-2 text-sm font-medium text-zinc-600">{title}</div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-        {TEMPLATES.filter((t) => templateStyle(t) === style).map((t) => {
+    <div className="mb-5">
+      <div className="mb-2 text-sm font-medium text-zinc-600">
+        {title}
+        {count > 0 && <span className="ml-2 text-xs font-normal text-amber-600">{count} favorito{count > 1 ? 's' : ''}</span>}
+      </div>
+      <HorizontalCarousel itemWidth={140}>
+        {list.map((t) => {
           const fav = favorites.includes(t.id);
           return (
-            <button key={t.id} type="button" onClick={() => onToggle(t.id)} className="group text-left">
-              <div className={cx('rounded-xl ring-2 transition', fav ? 'ring-amber-400' : 'ring-transparent group-hover:ring-zinc-200')}>
-                <TemplatePreview templateId={t.id} brand={brand}>
-                  <span
-                    className={cx(
-                      'absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full shadow',
-                      fav ? 'bg-amber-400 text-[#fff]' : 'bg-white/90 text-zinc-400 group-hover:text-amber-500',
-                    )}
-                  >
-                    <Star size={14} fill={fav ? 'currentColor' : 'none'} />
-                  </span>
-                </TemplatePreview>
-              </div>
-              <div className="mt-1.5 truncate text-xs text-zinc-600">{t.name}</div>
-            </button>
+            <CarouselItem key={t.id}>
+              <button type="button" onClick={() => onToggle(t.id)} className="group block w-full text-left">
+                <div className={cx('rounded-xl ring-2 transition', fav ? 'ring-amber-400' : 'ring-transparent group-hover:ring-zinc-200')}>
+                  <TemplateThumb template={t} brand={brand}>
+                    <span
+                      className={cx(
+                        'absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full shadow',
+                        fav ? 'bg-amber-400 text-[#fff]' : 'bg-white/90 text-zinc-400 group-hover:text-amber-500',
+                      )}
+                    >
+                      <Star size={14} fill={fav ? 'currentColor' : 'none'} />
+                    </span>
+                  </TemplateThumb>
+                </div>
+                <div className="mt-1.5 truncate text-xs text-zinc-600">{t.name}</div>
+              </button>
+            </CarouselItem>
           );
         })}
-      </div>
+      </HorizontalCarousel>
     </div>
   );
 }

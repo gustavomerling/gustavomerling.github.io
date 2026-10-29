@@ -2,12 +2,12 @@ import { Icon } from '@iconify/react';
 import { ImageIcon } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { resolveColor, textRoleOn } from '../lib/color';
-import { fontStack, useFontsVersion } from '../lib/fonts';
+import { ensureFont, fontStack, useFontsVersion } from '../lib/fonts';
 import { SLIDE_WIDTH, slideHeight } from '../lib/formats';
 import { handleRichPaste } from '../lib/paste';
 import { sanitizeRich } from '../lib/richtext';
 import { useImageUrl } from '../lib/useImageUrl';
-import { getTemplate, type DecorationDef, type ImageSlotDef, type LogoDef, type TextBoxDef } from '../templates';
+import { getTemplate, type DecorationDef, type ImageSlotDef, type LogoDef, type TemplateDef, type TextBoxDef } from '../templates';
 import type { Brand, ColorRef, Format, IconElement, Pagination, Palette, Slide, SlideImage, TextKey } from '../types';
 import { autoTextColor, colorOf, isHidden, resolveBox, slideBg, slideTone, withAlpha, type Tone } from './layout';
 import './slides.css';
@@ -26,12 +26,14 @@ interface SlideViewProps {
   brand: Brand;
   pagination: Pagination;
   editor?: SlideEditorHooks;
+  /** Desenha com este template em vez do salvo (prévia do editor de templates). */
+  template?: TemplateDef;
 }
 
 const pct = (n: number) => `${n}%`;
 
-export function SlideView({ slide, index, total, format, brand, pagination, editor }: SlideViewProps) {
-  const t = getTemplate(slide.templateId);
+export function SlideView({ slide, index, total, format, brand, pagination, editor, template }: SlideViewProps) {
+  const t = template ?? getTemplate(slide.templateId);
   const palette = brand.colors;
   const tone = slideTone(t, palette, slide);
   const height = slideHeight(format);
@@ -173,6 +175,10 @@ function TextBox({ def, html, tone, brand, editing, showEmpty, onCommit, onStop 
   const palette = brand.colors;
   const empty = !html.replace(/<[^>]+>/g, '').trim();
 
+  useEffect(() => {
+    if (def.family) ensureFont(def.family);
+  }, [def.family]);
+
   // Reduz a fonte até o texto caber na caixa (sem mexer enquanto o usuário digita).
   useLayoutEffect(() => {
     const o = outer.current;
@@ -188,7 +194,7 @@ function TextBox({ def, html, tone, brand, editing, showEmpty, onCommit, onStop 
     }
     setSize(s);
     setOverflow(over());
-  }, [html, def.size, def.w, def.h, def.font, def.lineHeight, def.letterSpacing, def.uppercase, fontsVersion, editing, brand.fonts.base, brand.fonts.highlight, brand.fonts.ultra]);
+  }, [html, def.size, def.w, def.h, def.font, def.family, def.weight, def.lineHeight, def.letterSpacing, def.uppercase, fontsVersion, editing, brand.fonts.base, brand.fonts.highlight, brand.fonts.ultra]);
 
   // Ao entrar em edição: conteúdo atual + cursor no fim.
   useEffect(() => {
@@ -221,7 +227,7 @@ function TextBox({ def, html, tone, brand, editing, showEmpty, onCommit, onStop 
     justifyContent: def.valign === 'bottom' ? 'flex-end' : def.valign === 'center' ? 'center' : 'flex-start',
     textAlign: def.align ?? 'left',
     color,
-    fontFamily: `var(--wp-font-${def.font})`,
+    fontFamily: def.family ? fontStack(def.family) : `var(--wp-font-${def.font})`,
     fontWeight: def.weight ?? 400,
     fontStyle: def.italic ? 'italic' : undefined,
     lineHeight: def.lineHeight ?? 1.25,

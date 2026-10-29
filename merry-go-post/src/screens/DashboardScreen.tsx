@@ -1,14 +1,63 @@
-import { Plus, Users } from 'lucide-react';
+import { LayoutTemplate, Plus, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppHeader } from '../components/AppHeader';
 import { SearchInput, matches } from '../components/SearchInput';
 import { StoredImage } from '../components/StoredImage';
-import { Button, EmptyState } from '../components/ui';
+import { Button, NewItemCard, cx } from '../components/ui';
 import { COLOR_ROLES } from '../lib/color';
 import { navigate } from '../lib/router';
 import { useDb } from '../store/db';
+import { TemplatesTab } from './TemplatesTab';
 
-export function ClientsScreen() {
+export type DashboardTab = 'clients' | 'templates';
+
+/** Painel inicial: abas de clientes e de templates. */
+export function DashboardScreen({ tab }: { tab: DashboardTab }) {
+  const createTemplate = useDb((s) => s.createTemplate);
+  return (
+    <div className="min-h-full">
+      <AppHeader
+        crumbs={[{ label: tab === 'clients' ? 'Clientes' : 'Templates' }]}
+        actions={
+          tab === 'clients' ? (
+            <Button variant="primary" icon={<Plus size={16} />} onClick={() => navigate('/clients/new')}>
+              Novo cliente
+            </Button>
+          ) : (
+            <Button variant="primary" icon={<Plus size={16} />} onClick={() => navigate(`/templates/${createTemplate()}`)}>
+              Novo template
+            </Button>
+          )
+        }
+      />
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        <nav className="mb-6 flex gap-1 border-b border-zinc-200">
+          {(
+            [
+              ['clients', '/clients', <Users key="i" size={16} />, 'Clientes'],
+              ['templates', '/templates', <LayoutTemplate key="i" size={16} />, 'Templates'],
+            ] as const
+          ).map(([key, to, icon, label]) => (
+            <a
+              key={key}
+              href={`#${to}`}
+              className={cx(
+                '-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition',
+                tab === key ? 'border-brand-600 text-brand-700' : 'border-transparent text-zinc-500 hover:text-zinc-800',
+              )}
+            >
+              {icon}
+              {label}
+            </a>
+          ))}
+        </nav>
+        {tab === 'clients' ? <ClientsTab /> : <TemplatesTab />}
+      </main>
+    </div>
+  );
+}
+
+function ClientsTab() {
   const userId = useDb((s) => s.currentUserId);
   const allClients = useDb((s) => s.clients);
   const posts = useDb((s) => s.posts);
@@ -20,30 +69,21 @@ export function ClientsScreen() {
   const clients = mine.filter((c) => matches(`${c.name} ${c.profile.handle}`, query));
 
   return (
-    <div className="min-h-full">
-      <AppHeader
-        crumbs={[{ label: 'Clientes' }]}
-        actions={
-          <Button variant="primary" icon={<Plus size={16} />} onClick={() => navigate('/clients/new')}>
-            Novo cliente
-          </Button>
-        }
-      />
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">Clientes</h1>
-          {mine.length > 0 && <SearchInput value={query} onChange={setQuery} placeholder="Buscar cliente ou @" />}
+    <>
+      {mine.length > 0 && (
+        <div className="mb-6">
+          <SearchInput value={query} onChange={setQuery} placeholder="Buscar cliente ou @" />
         </div>
+      )}
         {mine.length > 0 && clients.length === 0 && <p className="py-10 text-center text-sm text-zinc-500">Nenhum cliente encontrado para “{query}”.</p>}
-        {mine.length === 0 ? (
-          <EmptyState icon={<Users size={22} />} title="Nenhum cliente ainda">
-            <p>Cadastre logo, cores, fontes e o perfil social do cliente. Todo carrossel usa essa identidade.</p>
-            <Button variant="primary" className="mt-4" icon={<Plus size={16} />} onClick={() => navigate('/clients/new')}>
-              Cadastrar cliente
-            </Button>
-          </EmptyState>
-        ) : (
+        {(
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <NewItemCard
+              shape="row"
+              label="Novo cliente"
+              hint={mine.length ? 'Logo, cores, fontes e perfil social' : 'Todo carrossel usa a identidade do cliente'}
+              onClick={() => navigate('/clients/new')}
+            />
             {clients.map((c) => {
               const count = posts.filter((p) => p.clientId === c.id).length;
               return (
@@ -84,7 +124,6 @@ export function ClientsScreen() {
             })}
           </div>
         )}
-      </main>
-    </div>
+    </>
   );
 }

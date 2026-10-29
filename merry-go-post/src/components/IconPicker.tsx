@@ -1,7 +1,7 @@
 import { Icon } from '@iconify/react';
 import { Loader2, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { cx } from './ui';
+import { Modal, cx } from './ui';
 
 /** Atalhos (Phosphor via Iconify) para o que mais aparece em carrossel. */
 const SUGGESTED: { label: string; icons: string[] }[] = [
@@ -44,7 +44,22 @@ async function searchIcons(query: string, prefix: string) {
   return data.icons ?? [];
 }
 
-export function IconPicker({ onPick }: { onPick: (icon: string) => void }) {
+/** Seletor de ícones em janela. */
+export function IconPickerModal({ title = 'Escolher ícone', onPick, onClose }: { title?: string; onPick: (icon: string) => void; onClose: () => void }) {
+  return (
+    <Modal title={title} subtitle="Phosphor, Tabler, Material e outras coleções abertas, via Iconify." onClose={onClose}>
+      <IconPicker
+        autoFocus
+        onPick={(ic) => {
+          onPick(ic);
+          onClose();
+        }}
+      />
+    </Modal>
+  );
+}
+
+export function IconPicker({ onPick, autoFocus }: { onPick: (icon: string) => void; autoFocus?: boolean }) {
   const [query, setQuery] = useState('');
   const [prefix, setPrefix] = useState('ph');
   const [results, setResults] = useState<string[] | null>(null);
@@ -67,7 +82,7 @@ export function IconPicker({ onPick }: { onPick: (icon: string) => void }) {
   }, [query, prefix]);
 
   const grid = (icons: string[]) => (
-    <div className="grid grid-cols-6 gap-1">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(52px,1fr))] gap-1">
       {icons.map((ic) => (
         <button
           key={ic}
@@ -76,7 +91,7 @@ export function IconPicker({ onPick }: { onPick: (icon: string) => void }) {
           onClick={() => onPick(ic)}
           className="grid aspect-square place-items-center rounded-lg text-zinc-700 hover:bg-brand-50 hover:text-brand-700"
         >
-          <Icon icon={ic} width={24} height={24} />
+          <Icon icon={ic} width={28} height={28} />
         </button>
       ))}
     </div>
@@ -87,6 +102,7 @@ export function IconPicker({ onPick }: { onPick: (icon: string) => void }) {
       <div className="flex items-center gap-2 rounded-lg border border-zinc-200 px-2.5 focus-within:border-brand-500">
         <Search size={15} className="text-zinc-400" />
         <input
+          autoFocus={autoFocus}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar em inglês: arrow, chat, star…"

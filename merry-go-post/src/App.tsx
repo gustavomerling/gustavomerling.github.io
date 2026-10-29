@@ -5,10 +5,11 @@ import { useSystemColor } from './lib/systemColor';
 import { AuthScreen } from './screens/AuthScreen';
 import { ClientFormScreen } from './screens/ClientFormScreen';
 import { ClientPostsScreen } from './screens/ClientPostsScreen';
-import { ClientsScreen } from './screens/ClientsScreen';
+import { DashboardScreen } from './screens/DashboardScreen';
 import { LandingScreen } from './screens/LandingScreen';
 import { NotFound } from './screens/NotFound';
 import { PostEditorScreen } from './screens/PostEditorScreen';
+import { TemplateEditorScreen } from './screens/TemplateEditorScreen';
 import { useDb } from './store/db';
 import { useApplyTheme } from './store/ui';
 
@@ -51,11 +52,13 @@ function PublicRoutes({ path }: { path: string }) {
 function Routes({ path }: { path: string }) {
   let m: Record<string, string> | null;
   if (match('/sobre', path)) return <LandingScreen />;
-  if (match('/clients', path)) return <ClientsScreen />;
+  if (match('/clients', path)) return <DashboardScreen tab="clients" />;
+  if (match('/templates', path)) return <DashboardScreen tab="templates" />;
   if (match('/clients/new', path)) return <ClientFormScreen />;
   if ((m = match('/clients/:id/edit', path))) return <ClientFormScreen key={m.id} clientId={m.id} />;
   if ((m = match('/clients/:id', path))) return <ClientPostsScreen key={m.id} clientId={m.id} />;
   if ((m = match('/posts/:id', path))) return <PostEditorScreen key={m.id} postId={m.id} />;
+  if ((m = match('/templates/:id', path))) return <TemplateEditorScreen key={m.id} templateId={m.id} />;
   if (path === '/') return null;
   return <NotFound />;
 }
