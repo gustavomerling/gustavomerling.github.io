@@ -1,0 +1,434 @@
+/* Barra de controles (embaixo), HUD (em cima, à esquerda), dicas de botão e dica de tela vazia. */
+
+/* ---------- Barra ---------- */
+
+.bar {
+  position: fixed;
+  z-index: 30;
+  left: 50%;
+  bottom: max(var(--gutter), env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 8px;
+  width: max-content;
+  max-width: calc(100vw - 16px);
+  padding: 8px 10px;
+  border-radius: 32px;
+}
+
+.bar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bar-sep {
+  width: 1px;
+  height: 28px;
+  background: var(--glass-border);
+}
+
+.bar-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition:
+    background-color 0.18s var(--ease),
+    color 0.18s,
+    border-color 0.18s,
+    transform 0.12s var(--ease);
+}
+
+.bar-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.bar-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.bar-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.bar-btn--tab {
+  width: auto;
+  padding: 0 14px 0 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.bar-btn[aria-pressed='true'] {
+  background: var(--accent-soft);
+  border-color: rgba(139, 123, 255, 0.55);
+  color: #fff;
+}
+
+/* Botão grande de tocar/pausar */
+.play-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--gradient);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(139, 123, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: transform 0.15s var(--ease), box-shadow 0.25s, filter 0.2s;
+}
+
+.play-btn .icon {
+  /* O triângulo do play parece deslocado à esquerda; um pequeno ajuste óptico. */
+  transform: translateX(1px);
+}
+
+.play-btn.is-running .icon {
+  transform: none;
+}
+
+.play-btn:hover {
+  filter: brightness(1.1);
+}
+
+.play-btn:active {
+  transform: scale(0.93);
+}
+
+.play-btn.is-running {
+  animation: play-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes play-glow {
+  0%,
+  100% {
+    box-shadow: 0 8px 24px rgba(139, 123, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+  50% {
+    box-shadow: 0 8px 34px rgba(255, 122, 198, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+}
+
+/* ---------- Dicas (tooltip) com atalho, só onde há mouse ---------- */
+
+@media (hover: hover) {
+  [data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 12px);
+    transform: translate(-50%, 4px);
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: var(--glass-strong);
+    border: 1px solid var(--glass-border);
+    color: var(--text);
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s, transform 0.15s var(--ease);
+    z-index: 5;
+  }
+
+  [data-tip]:hover::after,
+  [data-tip]:focus-visible::after {
+    opacity: 1;
+    transform: translate(-50%, 0);
+    transition-delay: 0.35s;
+  }
+
+  /* Abas com texto visível não precisam da dica. */
+  .bar-btn--tab::after {
+    display: none;
+  }
+}
+
+/* ---------- HUD ---------- */
+
+.hud {
+  position: fixed;
+  z-index: 20;
+  top: max(var(--gutter), env(safe-area-inset-top));
+  left: var(--gutter);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 2 * var(--gutter));
+  pointer-events: none;
+}
+
+.hud-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+
+.hud-brand {
+  padding: 0 14px 0 12px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.hud-ball {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--gradient);
+  box-shadow: 0 0 10px rgba(255, 122, 198, 0.6);
+}
+
+.hud-ball.is-running {
+  animation: hud-bounce 0.6s cubic-bezier(0.5, 0, 0.5, 1) infinite alternate;
+}
+
+@keyframes hud-bounce {
+  from {
+    transform: translateY(-4px);
+  }
+  to {
+    transform: translateY(3px);
+  }
+}
+
+.hud-note {
+  --note: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 52px;
+  color: var(--text);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-note.is-hit {
+  animation: note-pop 0.45s var(--ease);
+}
+
+.hud-note.is-hit .note-dot {
+  animation: dot-pop 0.6s var(--ease);
+}
+
+@keyframes note-pop {
+  from {
+    transform: scale(1.25);
+    color: var(--note);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes dot-pop {
+  from {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--note) 35%, transparent), 0 0 18px var(--note);
+  }
+}
+
+.hud-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--glass-border);
+}
+
+.hud-stat {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.hud-stat b {
+  color: var(--text);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-link,
+.hud-paint {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.hud-link {
+  padding: 4px 6px;
+  margin: 0 -6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+}
+
+.hud-link:hover {
+  background: var(--surface-hover);
+}
+
+.hud-badge {
+  gap: 6px;
+  padding: 0 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.hud-paint {
+  --note: var(--accent);
+  border-color: color-mix(in srgb, var(--note) 55%, transparent);
+}
+
+.hud-paint:hover {
+  background: var(--glass-strong);
+}
+
+/* ---------- Dica de tela vazia ---------- */
+
+.empty-hint {
+  position: fixed;
+  z-index: 10;
+  left: 50%;
+  bottom: calc(var(--bar-h) + 2 * var(--gutter) + 8px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 10px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 8px 8px 8px 18px;
+  border-radius: 999px;
+  background: rgba(20, 21, 38, 0.55);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  text-align: center;
+  pointer-events: none;
+  animation: hint-in 0.5s var(--ease) both, hint-float 3.2s ease-in-out 0.5s infinite;
+}
+
+.empty-hint button {
+  pointer-events: auto;
+}
+
+.empty-hint-or {
+  color: var(--muted);
+}
+
+@keyframes hint-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+}
+
+@keyframes hint-float {
+  0%,
+  100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(-50%, -4px);
+  }
+}
+
+/* ---------- Telas médias: abas só com ícone ---------- */
+
+@media (max-width: 1000px) {
+  .bar-btn--tab {
+    width: 44px;
+    padding: 0;
+  }
+
+  .bar-btn-text {
+    display: none;
+  }
+
+  @media (hover: hover) {
+    .bar-btn--tab::after {
+      display: block;
+    }
+  }
+}
+
+/* ---------- Celular ---------- */
+
+@media (max-width: 560px) {
+  :root {
+    --gutter: 8px;
+  }
+
+  .bar {
+    left: var(--gutter);
+    right: var(--gutter);
+    transform: none;
+    width: auto;
+    max-width: none;
+    gap: 4px;
+    padding: 6px;
+    border-radius: 24px;
+  }
+
+  .bar-sep {
+    display: none;
+  }
+
+  .bar-group {
+    gap: 2px;
+  }
+
+  .bar-btn,
+  .bar-btn--tab {
+    width: 42px;
+    height: 42px;
+  }
+
+  .play-btn {
+    width: 52px;
+    height: 52px;
+  }
+
+  .hud-pill {
+    height: 36px;
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .hud-brand {
+    padding: 0 11px;
+  }
+
+  .hud-brand-text {
+    display: none;
+  }
+
+  .empty-hint {
+    border-radius: 18px;
+    padding: 10px 12px;
+  }
+}

@@ -1,0 +1,190 @@
+/* Tokens, base e foco. Componentes ficam em src/styles/. */
+
+:root {
+  /* Fundo e vidro */
+  --bg: #0b0c16;
+  --glass: rgba(20, 21, 38, 0.72);
+  --glass-strong: rgba(24, 25, 44, 0.92);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --surface: rgba(255, 255, 255, 0.05);
+  --surface-hover: rgba(255, 255, 255, 0.1);
+  --surface-active: rgba(255, 255, 255, 0.14);
+
+  /* Texto */
+  --text: #f5f4ff;
+  --text-soft: #dcdaf0;
+  --muted: #a3a1c2;
+
+  /* Acentos */
+  --accent: #8b7bff;
+  --accent-strong: #7360ff;
+  --accent-soft: rgba(139, 123, 255, 0.2);
+  --pink: #ff7ac6;
+  --mint: #4fe3b5;
+  --sun: #ffcf5c;
+  --danger: #ff6b81;
+  --focus: #ffcf5c;
+  --gradient: linear-gradient(135deg, #8b7bff 0%, #ff7ac6 100%);
+
+  /* Forma */
+  --radius-lg: 20px;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --blur: blur(16px) saturate(140%);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Espaço da tela */
+  --gutter: 12px;
+  --bar-h: 72px; /* atualizado pelo App com a altura real da barra */
+
+  --font-ui: 'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text-soft);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.4;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  height: 100%;
+}
+
+.app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Canvas em tela cheia, sem seleção ao arrastar e sem rolagem por toque */
+.stage {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* A lista aberta do select é desenhada pelo sistema: precisa de fundo escuro sólido. */
+select {
+  color-scheme: dark;
+}
+
+option {
+  background: #1a1b2e;
+  color: var(--text);
+}
+
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Vidro: base dos painéis sobre o canvas */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+}
+
+/* Foco visível só para teclado */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.icon {
+  flex-shrink: 0;
+  display: block;
+}
+
+.muted {
+  color: var(--muted);
+  margin: 0;
+}
+
+.small {
+  font-size: 0.82rem;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.8em;
+  padding: 2px 7px;
+  border: 1px solid var(--glass-border);
+  border-bottom-width: 2px;
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  font: 600 0.78rem/1.4 ui-monospace, 'Cascadia Code', Consolas, monospace;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Scrollbar discreta */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Sem animações para quem prefere movimento reduzido */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

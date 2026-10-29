@@ -1,0 +1,454 @@
+/* Controles: botões, pílulas, interruptores, sliders, seletor de notas e chips de nota. */
+
+/* ---------- Botões ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 0.18s var(--ease),
+    border-color 0.18s var(--ease),
+    transform 0.12s var(--ease),
+    opacity 0.18s;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-small {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  gap: 6px;
+}
+
+.btn-primary {
+  border-color: transparent;
+  background: var(--gradient);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(139, 123, 255, 0.35);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--gradient);
+  border-color: transparent;
+  filter: brightness(1.08);
+}
+
+.btn-big {
+  width: 100%;
+  min-height: 52px;
+  font-size: 1.02rem;
+}
+
+.btn-danger {
+  color: #ffb3c0;
+  border-color: rgba(255, 107, 129, 0.35);
+  background: rgba(255, 107, 129, 0.08);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(255, 107, 129, 0.16);
+  border-color: rgba(255, 107, 129, 0.6);
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.link-btn {
+  align-self: flex-start;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(139, 123, 255, 0.4);
+}
+
+.link-btn:hover {
+  color: #b3a9ff;
+}
+
+/* Botão só com ícone (fechar, apagar) */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.icon-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.icon-btn--danger:hover {
+  background: rgba(255, 107, 129, 0.16);
+  color: var(--danger);
+}
+
+/* ---------- Pílulas de escolha ---------- */
+
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-btn {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.12s var(--ease);
+}
+
+.chip-btn:hover {
+  background: var(--surface-hover);
+}
+
+.chip-btn:active {
+  transform: scale(0.96);
+}
+
+.chip-btn[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: #fff;
+}
+
+/* ---------- Interruptor ---------- */
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.switch-row:hover {
+  background: var(--surface-hover);
+}
+
+.switch-row--compact {
+  padding: 8px 10px;
+}
+
+.switch-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.switch-desc {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  transition: background-color 0.2s var(--ease);
+}
+
+.switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 0.22s var(--ease);
+}
+
+.switch-row[aria-checked='true'] .switch {
+  background: var(--accent);
+}
+
+.switch-row[aria-checked='true'] .switch-knob {
+  transform: translateX(18px);
+}
+
+/* ---------- Slider ---------- */
+
+.slider {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.slider-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: var(--text-soft);
+}
+
+.slider output {
+  color: var(--text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.slider input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0,
+    var(--pink) var(--fill, 50%),
+    rgba(255, 255, 255, 0.15) var(--fill, 50%)
+  );
+}
+
+.slider input[type='range']::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.slider input[type='range']::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--accent), var(--pink));
+}
+
+.slider input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -7px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  transition: transform 0.15s var(--ease);
+}
+
+.slider input[type='range']:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+.slider input[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.slider input[type='range']:focus-visible {
+  outline: none;
+}
+
+.slider input[type='range']:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.slider input[type='range']:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Seletor de notas (mini teclado por oitava) ---------- */
+
+.note-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.note-row {
+  display: grid;
+  grid-template-columns: 14px repeat(12, minmax(0, 1fr));
+  gap: 3px;
+  align-items: center;
+}
+
+.note-row-label {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.note-cell {
+  min-width: 0;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  /* A cor da nota aparece numa faixa embaixo; fundo escuro para as sustenidas, como no piano. */
+  background:
+    linear-gradient(to top, var(--note) 0 4px, transparent 4px),
+    rgba(255, 255, 255, 0.1);
+  color: var(--text-soft);
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.12s var(--ease), background-color 0.15s, box-shadow 0.15s;
+}
+
+.note-cell.is-sharp {
+  background:
+    linear-gradient(to top, var(--note) 0 4px, transparent 4px),
+    rgba(0, 0, 0, 0.35);
+  color: var(--muted);
+}
+
+.note-cell:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background:
+    linear-gradient(to top, var(--note) 0 6px, transparent 6px),
+    rgba(255, 255, 255, 0.18);
+}
+
+.note-cell[aria-pressed='true'] {
+  background: var(--note);
+  color: #14121f;
+  box-shadow: 0 0 0 2px #fff, 0 0 16px var(--note);
+}
+
+.note-cell:disabled {
+  opacity: 0.18;
+  cursor: default;
+}
+
+.note-cell.is-empty {
+  visibility: hidden;
+}
+
+/* Chip com bolinha colorida da nota */
+.note-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px 0 8px;
+  border: 1px solid color-mix(in srgb, var(--note) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--note) 14%, transparent);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s var(--ease), background-color 0.15s;
+}
+
+.note-chip:hover {
+  background: color-mix(in srgb, var(--note) 26%, transparent);
+}
+
+.note-chip:active {
+  transform: scale(0.95);
+}
+
+.note-chip[aria-pressed='true'] {
+  background: var(--note);
+  color: #14121f;
+}
+
+.note-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--note);
+  box-shadow: 0 0 8px var(--note);
+  flex-shrink: 0;
+}
+
+.note-chip[aria-pressed='true'] .note-dot {
+  background: #14121f;
+  box-shadow: none;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

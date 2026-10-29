@@ -1,0 +1,245 @@
+/* Piano na tela: fica acima da barra, centralizado. Com um painel aberto, encosta à esquerda. */
+
+.piano-dock {
+  position: fixed;
+  z-index: 20;
+  left: 50%;
+  bottom: calc(var(--bar-h) + 2 * var(--gutter));
+  width: min(720px, calc(100vw - 2 * var(--gutter)));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-radius: var(--radius-lg);
+  background: var(--glass-strong);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 24px);
+  transition:
+    transform 0.32s var(--ease),
+    opacity 0.2s ease,
+    visibility 0s 0.32s;
+}
+
+.piano-dock[data-open='true'] {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+  transition:
+    transform 0.32s var(--ease),
+    opacity 0.2s ease,
+    visibility 0s;
+}
+
+.piano-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.piano-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.piano-rec-group {
+  margin-left: auto;
+}
+
+.piano-octave {
+  min-width: 44px;
+  text-align: center;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.piano-select {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.piano-bpm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.piano-bpm input {
+  width: 110px;
+  accent-color: var(--accent);
+}
+
+.piano-rec .rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+.piano-rec.is-recording {
+  background: var(--danger);
+  border-color: transparent;
+  color: #fff;
+  animation: rec-pulse 1s ease-in-out infinite;
+}
+
+@keyframes rec-pulse {
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 107, 129, 0.25);
+  }
+}
+
+.piano-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 20px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.piano-status[data-phase='count'] {
+  color: var(--sun);
+  font-weight: 700;
+}
+
+.piano-status[data-phase='rec'] {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.beat-dots {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.beat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--surface-active);
+  transition: background-color 0.08s, transform 0.08s;
+}
+
+.beat-dot.is-on {
+  background: currentColor;
+  transform: scale(1.3);
+}
+
+/* Teclas: brancas lado a lado, pretas por cima, todas posicionadas em % da largura. */
+.piano-keys {
+  position: relative;
+  height: 128px;
+  touch-action: none;
+  user-select: none;
+}
+
+.piano-key {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 0 0 8px;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  transition:
+    background-color 0.06s,
+    transform 0.06s,
+    box-shadow 0.06s;
+}
+
+.piano-key.white {
+  height: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  border-radius: 0 0 8px 8px;
+  background: linear-gradient(#f4f3ff, #dcdaf0);
+  color: #3a3858;
+}
+
+.piano-key.black {
+  z-index: 1;
+  height: 62%;
+  border-radius: 0 0 6px 6px;
+  background: linear-gradient(#2a2944, #12111f);
+  color: #b9b7d8;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
+}
+
+.piano-key.is-down {
+  background: var(--note);
+  color: #12111f;
+  transform: translateY(2px);
+  box-shadow: 0 0 18px var(--note);
+}
+
+.piano-key:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.key-note {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.key-kbd {
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  opacity: 0.6;
+}
+
+/* Com um painel aberto à direita, o piano vai para a esquerda e encolhe. */
+@media (min-width: 761px) {
+  .app[data-panel-open='true'] .piano-dock {
+    left: var(--gutter);
+    width: min(720px, calc(100vw - 380px - 3 * var(--gutter)));
+    transform: none;
+  }
+}
+
+@media (max-width: 760px) {
+  /* No celular os painéis são folhas de baixo: o piano dá lugar a eles. */
+  .app[data-panel-open='true'] .piano-dock {
+    display: none;
+  }
+
+  .piano-keys {
+    height: 112px;
+  }
+
+  .key-kbd {
+    display: none;
+  }
+
+  .piano-bpm input {
+    width: 80px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .piano-dock,
+  .piano-key,
+  .beat-dot {
+    transition: none;
+  }
+
+  .piano-rec.is-recording {
+    animation: none;
+  }
+}
