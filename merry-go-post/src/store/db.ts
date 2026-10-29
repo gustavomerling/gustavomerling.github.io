@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { DEFAULT_PALETTE } from '../lib/color';
+import { exampleClient } from '../lib/exampleClient';
 import { DEFAULT_FONTS } from '../lib/fonts';
 import { applyTemplate, fillPlaceholders } from '../lib/generate';
 import { uid } from '../lib/id';
@@ -29,6 +30,8 @@ interface DbState {
   createUser: (name: string) => string;
   login: (id: string) => void;
   logout: () => void;
+  /** Apaga a conta logada com todos os clientes, posts e templates dela. */
+  deleteCurrentUser: () => void;
 
   createClient: (data: ClientData) => string;
   updateClient: (id: string, recipe: (c: Client) => void) => void;
@@ -74,14 +77,30 @@ export const useDb = create<DbState>()(
 
       createUser: (name) => {
         const id = uid();
+        const example = exampleClient(id);
         set((s) => {
           s.users.push({ id, name: name.trim(), createdAt: Date.now() });
+          s.clients.push(example.client);
+          s.posts.push(...example.posts);
           s.currentUserId = id;
         });
         return id;
       },
       login: (id) => set({ currentUserId: id }),
       logout: () => set({ currentUserId: null }),
+      deleteCurrentUser: () => {
+        const userId = get().currentUserId;
+        if (!userId) return;
+        set((s) => {
+          const clientIds = new Set(s.clients.filter((c) => c.userId === userId).map((c) => c.id));
+          s.users = s.users.filter((u) => u.id !== userId);
+          s.clients = s.clients.filter((c) => !clientIds.has(c.id));
+          s.posts = s.posts.filter((p) => !clientIds.has(p.clientId));
+          s.templates = s.templates.filter((t) => t.userId !== userId);
+          s.currentUserId = null;
+        });
+        runGarbageCollection();
+      },
 
       createClient: (data) => {
         const id = uid();
@@ -225,9 +244,19 @@ export const useDb = create<DbState>()(
     })),
     {
       name: 'merry-go-post:db',
-      version: 3,
+      version: 4,
       partialize: (s) => ({ users: s.users, clients: s.clients, posts: s.posts, templates: s.templates, currentUserId: s.currentUserId }),
-      migrate: (persisted, version) => migrateDb(persisted as Record<string, unknown>, version) as unknown as DbState,
+      migrate: (persisted, version) => {
+        const data = migrateDb(persisted as Record<string, unknown>, version);
+        // v4: contas que já existiam também ganham o cliente exemplo (uma vez só).
+        if (version < 4)
+          for (const u of data.users) {
+            const example = exampleClient(u.id);
+            data.clients.push(example.client);
+            data.posts.push(...example.posts);
+          }
+        return data as unknown as DbState;
+      },
     },
   ),
 );

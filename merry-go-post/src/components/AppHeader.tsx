@@ -1,4 +1,4 @@
-import { ChevronRight, DatabaseBackup, HardDrive, LogOut, Monitor, Moon, Sun, Upload, UserRound } from 'lucide-react';
+import { ChevronRight, DatabaseBackup, HardDrive, LogOut, Monitor, Moon, Sun, Trash2, Upload, UserRound } from 'lucide-react';
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { exportBackup, formatBytes, importBackup, storageUsage } from '../lib/backup';
 import { navigate } from '../lib/router';
@@ -58,6 +58,7 @@ export function AppHeader({ crumbs = [], actions }: { crumbs?: Crumb[]; actions?
 
 function UserMenu({ name }: { name: string }) {
   const logout = useDb((s) => s.logout);
+  const deleteCurrentUser = useDb((s) => s.deleteCurrentUser);
   const [open, setOpen] = useState(false);
   const [usage, setUsage] = useState<string | null>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -110,6 +111,21 @@ function UserMenu({ name }: { name: string }) {
             }}
           >
             <LogOut size={16} /> Trocar de conta
+          </button>
+          <button
+            type="button"
+            className={item.replace('text-zinc-700 hover:bg-zinc-100', 'text-red-600 hover:bg-red-50')}
+            onClick={() => {
+              setOpen(false);
+              if (!confirm(`Excluir a conta "${name}"?
+
+Todos os clientes, posts e templates dela serão apagados deste navegador. Não dá para desfazer (baixe um backup antes, se quiser guardar).`)) return;
+              deleteCurrentUser();
+              navigate('/');
+              toast('Conta excluída');
+            }}
+          >
+            <Trash2 size={16} /> Excluir minha conta
           </button>
           <input
             ref={file}

@@ -105,7 +105,10 @@ function ClientsTab() {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <div className="truncate font-semibold text-zinc-900">{c.name}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-semibold text-zinc-900">{c.name}</span>
+                        {c.example && <span className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700">Exemplo</span>}
+                      </div>
                       <div className="truncate text-sm text-zinc-500">{c.profile.handle ? `@${c.profile.handle.replace(/^@/, '')}` : 'sem perfil social'}</div>
                     </div>
                   </div>

@@ -48,6 +48,8 @@ export interface Client {
   favoriteTemplates: string[];
   /** Hashtags padrão, adicionadas à legenda gerada. */
   hashtags: string;
+  /** Cliente exemplo criado com a conta (o próprio Merry Go Post). */
+  example?: boolean;
   createdAt: number;
   updatedAt: number;
 }
