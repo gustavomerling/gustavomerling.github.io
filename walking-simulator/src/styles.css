@@ -1,0 +1,170 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+/* Tema do shadcn (neutro) ajustado às cores da página. */
+:root {
+  --radius: 0.5rem;
+  --background: #f4f1ea;
+  --foreground: #1d1d1b;
+  --card: #fbfaf6;
+  --card-foreground: #1d1d1b;
+  --popover: #fbfaf6;
+  --popover-foreground: #1d1d1b;
+  --primary: #6b46c1;
+  --primary-foreground: #ffffff;
+  --secondary: #e9e4d8;
+  --secondary-foreground: #1d1d1b;
+  --muted: #e9e4d8;
+  --muted-foreground: #6b675c;
+  --accent: #e9e4d8;
+  --accent-foreground: #1d1d1b;
+  --destructive: #c53030;
+  --border: #d6d0c0;
+  --input: #d6d0c0;
+  --ring: #6b46c1;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #1b1d22;
+    --foreground: #e8e6e1;
+    --card: #23262d;
+    --card-foreground: #e8e6e1;
+    --popover: #23262d;
+    --popover-foreground: #e8e6e1;
+    --primary: #9f7aea;
+    --primary-foreground: #14111c;
+    --secondary: #2d3038;
+    --secondary-foreground: #e8e6e1;
+    --muted: #2d3038;
+    --muted-foreground: #9a978f;
+    --accent: #2d3038;
+    --accent-foreground: #e8e6e1;
+    --destructive: #fc8181;
+    --border: #3a3e47;
+    --input: #3a3e47;
+    --ring: #9f7aea;
+  }
+}
+
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #f4f1ea;
+  color: #1d1d1b;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #1b1d22;
+    color: #e8e6e1;
+  }
+}
+
+/* A página ocupa exatamente a janela: cabeçalho e barras no topo, o palco preenche o resto (sem rolagem). */
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+.app {
+  box-sizing: border-box;
+  height: 100dvh;
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.app > section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Palco com sobreposições (painel do treino). */
+.stage-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Barras e painéis mantêm o tamanho; só o palco cede espaço. */
+.app > *:not(section),
+.app > section > *:not(.stage):not(.stage-wrap) {
+  flex-shrink: 0;
+}
+
+.hud h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.hud ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+}
+
+.stage {
+  display: block;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  border-radius: 8px;
+  background: #fbfaf6;
+}
+
+@media (prefers-color-scheme: dark) {
+  .stage {
+    background: #23262d;
+  }
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font: 600 11px/1.5 system-ui, sans-serif;
+  text-align: center;
+  color: var(--foreground);
+  background: var(--background);
+}
