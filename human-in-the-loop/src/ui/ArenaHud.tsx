@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ArenaState, MapRoom } from '../game/arena/Arena'
+import { ROOM_LABELS } from '../game/world/roomTypes'
 
 /** Modos zumbi/SWAT: vida, minimapa, avisos, dano (flash + direção) e telas de morte/vitória. */
 export function ArenaHud({ arena, onRestart }: { arena: ArenaState; onRestart: () => void }) {
@@ -21,7 +22,14 @@ export function ArenaHud({ arena, onRestart }: { arena: ArenaState; onRestart: (
           <div className="hurt-arc" />
         </div>
       )}
-      {!over && <Minimap rooms={arena.map} exitOpen={arena.exitOpen} />}
+      {!over && (
+        <div className="map-box">
+          <Minimap rooms={arena.map} exitOpen={arena.exitOpen} />
+          {arena.map.some((r) => r.current) && (
+            <div className="room-label">{ROOM_LABELS[arena.map.find((r) => r.current)!.type]}</div>
+          )}
+        </div>
+      )}
       <div className="arena-hud">
         <div className={pct < 0.3 ? 'hp low' : 'hp'}>
           <span className="hp-label">Vida</span>
