@@ -177,30 +177,6 @@ export function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
-// Versão em tons de cinza da foto, para as paletas P&B (feito à mão: ctx.filter não existe em todo navegador)
-const grayCache = new WeakMap<HTMLImageElement, HTMLCanvasElement>()
-
-function grayscale(photo: HTMLImageElement): HTMLCanvasElement {
-  const cached = grayCache.get(photo)
-  if (cached) return cached
-  const canvas = document.createElement('canvas')
-  canvas.width = photo.naturalWidth || photo.width
-  canvas.height = photo.naturalHeight || photo.height
-  const context = canvas.getContext('2d')
-  if (context) {
-    context.drawImage(photo, 0, 0, canvas.width, canvas.height)
-    const image = context.getImageData(0, 0, canvas.width, canvas.height)
-    const pixels = image.data
-    for (let index = 0; index < pixels.length; index += 4) {
-      const luma = 0.2126 * pixels[index]! + 0.7152 * pixels[index + 1]! + 0.0722 * pixels[index + 2]!
-      pixels[index] = pixels[index + 1] = pixels[index + 2] = luma
-    }
-    context.putImageData(image, 0, 0)
-  }
-  grayCache.set(photo, canvas)
-  return canvas
-}
-
 /** Foto recortada no retângulo (ou silhueta chapada quando ainda não há foto). */
 export function drawPhotoRect(
   ctx: Ctx,
@@ -216,7 +192,7 @@ export function drawPhotoRect(
   ctx.rect(x, y, w, h)
   ctx.clip()
   if (photo) {
-    const source = palette.mono ? grayscale(photo) : photo
+    const source = photo
     const scale = Math.max(w / source.width, h / source.height)
     const width = source.width * scale
     const height = source.height * scale

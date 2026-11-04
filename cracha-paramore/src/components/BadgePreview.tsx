@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { renderBadge, type BadgeData } from '@/lib/badge'
+import { paletteLabel } from '@/lib/palettes'
 
 interface BadgePreviewProps {
   data: BadgeData
@@ -115,7 +116,7 @@ export function BadgePreview({ data, assetsReady, ready, busy, onDownload }: Bad
               className="size-2 rounded-full border border-white/20"
               style={{ backgroundColor: data.palette.block }}
             />
-            {data.palette.name}
+            {paletteLabel(data.palette)}
           </span>
         </div>
 

@@ -346,7 +346,7 @@ export default function App() {
                 <StepHeading
                   step="04"
                   title="Cores"
-                  hint="Escolha uma combinação de cores ou uma das versões em preto e branco."
+                  hint="Escolha um álbum para usar as cores dele no crachá, ou uma versão em preto e branco."
                 />
                 <PalettePicker value={paletteId} onChange={setPaletteId} />
               </section>
@@ -380,7 +380,11 @@ export default function App() {
             <p className="font-display text-sm font-bold tracking-tight text-white/55">
               PARAMORE <span className="text-primary">BRASIL</span>
             </p>
-            <p className="mt-2 max-w-xl">Projeto de fã, sem vínculo oficial com o Paramore.</p>
+            <p className="mt-2 max-w-xl">
+              Projeto de fã, sem vínculo oficial com Paramore ou Hayley Williams. As capas dos
+              álbuns pertencem aos seus respectivos detentores e aparecem aqui só na escolha de
+              cores, sem fins comerciais.
+            </p>
           </div>
           <div className="sm:text-right">
             <p>Fotos e dados processados apenas no seu navegador.</p>
