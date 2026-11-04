@@ -24,7 +24,7 @@ export function PauseMenu(p: Props) {
     <div className="pause" onClick={p.onPlay}>
       <div className="pause-card" onClick={(e) => e.stopPropagation()}>
         <h1>Human in the Loop</h1>
-        <p className="step">Passo 5 · obstáculos</p>
+        <p className="step">Passo 6 · ragdoll passivo</p>
         <button className="play" disabled={!p.ready} onClick={p.onPlay}>
           {p.ready ? 'Clique para entrar' : 'Carregando física…'}
         </button>
@@ -89,7 +89,7 @@ export function PauseMenu(p: Props) {
 
         <ul className="hint">
           <li>WASD: andar · Shift: correr · Espaço: pular · C: agachar</li>
-          <li>B: modo construção</li>
+          <li>B: modo construção · T: soltar o NPC à sua frente</li>
           <li>Esc: soltar o mouse · P, V e . funcionam com o painel aberto</li>
         </ul>
       </div>

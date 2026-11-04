@@ -28,6 +28,7 @@ export function DebugPanel({ stats, debug }: { stats: GameStats | null; debug: D
         <span className={debug.paused ? '' : 'off'}>. avançar 1 passo</span>
         <span className={debug.colliders ? 'on' : ''}>V colisores</span>
         <span>R resetar</span>
+        <span>T soltar NPC</span>
         <span>` fechar</span>
       </div>
     </div>

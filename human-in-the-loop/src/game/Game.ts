@@ -3,6 +3,8 @@ import { BuildMode, type BuildState } from './build/BuildMode'
 import { ColliderDebug } from './debug/ColliderDebug'
 import { createLoop } from './engine/loop'
 import { initPhysics, Physics } from './engine/physics'
+import { Ragdoll } from './npc/Ragdoll'
+import { palette } from './palette'
 import { createRenderContext } from './engine/render'
 import { FpsLook } from './player/FpsLook'
 import { Input } from './player/Input'
@@ -88,6 +90,27 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const lookAtCenter = () => look.lookAt(player.eyePosition(1, eye), new THREE.Vector3(0, 1.2, 0))
   lookAtCenter()
 
+  // NPC: ragdoll passivo (passo 6), de frente para o jogador.
+  const npcMaterial = new THREE.MeshStandardMaterial({ color: palette.mannequin, roughness: 0.55 })
+  disposers.push(() => npcMaterial.dispose())
+  const ragdoll = new Ragdoll(physics, ctx.scene, npcMaterial)
+  disposers.push(() => ragdoll.dispose())
+  const NPC_SPAWN = new THREE.Vector3(0, 0, 9)
+  const NPC_YAW = Math.PI
+  ragdoll.placeAt(NPC_SPAWN, NPC_YAW)
+
+  /** Debug (T): solta o NPC 2,5 m à frente do jogador, de 1,5 m de altura, girando. */
+  const dropRagdoll = () => {
+    const forward = new THREE.Vector3(-Math.sin(look.yaw), 0, -Math.cos(look.yaw))
+    const feet = player.eyePosition(1, new THREE.Vector3()).setY(0).addScaledVector(forward, 2.5)
+    const r = () => Math.random() * 2 - 1
+    ragdoll.placeAt(feet, look.yaw + Math.PI, {
+      lift: 1.5,
+      tilt: new THREE.Euler(r() * 1.2, 0, r() * 1.2),
+      spin: new THREE.Vector3(r() * 3, r() * 3, r() * 3),
+    })
+  }
+
   const build = new BuildMode(ctx.scene, physics, materials, player.collider, events.onBuildChange)
   disposers.push(() => build.dispose())
   events.onBuildChange(build.state)
@@ -108,6 +131,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const resetScene = () => {
     props.reset()
     build.resetPlaced()
+    ragdoll.placeAt(NPC_SPAWN, NPC_YAW)
     player.respawn()
     lookAtCenter()
   }
@@ -115,6 +139,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   /** Atalhos: ` abre/fecha o painel; P, V e . só valem com o painel aberto. */
   const handleDebugKeys = () => {
     if (input.consume('KeyR')) resetScene()
+    if (input.consume('KeyT')) dropRagdoll()
     if (input.consume('Backquote')) setDebug({ panel: !debug.panel })
     if (!debug.panel) return
     if (input.consume('KeyP')) setDebug({ paused: !debug.paused })
