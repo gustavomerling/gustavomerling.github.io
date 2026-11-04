@@ -144,7 +144,11 @@ export class Arena {
     this.mats.med = m('#f2f0ea')
     this.mats.cross = m('#d42a2a', '#400000')
     this.mats.gun = m('#2b2d31')
-    this.mats.ring = new THREE.MeshBasicMaterial({ color: '#ffd45a', transparent: true, opacity: 0.55, depthWrite: false })
+    const ring = (color: string) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, depthWrite: false })
+    // Anel no chão pela cor do item: munição amarela, vida vermelha, arma azul.
+    this.mats.ring = ring('#ffd45a')
+    this.mats.ringMed = ring('#ff5a4a')
+    this.mats.ringGun = ring('#5ab4ff')
     this.build()
   }
 
@@ -297,7 +301,8 @@ export class Arena {
       add(this.geo(new THREE.BoxGeometry(0.1, 0.2, 0.07)), 'gun', -long * 0.25, -0.1, 0)
       add(this.geo(new THREE.BoxGeometry(0.25, 0.14, 0.07)), 'gun', -long * 0.45, -0.02, 0)
     }
-    const ring = new THREE.Mesh(this.geo(new THREE.RingGeometry(0.42, 0.52, 28)), this.mats.ring)
+    const ringMat = kind === 'ammo' ? this.mats.ring : kind === 'med' ? this.mats.ringMed : this.mats.ringGun
+    const ring = new THREE.Mesh(this.geo(new THREE.RingGeometry(0.42, 0.52, 28)), ringMat)
     ring.rotation.x = -Math.PI / 2
     ring.position.y = -0.38
     g.add(ring)
