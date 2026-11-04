@@ -7,7 +7,5 @@ export const palette = {
   wallLine: '#cfcbc2',
   structure: '#a9a59c',
   accent: '#e8742c',
-  /** Manequim do NPC (provisório até o passo 7). */
-  mannequin: '#6b7280',
   dark: '#2a2a2a',
 } as const

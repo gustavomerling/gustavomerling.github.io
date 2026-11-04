@@ -1,11 +1,12 @@
 import * as THREE from 'three'
 import { Physics, RAPIER } from '../engine/physics'
+import { buildPartVisual, createDummyMaterials, disposeVisual, type DummyMaterials } from './dummyVisual'
 import { JOINTS, PARTS, type JointDef, type PartDef, type PartName } from './skeleton'
 
 export interface RagdollPart {
   def: PartDef
   body: RAPIER.RigidBody
-  mesh: THREE.Mesh
+  visual: THREE.Object3D
 }
 
 export interface RagdollJoint {
@@ -28,13 +29,14 @@ export class Ragdoll {
   readonly parts = new Map<PartName, RagdollPart>()
   readonly joints: RagdollJoint[] = []
   private readonly physics: Physics
-  private readonly geometries: THREE.BufferGeometry[] = []
+  private readonly materials: DummyMaterials
   readonly root = new THREE.Group()
 
-  constructor(physics: Physics, scene: THREE.Scene, material: THREE.Material) {
+  constructor(physics: Physics, scene: THREE.Scene) {
     this.physics = physics
     const world = physics.world
     this.root.name = 'ragdoll'
+    this.materials = createDummyMaterials()
     scene.add(this.root)
 
     for (const def of PARTS) {
@@ -47,14 +49,10 @@ export class Ragdoll {
       )
       world.createCollider(colliderFor(def).setMass(def.mass).setFriction(0.8).setRestitution(0), body)
 
-      const geo = geometryFor(def)
-      this.geometries.push(geo)
-      const mesh = new THREE.Mesh(geo, material)
-      mesh.castShadow = mesh.receiveShadow = true
-      mesh.name = def.name
-      this.root.add(mesh)
-      physics.sync(body, mesh)
-      this.parts.set(def.name, { def, body, mesh })
+      const visual = buildPartVisual(def, this.materials)
+      this.root.add(visual)
+      physics.sync(body, visual)
+      this.parts.set(def.name, { def, body, visual })
     }
 
     for (const def of JOINTS) {
@@ -130,7 +128,8 @@ export class Ragdoll {
       this.physics.world.removeRigidBody(part.body)
     }
     this.root.removeFromParent()
-    for (const g of this.geometries) g.dispose()
+    disposeVisual(this.root)
+    this.materials.dispose()
   }
 }
 
@@ -163,17 +162,5 @@ function colliderFor(def: PartDef): RAPIER.ColliderDesc {
       return RAPIER.ColliderDesc.capsule(s.length / 2 - s.radius, s.radius)
     case 'sphere':
       return RAPIER.ColliderDesc.ball(s.radius)
-  }
-}
-
-function geometryFor(def: PartDef): THREE.BufferGeometry {
-  const s = def.shape
-  switch (s.kind) {
-    case 'box':
-      return new THREE.BoxGeometry(...s.size)
-    case 'capsule':
-      return new THREE.CapsuleGeometry(s.radius, s.length - 2 * s.radius, 4, 12)
-    case 'sphere':
-      return new THREE.SphereGeometry(s.radius, 20, 14)
   }
 }

@@ -4,7 +4,6 @@ import { ColliderDebug } from './debug/ColliderDebug'
 import { createLoop } from './engine/loop'
 import { initPhysics, Physics } from './engine/physics'
 import { Ragdoll } from './npc/Ragdoll'
-import { palette } from './palette'
 import { createRenderContext } from './engine/render'
 import { FpsLook } from './player/FpsLook'
 import { Input } from './player/Input'
@@ -90,10 +89,8 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const lookAtCenter = () => look.lookAt(player.eyePosition(1, eye), new THREE.Vector3(0, 1.2, 0))
   lookAtCenter()
 
-  // NPC: ragdoll passivo (passo 6), de frente para o jogador.
-  const npcMaterial = new THREE.MeshStandardMaterial({ color: palette.mannequin, roughness: 0.55 })
-  disposers.push(() => npcMaterial.dispose())
-  const ragdoll = new Ragdoll(physics, ctx.scene, npcMaterial)
+  // NPC: ragdoll (boneco de crash test), de frente para o jogador.
+  const ragdoll = new Ragdoll(physics, ctx.scene)
   disposers.push(() => ragdoll.dispose())
   const NPC_SPAWN = new THREE.Vector3(0, 0, 9)
   const NPC_YAW = Math.PI
