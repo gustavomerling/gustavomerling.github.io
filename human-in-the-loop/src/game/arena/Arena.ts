@@ -231,7 +231,11 @@ export class Arena {
     })
     for (const r of this.layout.rooms) {
       if (r === this.layout.start) {
-        this.addPickup('ammo', r.center.clone().add(new THREE.Vector3(0, 0, -3)))
+        // Munição inicial entre o jogador e a porta (à vista ao nascer), um pouco de lado.
+        const d = Math.max(0, r.doors.indexOf(true))
+        const dir = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 0, -1)][d]
+        const side = new THREE.Vector3(-dir.z, 0, dir.x)
+        this.addPickup('ammo', r.center.clone().addScaledVector(dir, 3).addScaledVector(side, 0.9))
         continue
       }
       const n = 1 + (rng() < 0.5 ? 1 : 0)
