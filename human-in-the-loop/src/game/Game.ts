@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { BuildMode, type BuildState } from './build/BuildMode'
+import { WeaponSystem, type WeaponState } from './weapons/WeaponSystem'
 import { ColliderDebug } from './debug/ColliderDebug'
 import { createLoop } from './engine/loop'
 import { initPhysics, Physics } from './engine/physics'
@@ -53,6 +54,7 @@ export interface GameEvents {
   onStats: (stats: GameStats) => void
   onDebugChange: (debug: DebugState) => void
   onBuildChange: (build: BuildState) => void
+  onWeaponChange: (weapon: WeaponState) => void
 }
 
 export interface Game {
@@ -127,6 +129,10 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const build = new BuildMode(ctx.scene, physics, materials, player.collider, events.onBuildChange)
   disposers.push(() => build.dispose())
   events.onBuildChange(build.state)
+
+  const weapons = new WeaponSystem(events.onWeaponChange)
+  disposers.push(() => weapons.dispose())
+  events.onWeaponChange(weapons.state)
 
   const colliderDebug = new ColliderDebug(ctx.scene, physics.world, (c) => c.handle === player.collider.handle)
   disposers.push(() => colliderDebug.dispose())
@@ -231,8 +237,11 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
       ctx.camera.position.copy(player.eyePosition(a, eye))
       look.apply(ctx.camera)
       build.frame(ctx.camera, input)
+      weapons.setHolstered(build.active)
+      weapons.frame(frameDt, build.active ? null : input, look.yaw, look.pitch, player.speed, player.isGrounded)
       colliderDebug.update()
       ctx.renderer.render(ctx.scene, ctx.camera)
+      weapons.render(ctx.renderer, ctx.camera.aspect)
 
       frames++
       renderAcc += performance.now() - t0

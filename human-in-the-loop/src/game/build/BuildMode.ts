@@ -101,10 +101,7 @@ export class BuildMode {
   /** Lê a entrada e atualiza a prévia. Chamado uma vez por frame. */
   frame(camera: THREE.Camera, input: Input) {
     if (input.consume('KeyB')) this.setActive(!this.active)
-    if (!this.active) {
-      input.consumeWheel() // descarta giros da roda fora do modo
-      return
-    }
+    if (!this.active) return
 
     const wheel = input.consumeWheel()
     let selected = this.selected

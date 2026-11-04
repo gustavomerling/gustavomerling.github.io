@@ -320,3 +320,36 @@ kbd {
 .debug-box .field:first-of-type {
   margin-top: 12px;
 }
+
+.weapon-hud {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  pointer-events: none;
+}
+
+.weapon-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(25, 25, 25, 0.45);
+  color: rgba(242, 240, 235, 0.7);
+  font-size: 12px;
+}
+
+.weapon-slot kbd {
+  margin: 0;
+  color: #1e1e1e;
+}
+
+.weapon-slot.current {
+  background: rgba(25, 25, 25, 0.7);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
