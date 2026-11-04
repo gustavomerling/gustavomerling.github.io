@@ -436,6 +436,22 @@ export async function createGame(
   /** Inclinação (Q/E mirando): -1 esquerda .. 1 direita, suavizada. */
   let lean = 0
   const leanRight = new THREE.Vector3()
+  // Lanterna (modo zumbi, escuro): presa à câmera; F liga/desliga.
+  let flashlight: THREE.SpotLight | null = null
+  if (mode === 'zombie') {
+    flashlight = new THREE.SpotLight('#fff3dc', 40, 26, 0.42, 0.45, 1.6)
+    flashlight.castShadow = true
+    flashlight.shadow.mapSize.set(1024, 1024)
+    flashlight.shadow.camera.near = 0.2
+    flashlight.shadow.bias = -0.0005
+    ctx.scene.add(flashlight, flashlight.target)
+    const fl = flashlight
+    disposers.push(() => {
+      fl.shadow.map?.dispose()
+      ctx.scene.remove(fl, fl.target)
+    })
+  }
+  const flashDir = new THREE.Vector3()
   /** Deslocamento da cabeça pela inclinação (os NPCs veem/miram a cabeça inclinada). */
   const leanOffset = new THREE.Vector3()
   const camDir = new THREE.Vector3()
@@ -564,7 +580,8 @@ export async function createGame(
     if (input.consume('KeyR')) resetScene()
     // Na masmorra, os atalhos de mexer no NPC só valem com o painel de debug aberto.
     if (!sandboxMode && !debug.panel) {
-      for (const k of ['KeyT', 'KeyF', 'KeyG', 'KeyM']) input.consume(k)
+      if (input.consume('KeyF') && flashlight) flashlight.visible = !flashlight.visible
+      for (const k of ['KeyT', 'KeyG', 'KeyM']) input.consume(k)
       if (input.consume('Backquote')) setDebug({ panel: true })
       return
     }
@@ -701,6 +718,13 @@ export async function createGame(
       const [breathPitch, breathYaw] = weapons.breathOffset()
       look.apply(ctx.camera, breathPitch, breathYaw)
       if (Math.abs(lean) > 0.001) ctx.camera.rotateZ(-lean * 0.2)
+      if (flashlight) {
+        // Um pouco abaixo e à direita dos olhos, apontando para a mira.
+        ctx.camera.getWorldDirection(flashDir)
+        flashlight.position.copy(ctx.camera.position).add(new THREE.Vector3(0.18, -0.15, 0).applyQuaternion(ctx.camera.quaternion))
+        flashlight.target.position.copy(ctx.camera.position).addScaledVector(flashDir, 10)
+        flashlight.target.updateMatrixWorld()
+      }
       const aimingNow = weapons.ads > 0.6
       if (aimingNow !== wasAiming) {
         wasAiming = aimingNow

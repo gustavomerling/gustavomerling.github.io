@@ -347,11 +347,18 @@ export function buildDungeon(scene: THREE.Scene, physics: Physics, materials: Ma
  * Luz da masmorra: céu + sol cuja sombra acompanha o jogador (a masmorra
  * inteira é grande demais para um mapa de sombra só).
  */
-export function buildDungeonLights(scene: THREE.Scene) {
-  const hemi = new THREE.HemisphereLight('#f4f1ea', '#5d5850', 1.15)
-  const sun = new THREE.DirectionalLight('#fff1dc', 2.0)
+export function buildDungeonLights(scene: THREE.Scene, dark = false) {
+  // Escuro (modo zumbi): quase breu azulado, sem sol; quem ilumina é a lanterna do jogador.
+  const hemi = dark ? new THREE.HemisphereLight('#4a5a78', '#0c0c10', 0.12) : new THREE.HemisphereLight('#f4f1ea', '#5d5850', 1.15)
+  const sun = new THREE.DirectionalLight('#fff1dc', dark ? 0 : 2.0)
+  const prevBg = scene.background
+  const prevFog = scene.fog
+  if (dark) {
+    scene.background = new THREE.Color('#030305')
+    scene.fog = new THREE.FogExp2('#030305', 0.06)
+  }
   const offset = new THREE.Vector3(10, 25, 6)
-  sun.castShadow = true
+  sun.castShadow = !dark
   sun.shadow.mapSize.set(2048, 2048)
   const cam = sun.shadow.camera
   cam.left = cam.bottom = -22
@@ -373,6 +380,8 @@ export function buildDungeonLights(scene: THREE.Scene) {
     dispose() {
       sun.shadow.map?.dispose()
       scene.remove(hemi, sun, sun.target)
+      scene.background = prevBg
+      scene.fog = prevFog
     },
   }
 }

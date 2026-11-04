@@ -138,7 +138,7 @@ export class Arena {
 
   constructor(d: ArenaDeps) {
     this.d = d
-    this.lights = buildDungeonLights(d.scene)
+    this.lights = buildDungeonLights(d.scene, d.mode === 'zombie')
     const m = (color: string, emissive = '#000000') => new THREE.MeshStandardMaterial({ color, emissive, roughness: 0.6 })
     this.mats.ammo = m('#5b6b2f')
     this.mats.band = m('#e0b43a', '#3a2a00')

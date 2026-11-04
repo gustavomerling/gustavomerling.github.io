@@ -7,7 +7,7 @@ const MODE_TEXT: Record<GameMode, string> = {
   sandbox:
     'Um manequim de crash test com ragdoll ativo, uma sala de testes e você. Ele anda, corre, se esquiva da mira, procura cobertura e se protege. Empurre, atire, arremesse caixas, amarre e construa: tudo é física. Pela porta atrás de você, um exemplar de cada tipo de sala da masmorra.',
   zombie:
-    'Uma masmorra de salas ligadas por portas. Zumbis aparecem quando você entra numa sala: só morrem com tiro na cabeça. Colete munição, armas e kits de vida pelo caminho; você tem vida limitada. Limpe a sala final e pise no alçapão para escapar.',
+    'Uma masmorra escura de salas ligadas por portas, só com a sua lanterna (F liga/desliga). Zumbis aparecem quando você entra numa sala: só morrem com tiro na cabeça. Colete munição, armas e kits de vida pelo caminho; você tem vida limitada. Limpe a sala final e pise no alçapão para escapar.',
   swat:
     'A mesma masmorra, agora com agentes armados. Eles procuram cobertura, miram e atiram. Colete munição, armas e kits de vida; você tem vida limitada. Limpe a sala final e pise no alçapão para escapar.',
 }
