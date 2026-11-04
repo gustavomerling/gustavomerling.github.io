@@ -18,6 +18,8 @@ export interface WeaponState {
   owned: boolean[]
   /** Mostra o nome por um instante depois de trocar. */
   changedAt: number
+  /** Munição da arma atual (Infinity = sem limite, ex.: sandbox ou corpo a corpo). */
+  ammo: number
 }
 
 /**
@@ -59,6 +61,9 @@ export class WeaponSystem {
   private grabbing = false
   private throwT = 0
   readonly owned: boolean[] = WEAPONS.map((w) => !w.pickupOnly)
+  /** Munição por arma (Infinity = sem limite). Os modos zumbi/SWAT usam números. */
+  readonly ammo: number[] = WEAPONS.map(() => Infinity)
+  private changedAt = 0
   private bobPhase = 0
   private bobAmount = 0
 
@@ -130,6 +135,9 @@ export class WeaponSystem {
     const pressed = input.consume('Mouse0')
     const wants = w.automatic ? input.isDown('Mouse0') : pressed
     if (!wants || this.cooldown > 0) return false
+    if (this.ammo[this.index] <= 0) return false
+    this.ammo[this.index]--
+    if (Number.isFinite(this.ammo[this.index])) this.onChange(this.state)
     this.cooldown = 1 / (w.fireRate ?? 5)
     this.kickAmount = Math.min(1.5, this.kickAmount + 1)
     this.showFlash()
@@ -192,7 +200,27 @@ export class WeaponSystem {
   }
 
   get state(): WeaponState {
-    return { index: this.index, name: this.current.name, owned: [...this.owned], changedAt: performance.now() }
+    return { index: this.index, name: this.current.name, owned: [...this.owned], changedAt: this.changedAt, ammo: this.ammo[this.index] }
+  }
+
+  /** Soma munição à arma `i` (e avisa o HUD). */
+  addAmmo(i: number, n: number) {
+    if (i < 0 || i >= WEAPONS.length) return
+    this.ammo[i] += n
+    this.onChange(this.state)
+  }
+
+  /**
+   * Modos com coleta: só mãos, pistola e taco no começo; munição contada.
+   * `start` = balas iniciais da pistola.
+   */
+  setLoadout(start: number) {
+    WEAPONS.forEach((w, i) => {
+      this.owned[i] = w.id === 'hands' || w.id === 'pistol' || w.id === 'bat'
+      this.ammo[i] = w.kind === 'gun' ? (w.id === 'pistol' ? start : 0) : Infinity
+    })
+    this.changedAt = performance.now()
+    this.onChange(this.state)
   }
 
   /** Arma pega do chão: passa a estar disponível e já é empunhada. */
@@ -200,7 +228,10 @@ export class WeaponSystem {
     if (i < 0 || i >= WEAPONS.length) return
     const isNew = !this.owned[i]
     this.owned[i] = true
-    if (isNew) this.onChange(this.state)
+    if (isNew) {
+      this.changedAt = performance.now()
+      this.onChange(this.state)
+    }
     this.select(i)
   }
 
@@ -267,6 +298,7 @@ export class WeaponSystem {
         this.models[this.index].visible = true
         this.phase = 'raise'
         this.phaseT = 0
+        this.changedAt = performance.now()
         this.onChange(this.state)
       }
     } else if (this.phase === 'raise') {

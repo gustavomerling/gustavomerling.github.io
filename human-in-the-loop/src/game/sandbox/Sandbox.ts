@@ -54,6 +54,8 @@ export class Sandbox {
   readonly tools: Tools
   readonly spawner: Spawner
   menuOpen = false
+  /** Masmorra: sem menu de spawn (Q) nem ferramentas (Tab). */
+  restricted = false
   /** Depois de arremessar, o clique esquerdo só volta a valer ao soltar o botão. */
   private suppressMouse0 = false
   /** Depois de arremessar, só agarra de novo ao soltar e apertar o direito. */
@@ -170,7 +172,7 @@ export class Sandbox {
     const weapons = this.d.weapons
     if (this.menuOpen && (!input || !this.d.look.locked)) this.setMenu(false)
 
-    if (input?.consume('KeyQ')) this.setMenu(!this.menuOpen)
+    if (input?.consume('KeyQ') && !this.restricted) this.setMenu(!this.menuOpen)
     if (this.menuOpen || !input) {
       // O clique no menu é tratado pela interface (cursor virtual).
       input?.consume('Mouse0')
@@ -178,9 +180,9 @@ export class Sandbox {
       this.hands.release()
       this.tools.magnet = 0
     } else {
-      if (input.consume('KeyX')) this.deleteAimed()
+      if (input.consume('KeyX') && !this.restricted) this.deleteAimed()
       if (input.consume('KeyE')) this.pickupAimed()
-      if (input.consume('Tab')) {
+      if (input.consume('Tab') && !this.restricted) {
         if (weapons.current.kind === 'tool') this.tools.next()
         else weapons.select(weaponIndex('tool'))
       }

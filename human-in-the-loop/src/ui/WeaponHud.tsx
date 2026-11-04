@@ -25,6 +25,9 @@ export function WeaponHud({ weapon }: { weapon: WeaponState }) {
       ) : (
         <div className="weapon-slot current">{weapon.name}</div>
       )}
+      {Number.isFinite(weapon.ammo) && (
+        <div className={weapon.ammo === 0 ? 'weapon-ammo empty' : 'weapon-ammo'}>{weapon.ammo === 0 ? 'sem munição' : weapon.ammo}</div>
+      )}
     </div>
   )
 }

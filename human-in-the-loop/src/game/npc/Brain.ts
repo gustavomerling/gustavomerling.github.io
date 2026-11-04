@@ -3,6 +3,42 @@ import { RAPIER, type Physics } from '../engine/physics'
 import type { Npc } from './Npc'
 import type { Pose } from './poses'
 import type { Region } from './Damage'
+import type { BrainContext, BrainDebug, BrainDeps, NpcBrain, NpcConfig, NpcKind, PlayerInfo } from './types'
+import { Memory } from './Memory'
+import { NavGrid, solid } from './Navigation'
+
+export type { BrainDebug, PlayerInfo }
+
+/**
+ * Cobertura: onde ficar (colado atrás do obstáculo, do lado oposto à
+ * ameaça), a altura do topo do obstáculo e quanto agachar para a cabeça
+ * sumir atrás dele (0 = em pé basta; 1 = agachado; `low` = precisa agachar).
+ * `partial`: nem agachado a cabeça some, só o tronco.
+ */
+export interface Cover {
+  pos: THREE.Vector3
+  low: boolean
+  crouch: number
+  top: number
+  partial: boolean
+}
+
+/**
+ * Altura (m acima do chão) do topo da cabeça e do centro do peito do NPC
+ * para um agachamento c (0..1), medidas no corpo físico (cenário
+ * "cover: agachar" dos testes headless; ver CROUCH em Npc.ts).
+ */
+const crouchTable = (c: number, [a, b, d]: [number, number, number]) =>
+  c <= 0.5 ? a + (b - a) * (Math.max(0, c) / 0.5) : b + (d - b) * ((Math.min(1, c) - 0.5) / 0.5)
+
+export const COVER_BODY = {
+  head: (c: number) => crouchTable(c, [1.78, 1.59, 1.14]),
+  chest: (c: number) => crouchTable(c, [1.4, 1.26, 0.91]),
+  /** Folga entre o corpo e o obstáculo (m, do centro do corpo à face). */
+  hug: 0.47,
+  /** Distância (m) a partir da qual ele começa a agachar chegando. */
+  duckFrom: 1.4,
+}
 
 /**
  * IA do NPC (passos 21–25). Não move o corpo diretamente: decide uma
@@ -37,19 +73,10 @@ export const AI = {
   projectileTime: 0.7,
 }
 
-export type AiState = 'idle' | 'alert' | 'threatened' | 'dodging' | 'fleeing' | 'cover' | 'walkTo' | 'body'
-
-/** O que o NPC sabe do jogador neste passo (vem do Game). */
-export interface PlayerInfo {
-  eye: THREE.Vector3
-  aimDir: THREE.Vector3
-  /** 0..1: quanto está mirando pela alça. */
-  ads: number
-  weapon: 'gun' | 'melee' | 'hands' | 'tool'
-  /** Golpe corpo a corpo em andamento. */
-  swinging: boolean
-  collider: RAPIER.Collider
-}
+export type AiState =
+  | 'idle' | 'alert' | 'threatened' | 'dodging' | 'fleeing' | 'cover' | 'walkTo' | 'search' | 'body'
+  // Zumbi
+  | 'chase' | 'attack' | 'crawl' | 'dead'
 
 /** Poses de reflexo, somadas por cima da pose em pé. */
 const REFLEX: Record<'face' | 'chest' | 'head' | 'armL' | 'armR' | 'legL' | 'legR', Pose> = {
@@ -74,23 +101,20 @@ const REFLEX: Record<'face' | 'chest' | 'head' | 'armL' | 'armR' | 'legL' | 'leg
 
 const UP = new THREE.Vector3(0, 1, 0)
 
-export interface BrainDebug {
-  ai: AiState
-  sees: boolean
-  aimed: boolean
-  threat: number
-  reflex: string
-  cover: boolean
-}
-
-export class Brain {
+/** Cérebro do civil (e, por enquanto, base provisória dos outros tipos). */
+export class Brain implements NpcBrain {
+  readonly kind: NpcKind
   state: AiState = 'idle'
-  /** IA ligada (desligada: ele só se equilibra). */
   enabled = true
-  readonly debug: BrainDebug = { ai: 'idle', sees: false, aimed: false, threat: 0, reflex: '', cover: false }
+  readonly debug: BrainDebug = { ai: 'idle', sees: false, aimed: false, threat: 0, reflex: '', cover: false, memory: '' }
 
+  /** Memória (últimas posições, tiros, coberturas, feridas). */
+  readonly memory = new Memory()
+  private searchDone = false
+  private searchLook = 0
   private readonly npc: Npc
   private readonly physics: Physics
+  private readonly config: NpcConfig
   private stateTime = 0
   private threat = 0
   private sees = false
@@ -104,7 +128,10 @@ export class Brain {
   private zigTimer = 0
   private hiddenTime = 0
   private zig = 1
-  private cover: { pos: THREE.Vector3; low: boolean } | null = null
+  private cover: Cover | null = null
+  /** Caminho atual (navegação em grade) e controle de progresso. */
+  private readonly grid: NavGrid
+  private nav: { target: THREE.Vector3; path: THREE.Vector3[]; i: number; age: number; best: number; stuck: number } | null = null
   private coverCheck = 0
   private walkTarget: THREE.Vector3 | null = null
   private walkRun = false
@@ -123,10 +150,13 @@ export class Brain {
   /** Cone de visão (debug). */
   readonly cone: THREE.Mesh
 
-  constructor(npc: Npc, physics: Physics, scene: THREE.Scene) {
+  constructor(kind: NpcKind, { npc, physics, scene, config }: BrainDeps) {
+    this.kind = kind
     this.npc = npc
     this.physics = physics
-    const geo = new THREE.ConeGeometry(Math.tan(AI.fovHalf) * 4, 4, 24, 1, true)
+    this.config = config
+    this.grid = new NavGrid(physics, { own: (b) => npc.owns(b) })
+    const geo = new THREE.ConeGeometry(Math.tan(config.vision.fovHalf) * 4, 4, 24, 1, true)
     geo.translate(0, -2, 0)
     geo.rotateX(-Math.PI / 2)
     this.cone = new THREE.Mesh(
@@ -143,10 +173,13 @@ export class Brain {
     this.sinceSeen = Infinity
     this.attention = null
     this.cover = null
+    this.nav = null
     this.walkTarget = null
     this.reflexPose = null
     this.reflexWeight = 0
     this.hurt = null
+    this.memory.clear()
+    this.searchDone = false
     this.npc.move(null)
     this.npc.crouch = 0
     this.npc.overlay = null
@@ -158,12 +191,14 @@ export class Brain {
     this.walkTarget = point.clone().setY(0)
     this.walkRun = run
     this.cover = null
+    this.nav = null
     this.setState('walkTo')
   }
 
   /** Ouviu um tiro ou levou um golpe: presta atenção (e se assusta). */
   notice(point: THREE.Vector3, fright: number) {
     this.attention = point.clone()
+    this.memory.heardShot(point)
     this.attentionTime = 2.5
     this.threat = Math.min(2, this.threat + fright)
   }
@@ -171,6 +206,9 @@ export class Brain {
   /** Foi atingido numa região: segura o lugar e se vira para protegê-lo. */
   wounded(region: Region) {
     this.hurt = { region, time: 2.2 }
+    // Se estava na cobertura e foi atingido, ela está exposta.
+    if (this.state === 'cover' && this.cover) this.memory.coverExposed(this.cover.pos)
+    this.memory.wound(region, this.sees ? this.lastSeen : this.attention ?? this.memory.lastPlayer()?.pos ?? null)
     this.threat = Math.min(2, this.threat + 0.6)
     if (region !== 'head') this.reflex(REFLEX[region === 'torso' ? 'chest' : region], `segura ${region}`, 1.4)
     else this.reflex(REFLEX.head, 'segura a cabeça', 1.2)
@@ -182,9 +220,14 @@ export class Brain {
     ;(this.cone.material as THREE.Material).dispose()
   }
 
-  update(dt: number, player: PlayerInfo) {
+  update(dt: number, { player }: BrainContext) {
     const npc = this.npc
+    if (npc.isDead) {
+      npc.lookTarget = null
+      return
+    }
     this.stateTime += dt
+    this.memory.update(dt)
     this.dodgeCooldown = Math.max(0, this.dodgeCooldown - dt)
     this.attentionTime -= dt
     if (this.attentionTime <= 0) this.attention = null
@@ -201,8 +244,12 @@ export class Brain {
     if (this.sees) {
       this.lastSeen.copy(player.eye)
       this.sinceSeen = 0
+      this.memory.seenPlayer(player.eye)
+      this.searchDone = false
     } else this.sinceSeen += dt
-    const aware = this.sinceSeen < 4
+    const caution = this.memory.caution
+    // Ferido, fica atento por mais tempo e se assusta mais cedo.
+    const aware = this.sinceSeen < 4 + caution * 4
     const aimed = this.sees && player.weapon === 'gun' && this.aimDistance(player) < AI.aimRadius * (1 - 0.3 * player.ads)
     const gain = aimed ? AI.threatGain * (1 + player.ads) : -AI.threatDecay
     this.threat = THREE.MathUtils.clamp(this.threat + gain * dt, 0, 2)
@@ -231,6 +278,7 @@ export class Brain {
     this.debug.aimed = aimed
     this.debug.threat = this.threat
     this.debug.reflex = this.reflexTime > 0 ? this.reflexName : ''
+    this.debug.memory = this.memory.summary()
     this.debug.cover = this.cover !== null && this.state === 'cover'
 
     if (!this.enabled) {
@@ -251,16 +299,47 @@ export class Brain {
 
     // --- Decisão --------------------------------------------------------------
     const facePlayer = aware ? Math.atan2(-(this.lastSeen.x - this.chest.x), -(this.lastSeen.z - this.chest.z)) : null
-    const scared = this.threat > AI.threatLimit
+    const scared = this.threat > AI.threatLimit * (1 - 0.4 * caution)
 
     switch (this.state) {
       case 'walkTo': {
         if (!this.walkTarget) break
-        if (this.steerTo(this.walkTarget, this.walkRun, 0.35)) {
+        if (this.navigateTo(this.walkTarget, this.walkRun, 0.35)) {
           this.walkTarget = null
           this.setState('idle')
         }
         if (scared) this.setState('threatened')
+        break
+      }
+      case 'search': {
+        const last = this.memory.lastPlayer()
+        if (!last || this.searchDone) {
+          this.setState('idle')
+          break
+        }
+        if (scared) {
+          this.setState('threatened')
+          break
+        }
+        if (this.sees) {
+          this.setState('alert')
+          break
+        }
+        // Chega devagar (mais cauteloso, mais devagar) e varre o olhar.
+        const target = last.pos
+        if (this.navigateTo(target, false, 1.0)) {
+          this.searchLook += dt
+          const base = Math.atan2(-(target.x - this.chest.x), -(target.z - this.chest.z))
+          npc.move(null, base + Math.sin(this.searchLook * 1.3) * 1.3)
+          npc.lookTarget = null
+          if (this.searchLook > 5) {
+            this.searchDone = true
+            this.setState('idle')
+          }
+        } else if (this.stateTime > 12) {
+          this.searchDone = true
+          this.setState('idle')
+        }
         break
       }
       case 'idle':
@@ -271,7 +350,13 @@ export class Brain {
           break
         }
         if (this.state === 'idle' && (aware || this.attention)) this.setState('alert')
-        if (this.state === 'alert' && !aware && !this.attention && this.stateTime > 3) this.setState('idle')
+        if (this.state === 'alert' && !aware && !this.attention && this.stateTime > 3) {
+          // Perdeu o jogador: vai olhar onde o viu por último, em vez de esquecer.
+          if (!this.searchDone && this.memory.lastPlayer()) {
+            this.searchLook = 0
+            this.setState('search')
+          } else this.setState('idle')
+        }
         // Encara o jogador (depois de frear); armado e perto demais, recua devagar.
         const fast = Math.hypot(npc.velocity.x, npc.velocity.z) > 1
         let face = fast ? null : facePlayer
@@ -355,16 +440,14 @@ export class Brain {
           this.setState('alert')
           break
         }
-        const there = this.steerTo(c.pos, this.tmp.copy(c.pos).sub(this.chest).setY(0).length() > 3, 0.4, facePlayer)
-        if (there) {
-          npc.crouch = c.low ? 0.85 : 0
-          npc.move(null, facePlayer)
-        } else npc.crouch = 0
+        const threatPos = this.threatPos(player)
+        if (this.approachCover(c, threatPos)) this.memory.coverUsed(c.pos)
         // Cobertura "furada" (o jogador deu a volta): procura outra.
         this.coverCheck -= dt
         if (this.coverCheck <= 0) {
           this.coverCheck = 0.5
-          if (!this.coverHolds(c, player.eye)) {
+          if (!this.coverHolds(c, this.threatPos(player), player.collider)) {
+            this.memory.coverExposed(c.pos)
             const next = this.findCover(player)
             if (next) this.cover = next
             else {
@@ -393,11 +476,11 @@ export class Brain {
   private canSee(player: PlayerInfo) {
     const to = player.eye.clone().sub(this.head)
     const dist = to.length()
-    if (dist > AI.range) return false
+    if (dist > this.config.vision.range) return false
     const yaw = this.npc.facing
     const fwd = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw))
     const flat = to.clone().setY(0).normalize()
-    if (Math.acos(THREE.MathUtils.clamp(fwd.dot(flat), -1, 1)) > AI.fovHalf) {
+    if (Math.acos(THREE.MathUtils.clamp(fwd.dot(flat), -1, 1)) > this.config.vision.fovHalf) {
       // Muito perto, "sente" a presença mesmo fora do cone.
       return dist < 1.2
     }
@@ -405,7 +488,7 @@ export class Brain {
   }
 
   /** Linha livre entre dois pontos (ignora o próprio NPC e o jogador). */
-  private clearLine(from: THREE.Vector3, to: THREE.Vector3, player?: RAPIER.Collider) {
+  clearLine(from: THREE.Vector3, to: THREE.Vector3, player?: RAPIER.Collider) {
     const world = this.physics.world
     const dir = to.clone().sub(from)
     const len = dir.length()
@@ -477,6 +560,7 @@ export class Brain {
       // Sai para o lado contrário de onde vem / de onde vai passar.
       const s = miss.dot(right)
       const side = Math.abs(s) > 0.05 ? -Math.sign(s) : Math.sign(new THREE.Vector3(-vel.z, 0, vel.x).dot(right) || 1)
+      this.memory.danger(closest, speed)
       if (!best || t < best.time) best = { time: t, side }
     })
     return best
@@ -523,7 +607,7 @@ export class Brain {
    * Anda até um ponto desviando de obstáculos simples (raios à frente na
    * altura da cintura). Retorna true ao chegar.
    */
-  private steerTo(target: THREE.Vector3, run: boolean, radius: number, face: number | null = null) {
+  steerTo(target: THREE.Vector3, run: boolean, radius: number, face: number | null = null, remaining?: number) {
     const to = target.clone().sub(this.chest).setY(0)
     const dist = to.length()
     if (dist < Math.max(radius, 0.2)) {
@@ -532,9 +616,12 @@ export class Brain {
     }
     let dir = to.divideScalar(dist)
     const look = Math.min(1.6, dist)
+    // Raios na altura do joelho/cintura (acima de um degrau, abaixo de uma
+    // caixa) e do peito: caixas baixas também contam como obstáculo.
+    const feetY = this.chest.y - 1.4
     const blocked = (d: THREE.Vector3) => {
-      for (const h of [0.45, 1.0]) {
-        const from = this.chest.clone().setY(this.chest.y - 1.35 + h + 0.3)
+      for (const h of [0.5, 1.1]) {
+        const from = this.chest.clone().setY(feetY + h)
         if (!this.clearLine(from, from.clone().addScaledVector(d, look))) return true
       }
       return false
@@ -549,59 +636,165 @@ export class Brain {
       }
     }
     // Freia chegando.
-    const speed = Math.min(run ? 9 : 1.3, 0.4 + dist * 1.1)
-    this.npc.move(dir.multiplyScalar(speed), face, run && dist > 2)
+    const left = remaining ?? dist
+    // Freia chegando (o corpo tem inércia: chegar rápido numa parede derruba).
+    const speed = Math.min(run ? 9 : 1.3, 0.3 + left * 0.9)
+    // Continua no modo corrida enquanto a rampa de freada ainda está acima do andar
+    // (trocar de repente para o andar com o corpo embalado faz tropeçar).
+    this.npc.move(dir.multiplyScalar(speed), face, run && speed > 1.3)
+    return false
+  }
+
+  /** Onde está a ameaça: o jogador, se visto; senão onde foi visto/ouvido. */
+  threatPos(player: PlayerInfo) {
+    if (this.sees) return player.eye.clone()
+    if (this.sinceSeen < 8) return this.lastSeen.clone()
+    return this.attention?.clone() ?? player.eye.clone()
+  }
+
+  /**
+   * Anda por um caminho planejado (grade + A*) até `target`, desviando de
+   * paredes e caixas; com `threat`, prefere passar escondido. Replaneja se
+   * o alvo muda, se empaca ou de tempos em tempos. Retorna true ao chegar.
+   */
+  navigateTo(target: THREE.Vector3, run: boolean, radius: number, face: number | null = null, threat: THREE.Vector3 | null = null) {
+    const me = this.chest.clone().setY(0)
+    const goal = target.clone().setY(0)
+    if (me.distanceTo(goal) < Math.max(radius, 0.2)) {
+      this.npc.move(null, face)
+      this.nav = null
+      return true
+    }
+    const dt = 1 / 60
+    let nav = this.nav
+    if (!nav || nav.target.distanceTo(goal) > 0.5 || nav.age > 4 || nav.stuck > 1.5) {
+      const path = this.grid.plan(me, goal, threat)
+      if (!path) {
+        this.nav = null
+        return this.steerTo(goal, run, radius, face)
+      }
+      nav = this.nav = { target: goal, path, i: 1, age: 0, best: Infinity, stuck: 0 }
+    }
+    nav.age += dt
+    // Avança o ponto do caminho quando chega perto dele.
+    while (nav.i < nav.path.length - 1 && me.distanceTo(nav.path[nav.i]) < 0.55) nav.i++
+    let remaining = me.distanceTo(nav.path[nav.i])
+    for (let k = nav.i; k < nav.path.length - 1; k++) remaining += nav.path[k].distanceTo(nav.path[k + 1])
+    // Empacou (sem progresso)? Replaneja.
+    if (remaining < nav.best - 0.25) {
+      nav.best = remaining
+      nav.stuck = 0
+    } else nav.stuck += dt
+    // A velocidade freia pela distância que falta no caminho, não até a curva.
+    this.steerTo(nav.path[nav.i], run, 0.05, face, remaining)
     return false
   }
 
   /**
-   * Procura cobertura: pontos ao redor (anéis) atrás de algo que bloqueie a
-   * linha do jogador ao peito (agachado ou em pé), livres para ficar, sem
-   * passar perto do jogador. Inclui objetos colocados pelo jogador.
+   * Vai até a cobertura e se abaixa conforme a altura dela: começa a
+   * agachar perto, e lá fica encarando a ameaça. Retorna true se está lá.
    */
-  private findCover(player: PlayerInfo): { pos: THREE.Vector3; low: boolean } | null {
+  approachCover(c: Cover, threat: THREE.Vector3) {
+    const npc = this.npc
+    const d = this.chest.clone().setY(0).distanceTo(c.pos)
+    const face = Math.atan2(-(threat.x - this.chest.x), -(threat.z - this.chest.z))
+    // Longe: corre olhando o caminho; perto: encara a ameaça.
+    const there = this.navigateTo(c.pos, d > 3, 0.3, d < 2 ? face : null, threat)
+    const duck = THREE.MathUtils.clamp((COVER_BODY.duckFrom - d) / (COVER_BODY.duckFrom - 0.3), 0, 1)
+    npc.crouch = c.crouch * (there ? 1 : duck)
+    if (there) npc.move(null, face)
+    return there
+  }
+
+  /**
+   * Procura cobertura contra a ameaça: amostra pontos ao redor, acha o
+   * obstáculo entre cada ponto e a ameaça e se cola atrás dele; mede a
+   * altura do obstáculo para saber se dá para ficar em pé ou quanto
+   * agachar. Escolhe pelo comprimento do caminho real (A*), evitando ir em
+   * direção à ameaça e coberturas que só escondem o tronco.
+   */
+  findCover(player: PlayerInfo, threat: THREE.Vector3 = this.threatPos(player)): Cover | null {
     const world = this.physics.world
-    const from = player.eye
-    let best: { pos: THREE.Vector3; low: boolean; score: number } | null = null
+    const own = (b: RAPIER.RigidBody) => this.npc.owns(b)
     const me = this.chest.clone().setY(0)
-    const playerFlat = from.clone().setY(0)
+    const threatFlat = threat.clone().setY(0)
+    const seen: THREE.Vector3[] = []
+    const cands: (Cover & { score: number })[] = []
+    const rayHit = (from: THREE.Vector3, dir: THREE.Vector3, len: number) =>
+      world.castRay(new RAPIER.Ray(from, dir), len, true, undefined, undefined, player.collider, undefined, (c: RAPIER.Collider) => solid(c, own))
+    const DOWN = new THREE.Vector3(0, -1, 0)
     for (let r = 1.5; r <= 12; r += 1.5) {
       const n = Math.round(6 + r * 2.5)
       for (let i = 0; i < n; i++) {
         const a = (i / n) * Math.PI * 2
         const p = me.clone().add(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r))
-        if (p.distanceTo(playerFlat) < 4) continue
-        // Livre: sem nada onde o corpo fica (cápsula de 0,3 m).
-        const free = !world.intersectionWithShape(
-          { x: p.x, y: 0.9, z: p.z },
-          { x: 0, y: 0, z: 0, w: 1 },
-          new RAPIER.Capsule(0.55, 0.3),
-          undefined,
-          undefined,
-          player.collider,
-          undefined,
-          (c) => !(c.parent() && this.npc.owns(c.parent()!)),
-        )
-        if (!free) continue
-        // Bloqueia a linha até o peito agachado? E em pé?
-        const lowHidden = !this.clearLine(from, p.clone().setY(0.95), player.collider)
-        if (!lowHidden) continue
-        const highHidden = !this.clearLine(from, p.clone().setY(1.45), player.collider)
-        // O obstáculo precisa estar perto (cobertura "colada", não só longe na sala).
-        const toP = p.clone().setY(1).sub(from)
-        const hit = world.castRay(new RAPIER.Ray(from, toP.clone().normalize()), toP.length(), true, undefined, undefined, player.collider)
-        if (!hit || toP.length() - hit.timeOfImpact > 1.6) continue
-        // Não vai em direção ao jogador.
-        const towards = p.clone().sub(me).normalize().dot(playerFlat.clone().sub(me).normalize())
-        const score = r + (highHidden ? 0 : 1.5) + Math.max(0, towards) * 6
-        if (!best || score < best.score) best = { pos: p, low: !highHidden, score }
+        // Da amostra em direção à ameaça, na altura do peito agachado:
+        // tem um obstáculo perto? Esse é o anteparo.
+        const toThreat = threatFlat.clone().sub(p)
+        const tDist = toThreat.length()
+        if (tDist < 4) continue
+        toThreat.divideScalar(tDist)
+        const probeY = 0.75
+        const hit = rayHit(p.clone().setY(probeY), toThreat, Math.min(3, tDist - 1))
+        if (!hit) continue
+        const face = p.clone().addScaledVector(toThreat, hit.timeOfImpact)
+        const pos = face.clone().addScaledVector(toThreat, -COVER_BODY.hug).setY(0)
+        if (seen.some((q) => q.distanceTo(pos) < 0.5)) continue
+        seen.push(pos)
+        if (pos.distanceTo(threatFlat) < 4 || this.memory.isCoverBad(pos)) continue
+        if (!this.grid.free(pos.x, pos.z)) continue
+        // Altura do topo do obstáculo logo à frente da face.
+        let top = probeY
+        for (const inset of [0.08, 0.2]) {
+          const down = rayHit(face.clone().addScaledVector(toThreat, inset).setY(3), DOWN, 3)
+          if (down) top = Math.max(top, 3 - down.timeOfImpact)
+        }
+        // Quanto agachar para a cabeça sumir (checando a linha da ameaça).
+        let crouch = -1
+        for (const c of [0, 0.35, 0.7, 1]) {
+          if (!this.clearLine(threat, pos.clone().setY(COVER_BODY.head(c) - 0.08), player.collider)) {
+            crouch = c
+            break
+          }
+        }
+        const partial = crouch < 0
+        if (partial) {
+          // Nem agachado: serve se ao menos o peito agachado some.
+          if (this.clearLine(threat, pos.clone().setY(COVER_BODY.chest(1)), player.collider)) continue
+          crouch = 1
+        }
+        // Cobertura de ponta (meio corpo para fora) vale menos: confere
+        // um pouco para cada lado.
+        const perp = new THREE.Vector3(-toThreat.z, 0, toThreat.x)
+        const yHide = partial ? COVER_BODY.chest(1) : COVER_BODY.head(crouch) - 0.08
+        let edge = 0
+        for (const s of [-0.35, 0.35]) if (this.clearLine(threat, pos.clone().addScaledVector(perp, s).setY(yHide), player.collider)) edge++
+        const away = pos.clone().sub(me)
+        const towards = away.lengthSq() > 1e-4 ? away.normalize().dot(threatFlat.clone().sub(me).normalize()) : 0
+        const score = me.distanceTo(pos) + crouch * 0.6 + (partial ? 4 : 0) + edge * 1.5 + Math.max(0, towards) * 6
+        cands.push({ pos, low: crouch > 0, crouch, top, partial, score })
       }
     }
-    return best ? { pos: best.pos, low: best.low } : null
+    cands.sort((a, b) => a.score - b.score)
+    // Confirma com o caminho de verdade (contornando obstáculos, escondido).
+    let best: (Cover & { score: number }) | null = null
+    for (const c of cands.slice(0, 4)) {
+      const path = this.grid.plan(me, c.pos, threat)
+      if (!path) continue
+      let len = 0
+      for (let k = 0; k < path.length - 1; k++) len += path[k].distanceTo(path[k + 1])
+      const score = c.score + (len - me.distanceTo(c.pos))
+      if (!best || score < best.score) best = { ...c, score }
+    }
+    if (!best) return null
+    const { score: _score, ...cover } = best
+    return cover
   }
 
-  private coverHolds(c: { pos: THREE.Vector3; low: boolean }, eye: THREE.Vector3) {
-    return !this.clearLine(eye, c.pos.clone().setY(c.low ? 0.95 : 1.45))
+  /** A cobertura ainda esconde (a cabeça no agachamento dela, ou o peito se for parcial)? */
+  coverHolds(c: Cover, eye: THREE.Vector3, collider?: RAPIER.Collider) {
+    const y = c.partial ? COVER_BODY.chest(1) : COVER_BODY.head(c.crouch) - 0.08
+    return !this.clearLine(eye, c.pos.clone().setY(y), collider)
   }
 
   private setState(s: AiState) {

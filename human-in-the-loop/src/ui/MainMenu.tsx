@@ -1,6 +1,16 @@
 import { useState } from 'react'
 import { AboutPanel, ControlsSheet, SettingsForm, type SettingsProps } from './MenuPanels'
 import { MenuLayout, type NavItem } from './MenuLayout'
+import { GAME_MODES, MODE_LABELS, type GameMode } from '../game/arena/Arena'
+
+const MODE_TEXT: Record<GameMode, string> = {
+  sandbox:
+    'Um manequim de crash test com ragdoll ativo, uma sala de testes e você. Ele anda, corre, se esquiva da mira, procura cobertura e se protege. Empurre, atire, arremesse caixas, amarre e construa: tudo é física.',
+  zombie:
+    'Uma masmorra de salas ligadas por portas. Zumbis aparecem quando você entra numa sala: só morrem com tiro na cabeça. Colete munição, armas e kits de vida pelo caminho; você tem vida limitada.',
+  swat:
+    'A mesma masmorra, agora com agentes armados. Eles procuram cobertura, miram e atiram. Colete munição, armas e kits de vida; você tem vida limitada.',
+}
 
 type Tab = 'home' | 'controls' | 'settings' | 'about'
 
@@ -14,6 +24,8 @@ const TITLES: Record<Tab, string> = {
 interface Props extends SettingsProps {
   ready: boolean
   onPlay: () => void
+  mode: GameMode
+  onMode: (m: GameMode) => void
 }
 
 /** Tela inicial, antes de capturar o mouse pela primeira vez. A cena roda atrás. */
@@ -22,7 +34,7 @@ export function MainMenu(p: Props) {
   const nav: NavItem[] = [
     {
       id: 'play',
-      label: p.ready ? 'Iniciar simulação' : 'Carregando física…',
+      label: p.ready ? `Jogar: ${MODE_LABELS[p.mode]}` : 'Carregando…',
       primary: true,
       disabled: !p.ready,
       onClick: p.onPlay,
@@ -39,7 +51,7 @@ export function MainMenu(p: Props) {
       tab={tab}
       onTab={(id) => setTab(id as Tab)}
       title={TITLES[tab]}
-      tag={tab === 'home' ? 'sandbox' : undefined}
+      tag={tab === 'home' ? MODE_LABELS[p.mode].toLowerCase() : undefined}
       footer={
         <>
           <span className={p.ready ? 'status-dot ok' : 'status-dot'} />
@@ -47,7 +59,7 @@ export function MainMenu(p: Props) {
         </>
       }
     >
-      {tab === 'home' && <Home ready={p.ready} onControls={() => setTab('controls')} />}
+      {tab === 'home' && <Home ready={p.ready} mode={p.mode} onMode={p.onMode} onControls={() => setTab('controls')} />}
       {tab === 'controls' && <ControlsSheet />}
       {tab === 'settings' && <SettingsForm {...p} />}
       {tab === 'about' && <AboutPanel />}
@@ -55,13 +67,30 @@ export function MainMenu(p: Props) {
   )
 }
 
-function Home({ ready, onControls }: { ready: boolean; onControls: () => void }) {
+function Home({
+  ready,
+  mode,
+  onMode,
+  onControls,
+}: {
+  ready: boolean
+  mode: GameMode
+  onMode: (m: GameMode) => void
+  onControls: () => void
+}) {
   return (
     <div className="home">
-      <p className="about-lead">
-        Um manequim de crash test com ragdoll ativo, uma sala de testes e você. Ele anda, corre, se esquiva da
-        mira, procura cobertura e se protege. Empurre, atire, arremesse caixas, amarre e construa: tudo é física.
-      </p>
+      <div className="field">
+        <span>Modo</span>
+        <div className="segmented" role="radiogroup" aria-label="Modo de jogo">
+          {GAME_MODES.map((m) => (
+            <button key={m} role="radio" aria-checked={m === mode} className={m === mode ? 'on' : undefined} onClick={() => onMode(m)}>
+              {MODE_LABELS[m]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="about-lead">{MODE_TEXT[mode]}</p>
       <ul className="home-quick">
         <li>
           <span className="keys">

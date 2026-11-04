@@ -86,8 +86,9 @@ passos do plano continuam sendo sistemas.
 ### Regras fixas
 
 - **Um único NPC por simulação.**
-- **O NPC nunca usa armas.** Ele só percebe, reage, se protege e foge.
-- O jogador **não pode criar NPCs**. O NPC da simulação pode ser resetado.
+- **O NPC tem um tipo**, escolhido pelo jogador no menu inicial ou nos ajustes: **civil** (percebe, reage, se protege e foge, nunca usa armas), **zumbi** ou **armado** (o único que pode usar uma arma). O tipo define o cérebro e a ficha (força dos motores, velocidade, visão, resistência) em `npc/types.ts`.
+- Trocar o tipo reinicia a simulação; **R** reinicia mantendo o tipo. O tipo fica salvo nas preferências.
+- O jogador **não pode criar NPCs** nem escolher quantos: é sempre um por simulação, só muda o tipo.
 
 ### Recursos extras que entram
 

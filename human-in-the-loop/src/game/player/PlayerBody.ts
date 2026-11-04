@@ -52,6 +52,9 @@ export class PlayerBody {
   private readonly controller: RAPIER.KinematicCharacterController
 
   private readonly velocity = new THREE.Vector3()
+  /** Empurrão externo (zumbi, tiro do NPC): decai sozinho; e fator de lentidão do passo (agarrado). */
+  private readonly shoveVel = new THREE.Vector3()
+  private slowFactor = 1
   private height: number = PLAYER.standHeight
   private grounded = false
   private sinceGrounded = 0
@@ -64,7 +67,7 @@ export class PlayerBody {
   private prevEye = 0
   private currEye = 0
 
-  private readonly spawnFeet: THREE.Vector3
+  readonly spawnFeet: THREE.Vector3
 
   constructor(world: RAPIER.World, spawnFeet: THREE.Vector3) {
     this.world = world
@@ -112,6 +115,17 @@ export class PlayerBody {
    */
   ignore: ((collider: RAPIER.Collider) => boolean) | null = null
 
+  /** Empurra o jogador (m/s no plano); decai sozinho. */
+  shove(x: number, z: number) {
+    this.shoveVel.x += x
+    this.shoveVel.z += z
+  }
+
+  /** Reduz a velocidade neste passo (agarrado); 1 = normal. */
+  slow(f: number) {
+    this.slowFactor = Math.min(this.slowFactor, f)
+  }
+
   /** Um passo fixo de física. `yaw` é a direção para onde a câmera olha. */
   update(dt: number, input: MoveInput, yaw: number) {
     this.prevCenter.copy(this.currCenter)
@@ -134,7 +148,8 @@ export class PlayerBody {
         : input.sprint && input.forward > 0 && !input.aiming
           ? PLAYER.sprintSpeed
           : PLAYER.walkSpeed) * (input.aiming ? PLAYER.aimSpeedScale : 1)
-    const target = wish.multiplyScalar(maxSpeed)
+    const target = wish.multiplyScalar(maxSpeed * this.slowFactor)
+    this.slowFactor = 1
 
     // Acelera em direção à velocidade alvo (chão: firme; ar: pouco controle).
     const accel = (this.grounded ? PLAYER.groundAccel : PLAYER.airAccel) * dt
@@ -163,7 +178,8 @@ export class PlayerBody {
       this.velocity.y -= PLAYER.gravity * dt
     }
 
-    const desired = { x: this.velocity.x * dt, y: this.velocity.y * dt, z: this.velocity.z * dt }
+    this.shoveVel.multiplyScalar(Math.exp(-5 * dt))
+    const desired = { x: (this.velocity.x + this.shoveVel.x) * dt, y: this.velocity.y * dt, z: (this.velocity.z + this.shoveVel.z) * dt }
     const ignore = this.ignore
     this.controller.computeColliderMovement(
       this.collider,

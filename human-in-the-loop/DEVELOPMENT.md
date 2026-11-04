@@ -103,6 +103,30 @@ simulação, o NPC nunca usa armas, o jogador não cria NPCs.
   (Tab): corda, mola, congelar, ímã. Menu inicial, abertura, logo e ajustes
   (sensibilidade, FOV, qualidade) na UI.
 
+## Fase H: Tipos de NPC
+
+Fundação (feita): `npc/types.ts` define `NpcKind` (`civilian | zombie | armed`),
+`NpcConfig` (strength, speed, vision, resistance), `NPC_CONFIGS`, `PlayerInfo`,
+`BrainContext` e o contrato `NpcBrain` (`update(dt, ctx)`, `reset`, `walkTo`,
+`notice`, `wounded`, `dispose`, `debug`, `cone`). `npc/createBrain.ts` é o
+único lugar que escolhe a classe do cérebro pelo tipo. O `Brain` atual é o
+civil e serve de base provisória para zumbi e armado.
+
+- `Game` guarda o tipo em `DebugState.npcKind`; `setNpcKind(kind)` troca
+  cérebro e ficha, aplica a força inicial do tipo e reinicia a simulação.
+  `resetScene` (R) não mexe no tipo. O corpo (`Npc`) é o mesmo para todos:
+  `applyConfig` aplica `speed` e `resistance`; a visão vai pelo cérebro.
+- UI: seletor "Tipo de NPC" em Ajustes (menu inicial e pausa); persistido em
+  `hitl.settings`.
+- Mantém-se 1 NPC por simulação.
+
+| # | Passo | Como testar |
+|---|-------|-------------|
+| 31 ✅ | **Arquitetura de tipos**: tipos, ficha, contrato de cérebro, escolha por tipo, seletor e reinício mantendo o tipo. | Trocar o tipo em Ajustes reinicia; R mantém o tipo; recarregar a página lembra. |
+| 32 | **Zumbi**: `ZombieBrain` (persegue, ataca corpo a corpo). | Zumbi vai até o jogador e o empurra/agarra. |
+| 33 | **Armado**: `ArmedBrain` (mira, atira, procura cobertura). | Armado atira e se abriga ao ser mirado. |
+| 34 ✅ | **Modos de jogo**: Sandbox (laboratório, 1 NPC), Zumbi e SWAT. Zumbi/SWAT só mudam o NPC: masmorra procedural (`world/dungeon.ts`: salas quadradas 14 m numa grade, 2–4 portas por sala, árvore + laços), inimigos que aparecem ao entrar na sala e somem a duas salas de distância (`arena/Arena.ts`), coleta (munição, rifle, espingarda, kit de vida), vida do jogador (tiros e agarrões de zumbi tiram vida), morte e R para masmorra nova. Game passou a ter uma lista de NPCs. | Menu inicial → Modo → Jogar. Andar de sala em sala, ver inimigos surgirem, pegar itens, perder vida, morrer e recomeçar. |
+
 ---
 
 ## Riscos técnicos

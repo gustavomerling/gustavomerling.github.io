@@ -1,3 +1,4 @@
+import { NPC_KINDS, NPC_KIND_LABELS, type NpcKind } from '../game/npc/types'
 import { CONTROL_GROUPS, KEY_LABELS, type Binding } from './controls'
 
 /** Opções de resolução (pixels por pixel CSS), até o máximo da tela. */
@@ -49,7 +50,20 @@ export interface SettingsProps {
   onPixelRatio: (v: number) => void
   fov?: number
   onFov?: (v: number) => void
+  /** Tipo do NPC; trocar reinicia a simulação. */
+  npcKind?: NpcKind
+  onNpcKind?: (k: NpcKind) => void
+  /** Sangue: 0 desligado, 0.5 baixo, 1 normal, 2 alto. */
+  blood?: number
+  onBlood?: (v: number) => void
 }
+
+const BLOOD_OPTIONS: [number, string][] = [
+  [0, 'Desligado'],
+  [0.5, 'Baixo'],
+  [1, 'Normal'],
+  [2, 'Alto'],
+]
 
 /** Ajustes do jogador (sensibilidade, qualidade, campo de visão). */
 export function SettingsForm(p: SettingsProps) {
@@ -94,6 +108,26 @@ export function SettingsForm(p: SettingsProps) {
         </label>
       )}
 
+      {p.npcKind && p.onNpcKind && (
+        <div className="field">
+          <span>Tipo de NPC</span>
+          <div className="segmented" role="radiogroup" aria-label="Tipo de NPC">
+            {NPC_KINDS.map((k) => (
+              <button
+                key={k}
+                role="radio"
+                aria-checked={k === p.npcKind}
+                className={k === p.npcKind ? 'on' : undefined}
+                onClick={() => p.onNpcKind?.(k)}
+              >
+                {NPC_KIND_LABELS[k]}
+              </button>
+            ))}
+          </div>
+          <small className="field-note">Trocar de tipo reinicia a simulação (R mantém o tipo).</small>
+        </div>
+      )}
+
       <div className="field">
         <span>Qualidade de render</span>
         <div className="segmented" role="radiogroup" aria-label="Qualidade de render">
@@ -113,6 +147,26 @@ export function SettingsForm(p: SettingsProps) {
           Pixels renderizados por pixel da tela. 100% é o padrão; abaixo disso fica mais leve em notebooks.
         </small>
       </div>
+
+      {p.blood !== undefined && p.onBlood && (
+        <div className="field">
+          <span>Sangue</span>
+          <div className="segmented" role="radiogroup" aria-label="Sangue">
+            {BLOOD_OPTIONS.map(([v, label]) => (
+              <button
+                key={v}
+                role="radio"
+                aria-checked={v === p.blood}
+                className={v === p.blood ? 'on' : undefined}
+                onClick={() => p.onBlood?.(v)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <small className="field-note">Respingos, poças e rastro. Desligado remove tudo e poupa processamento.</small>
+        </div>
+      )}
     </div>
   )
 }

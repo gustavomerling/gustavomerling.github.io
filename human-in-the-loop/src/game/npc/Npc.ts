@@ -1,7 +1,9 @@
 import * as THREE from 'three'
 import type { Physics, RAPIER } from '../engine/physics'
-import { Damage, OUT_COLD, REGIONS, REGION_OF, type HitKind, type Region } from './Damage'
+import type { NpcTraits } from './ZombieBrain'
+import { Damage, OUT_COLD, type DeathCause, REGIONS, REGION_OF, type HitKind, type Region } from './Damage'
 import { Grip } from './Grip'
+import { Idle, Stride, TERRAIN, adaptSwing, groundAt } from './Locomotion'
 import { PhysicalGetUp } from './PhysicalGetUp'
 import { POSES, type Pose, type PoseId } from './poses'
 import { Ragdoll, type PhysicalMotor } from './Ragdoll'
@@ -130,6 +132,17 @@ export const STAGGER = {
   balanceScale: 0.35,
 }
 
+/** Rastejar: ciclo (s), fração dele alcançando, mola da mão no chão e forças (N). */
+export const CRAWL = {
+  period: 1.5,
+  reach: 0.4,
+  gripKp: 300,
+  gripKd: 25,
+  pull: 700,
+  zombiePull: 1500,
+  legPush: 260,
+}
+
 /** Esquiva: impulso lateral no tronco (N·s) e duração da agachada (s). */
 export const DODGE = {
   impulse: 48,
@@ -195,6 +208,24 @@ export const GAIT = {
   supportMax: 0.6,
   walkKnee: -0.12,
   runKnee: -0.3,
+  /** Comprimento quadril→centro do pé (m) e fração usada andando/correndo (joelho dobrado). */
+  legLength: 0.88,
+  walkLegUse: 0.985,
+  runLegUse: 0.97,
+  /** Pélvis acima do quadril (m). */
+  hipToPelvis: 0.06,
+  /** Correndo: o quadril afunda no meio do apoio (m). */
+  runCompress: 0.02,
+  /** Oscilação da velocidade ao longo do passo (fração). */
+  surge: 0.07,
+  /** Ponta do pé no fim do apoio (rad, empurrão do calcanhar). */
+  toeOff: 0.2,
+}
+
+/** Agachado (crouch = 1): quanto a pélvis desce (m) e a inclinação do tronco (rad). */
+export const CROUCH = {
+  drop: 0.3,
+  lean: 0.4,
 }
 
 type Side = 'L' | 'R'
@@ -208,7 +239,35 @@ interface Swing {
   height: number
 }
 
-export type NpcState = 'standing' | 'falling' | 'down' | 'gettingUp' | 'unconscious' | 'crawling'
+/** Ferimento localizado, enviado a quem escuta `npc.onLimbDamaged`. */
+export interface LimbDamageInfo {
+  part: PartName
+  region: Region
+  kind: HitKind
+  /** Dano deste golpe (pontos) e integridade restante da parte (0–100). */
+  amount: number
+  integrity: number
+  /** Impulso (N·s) do golpe. */
+  impulse: number
+  /** A parte chegou a 0 agora (candidata a desmembramento). */
+  destroyed: boolean
+  /** Abriu/aumentou um ferimento que sangra. */
+  bleeding: boolean
+}
+
+export class Emitter<T> {
+  private fns = new Set<(v: T) => void>()
+  /** Registra; devolve a função que desfaz. */
+  add(fn: (v: T) => void) {
+    this.fns.add(fn)
+    return () => this.fns.delete(fn)
+  }
+  emit(v: T) {
+    for (const fn of this.fns) fn(v)
+  }
+}
+
+export type NpcState = 'standing' | 'falling' | 'down' | 'gettingUp' | 'unconscious' | 'crawling' | 'dead'
 
 export interface NpcDebug {
   state: NpcState
@@ -231,6 +290,11 @@ export interface NpcDebug {
   pain: number
   /** Desmaio permanente (até o reset). */
   outCold: boolean
+  /** Vida total (0–100), perda por sangramento (vida/s), morto e causa. */
+  life: number
+  bleedRate: number
+  dead: boolean
+  deathCause: DeathCause | ''
   /** Agarrar ao tropeçar: '', 'alcançando' ou 'segurando'. */
   grip: string
 }
@@ -314,6 +378,9 @@ export class Npc {
   /** Levanta sozinho depois de cair. */
   autoGetUp = true
   strength = 0.6
+  /** Da ficha do tipo (NpcConfig): multiplica a marcha; divide a força dos ferimentos. */
+  speedScale = 1
+  resistance = 1
   poseId: PoseId = 'stand'
   /** Ponto que ele tenta olhar (olhos do jogador), ou null. */
   lookTarget: THREE.Vector3 | null = null
@@ -334,13 +401,26 @@ export class Npc {
     overall: 100,
     pain: 0,
     outCold: false,
+    life: 100,
+    bleedRate: 0,
+    dead: false,
+    deathCause: '',
     grip: '',
   }
   readonly damage = new Damage()
+  /** Eventos para outros módulos (sangue, desmembramento, zumbi...). */
+  readonly onLimbDamaged = new Emitter<LimbDamageInfo>()
+  readonly onDeath = new Emitter<DeathCause>()
+  readonly onRevive = new Emitter<void>()
+  /** Uma parte vai se soltar (desmembramento), emitido antes de remover a junta. */
+  readonly onDetach = new Emitter<PartName>()
+  private dead = false
+  causeOfDeath: DeathCause | null = null
   /** Tempo restante desmaiado (Infinity = até o reset). */
   private knockout = 0
-  /** Ciclo do rastejar (s). */
+  /** Ciclo do rastejar (s) e onde cada mão fincou no chão. */
   private crawlT = 0
+  private readonly crawlAnchor: Record<Side, THREE.Vector3 | null> = { L: null, R: null }
 
   private swing: Swing | null = null
   private stepCooldown = 0
@@ -386,6 +466,8 @@ export class Npc {
   private legPhase = 0
   /** Poses extras somadas por cima da pose em pé (reflexos, guarda). */
   overlay: Pose | null = null
+  /** Multiplicador da rigidez dos motores de cada braço (o NPC armado sobe o direito para sustentar a arma esticada). */
+  readonly armBoost: Record<Side, number> = { L: 1, R: 1 }
   overlayWeight = 0
 
   private readonly com = new THREE.Vector3()
@@ -394,6 +476,16 @@ export class Npc {
   private readonly tmpV = new THREE.Vector3()
 
   readonly grip: Grip
+
+  /** Terreno e naturalidade (ver Locomotion.ts). */
+  private readonly stride = new Stride()
+  private readonly idle = new Idle()
+  /** Fator de velocidade pelo relevo à frente (1 = plano) e subida do pé de apoio. */
+  private terrainSlow = 1
+  private readonly acceptGround = (c: RAPIER.Collider) => {
+    const b = c.parent()
+    return !b || (!this.ragdoll.partOf(b) && (b.isFixed() || b.mass() >= 20))
+  }
 
   constructor(physics: Physics, scene: THREE.Scene) {
     this.physics = physics
@@ -424,6 +516,34 @@ export class Npc {
     this.enterFalling('forward')
   }
 
+  /** Vida total (0–100): partes ponderadas menos sangramento. */
+  get health() {
+    return this.damage.life
+  }
+
+  get isDead() {
+    return this.dead
+  }
+
+  /** Perda de vida por segundo por sangramento. */
+  get bleedRate() {
+    return this.damage.bleedRate
+  }
+
+  /** Mata (debug/outros módulos): motores desligam aos poucos, ragdoll passivo. */
+  kill(cause: DeathCause = 'trauma') {
+    if (this.dead) return
+    this.dead = true
+    this.causeOfDeath = cause
+    this.getUp = null
+    this.grip.release()
+    this.move(null)
+    this.swing = null
+    this.lookTarget = null
+    this.setState('dead')
+    this.onDeath.emit(cause)
+  }
+
   /** Empurrão no peito (debug e, futuramente, impactos). */
   push(impulse: THREE.Vector3) {
     // Empurrão forte no meio da animação de levantar devolve o corpo à física.
@@ -441,7 +561,7 @@ export class Npc {
    */
   hit(body: RAPIER.RigidBody, impulse: THREE.Vector3, point: THREE.Vector3, kind?: HitKind) {
     const strength = impulse.length()
-    if (kind) this.wound(body, strength, kind)
+    if (kind) this.wound(body, strength / this.resistance, kind)
     if (this.state === 'standing' && strength > STAGGER.threshold) {
       const s = (strength - STAGGER.threshold) * STAGGER.secondsPerImpulse
       this.stagger = Math.min(STAGGER.max, this.stagger + s)
@@ -455,11 +575,38 @@ export class Npc {
   /** Aplica o dano de um impacto e reage (desmaio, perder as pernas...). */
   private wound(body: RAPIER.RigidBody, impulse: number, kind: HitKind) {
     const part = this.ragdoll.partOf(body)
-    if (!part) return
+    if (!part || this.ragdoll.isDetached(part)) return
+    const was = this.damage.health.get(part)!
+    const bled = this.damage.bleeding.get(part) ?? 0
     const ev = this.damage.apply(part, impulse, kind)
+    const integrity = this.damage.health.get(part)!
+    this.onLimbDamaged.emit({
+      part,
+      region: REGION_OF[part],
+      kind,
+      amount: ev.amount,
+      integrity,
+      impulse,
+      destroyed: was > 0 && integrity <= 0,
+      bleeding: (this.damage.bleeding.get(part) ?? 0) > bled,
+    })
     if (impulse > 6) this.onWound?.(REGION_OF[part])
-    this.ragdoll.setDamageTint(part, 1 - this.damage.health.get(part)! / 100)
-    if (this.damage.overall < OUT_COLD) {
+    this.ragdoll.setDamageTint(part, 1 - integrity / 100)
+    // Desmembramento vale também para o corpo morto.
+    const sever = this.damage.severTarget(part, ev.amount, was)
+    if (sever && this.detachLimb(sever)) return
+    if (this.dead) return
+    const t = this.traits
+    if (t) {
+      // Zumbi: dor e desmaio não contam; só um tiro que destrói a cabeça mata.
+      if (kind === 'shot' && part === 'head' && integrity <= t.headKillHealth) this.kill('critical')
+      else if (this.state === 'standing' && !this.damage.canStand) this.enterFalling('forward')
+      return
+    }
+    const cause = this.damage.deathCause
+    if (cause) {
+      this.kill(cause)
+    } else if (this.damage.overall < OUT_COLD) {
       this.knockOut(Infinity)
     } else if (ev.knockout) {
       this.knockOut(2.5 + Math.random() * 2)
@@ -468,14 +615,55 @@ export class Npc {
     }
   }
 
+  /**
+   * Desmembramento: destaca `part` (e o que pende dela) do corpo. O toco
+   * fica; o membro vira corpo livre. Perna ausente = rasteja, braço ausente =
+   * sem apoio, cabeça = morte (`kill('critical')`). Devolve false se
+   * não dá para destacar (tronco ou já solta).
+   */
+  detachLimb(part: PartName): boolean {
+    if (this.ragdoll.isDetached(part) || REGION_OF[part] === 'torso') return false
+    // Antes de soltar: quem segura o corpo (mãos do jogador) solta, senão restaura o grupo de colisão antigo.
+    this.onDetach.emit(part)
+    const freed = this.ragdoll.detach(part)
+    if (!freed.length) return false
+    for (const name of freed) {
+      this.damage.health.set(name, 0)
+      this.ragdoll.setDamageTint(name, 1)
+    }
+    this.damage.pain = Math.min(1, this.damage.pain + 0.5)
+    const region = REGION_OF[part]
+    if (this.grip.side && (region === 'armL' || region === 'armR') && this.grip.side === region.slice(-1)) this.grip.release()
+    this.swing = null
+    if (this.dead) return true
+    this.onWound?.(region)
+    const cause = region === 'head' ? 'critical' : this.damage.deathCause
+    if (cause) this.kill(cause)
+    else if (!this.damage.undying && this.damage.overall < OUT_COLD) this.knockOut(Infinity)
+    else if (this.state === 'standing' && !this.damage.canStand) this.enterFalling('forward')
+    else this.refreshMotors()
+    return true
+  }
+
+  /** Reaplica os motores do estado atual (depois de perder um membro). */
+  private refreshMotors() {
+    if (this.state === 'standing') this.applyStandingMotors(POSES[this.poseId].pose)
+  }
+
   private heal() {
+    const wasDead = this.dead
+    this.dead = false
+    this.causeOfDeath = null
     this.damage.reset()
+    this.damage.undying = this.traits !== null
     this.knockout = 0
     for (const name of Object.keys(REGION_OF) as PartName[]) this.ragdoll.setDamageTint(name, 0)
+    if (wasDead) this.onRevive.emit()
   }
 
   /** Desmaia: corpo mole por um tempo (ou até o reset). */
   private knockOut(seconds: number) {
+    if (this.dead) return
     this.getUp = null
     this.grip.release()
     this.knockout = Math.max(this.knockout, seconds)
@@ -501,9 +689,18 @@ export class Npc {
   /** Chamado quando uma região é ferida (a IA reage). */
   onWound: ((region: Region) => void) | null = null
 
+  /** Tipo especial de NPC (zumbi, ver ZombieBrain.ts); null = humano comum. */
+  traits: NpcTraits | null = null
+
   /** O corpo rígido pertence ao NPC? */
   owns(body: RAPIER.RigidBody) {
     return this.ragdoll.hasBody(body)
+  }
+
+  /** Aplica a ficha do tipo (velocidade, resistência). Força e visão são do Game/cérebro. */
+  applyConfig(config: { speed: number; resistance: number }) {
+    this.speedScale = config.speed
+    this.resistance = config.resistance
   }
 
   setStrength(strength: number) {
@@ -555,15 +752,23 @@ export class Npc {
   update(dt: number) {
     this.stateTime += dt
     this.debug.state = this.state
-    this.damage.update(dt)
+    this.damage.update(dt, !this.dead)
+    if (this.traits) this.damage.pain = 0
+    if (!this.dead) {
+      const cause = this.damage.deathCause
+      if (cause) this.kill(cause)
+    }
+    this.ragdoll.cleanup(this.position(this.tmpV))
     this.updateDamageDebug()
     this.updateGaze(dt)
-    const limp = this.state === 'unconscious' || this.state === 'down' || this.state === 'crawling' || this.state === 'gettingUp'
+    const limp = this.state === 'unconscious' || this.state === 'dead' || this.state === 'down' || this.state === 'crawling' || this.state === 'gettingUp'
     const calm =
       this.state === 'standing' && !this.swing && Math.hypot(this.debug.captureForward, this.debug.captureSide) < 0.08
     this.grip.update(dt, calm, limp)
     this.debug.grip = this.grip.state
     switch (this.state) {
+      case 'dead':
+        return this.updateDead()
       case 'unconscious':
         return this.updateUnconscious(dt)
       case 'crawling':
@@ -653,9 +858,16 @@ export class Npc {
     this.debug.captureForward = err.forward
     this.debug.captureSide = err.side
     // Muito desequilibrado (tropeçando): tenta se apoiar em algo por perto.
-    if (Math.hypot(err.forward, err.side) > GRIP_TRIGGER && !this.grip.holding) {
-      this.grip.tryGrab(this.fromLocal(err.forward, err.side), this.armsOk())
-    }
+    // Andando, o ponto de captura fica naturalmente bem à frente dos pés
+    // (é assim que se anda); o que conta é o desvio da velocidade pretendida
+    // (empurrão, tropeço) e o tronco tombando. Sem isso ele agarrava
+    // paredes ao passar rente a elas (esquinas).
+    const walking = this.wasMoving && this.stagger <= 0
+    const slip = walking
+      ? new THREE.Vector3(this.comVel.x - this.walkVel.x, 0, this.comVel.z - this.walkVel.z).multiplyScalar(t)
+      : this.fromLocal(err.forward, err.side)
+    if (walking && tilt > 0.35) slip.addScaledVector(new THREE.Vector3(pelvisUp.x, 0, pelvisUp.z).normalize(), tilt - 0.35)
+    if (slip.length() > GRIP_TRIGGER && !this.grip.holding) this.grip.tryGrab(slip, this.armsOk())
 
     // --- Locomoção: rampa da velocidade e direção ---------------------------
     this.dodgeDip = Math.max(0, this.dodgeDip - dt)
@@ -665,7 +877,19 @@ export class Npc {
     // Só dispara a correr já virado para onde vai.
     const aligned = this.cmdVel.lengthSq() < 0.01 || Math.abs(Npc.angleDiff(Npc.yawOf(this.cmdVel), this.heading)) < 0.5
     const runNow = this.running && (aligned || this.walkVel.length() > GAIT.walkSpeed)
-    const maxSpeed = (runNow ? GAIT.runSpeed : GAIT.walkSpeed) * (0.35 + 0.65 * legsOk) * (1 - 0.5 * this.crouchNow)
+    // Relevo à frente: degrau/rampa à frente = anda mais devagar.
+    {
+      const dir = this.cmdVel.lengthSq() > 1e-3 ? this.cmdVel : this.walkVel
+      let slow = 1
+      if (dir.lengthSq() > 1e-3) {
+        const y0 = (this.ragdoll.part('footL').body.translation().y + this.ragdoll.part('footR').body.translation().y) / 2
+        const a = groundAt(this.physics, this.com.x + dir.x / dir.length() * 0.7, this.com.z + dir.z / dir.length() * 0.7, y0 + TERRAIN.rayUp + 0.4, this.acceptGround)
+        if (a !== null) slow = 1 - 0.5 * THREE.MathUtils.clamp((a - (y0 - TERRAIN.footRest) - 0.06) / 0.25, 0, 1)
+      }
+      this.terrainSlow += (slow - this.terrainSlow) * (1 - Math.exp(-4 * dt))
+    }
+    const maxSpeed =
+      (runNow ? GAIT.runSpeed : GAIT.walkSpeed) * this.speedScale * (0.35 + 0.65 * legsOk) * (1 - 0.5 * this.crouchNow) * this.terrainSlow
     const want = this.cmdVel.clone()
     if (want.length() > maxSpeed) want.setLength(maxSpeed)
     if (this.stagger > 0) want.multiplyScalar(0.3)
@@ -728,7 +952,9 @@ export class Npc {
 
     // Apoio: os dois pés; durante o passo, só o pé que ficou no chão.
     // Perna ferida: apoia o peso na outra (manca).
-    const bias = THREE.MathUtils.clamp((this.damage.region('legR') - this.damage.region('legL')) / 100, -1, 1) * 0.45
+    const bias0 = THREE.MathUtils.clamp((this.damage.region('legR') - this.damage.region('legL')) / 100, -1, 1) * 0.45
+    this.idle.update(dt, !moving && !swing && this.stagger <= 0 && this.crouchNow < 0.05 && this.damage.canStand)
+    const bias = THREE.MathUtils.clamp(bias0 + (moving ? 0 : this.idle.bias * 0.5), -1, 1)
     const shifted = mid.clone().lerp(new THREE.Vector3(bias > 0 ? fr.x : fl.x, 0, bias > 0 ? fr.z : fl.z), Math.abs(bias))
     const support = swing ? (swing.side === 'L' ? fr : fl) : shifted
     const ex = capture.x - support.x
@@ -743,6 +969,7 @@ export class Npc {
       this.legPhase = swing.side === 'L' ? -1 + 2 * u : 1 - 2 * u
     }
     const pose = this.standingPose(moving ? { forward: 0, side: this.smoothErr.side * 0.3 } : this.smoothErr, swing, moving)
+    if (!moving) this.idle.apply(pose, this.idle.active ? 1 : 0)
     this.applyStandingMotors(pose)
     if (swing) this.driveSwing(swing, dt)
 
@@ -755,7 +982,10 @@ export class Npc {
     if (moving) {
       // Andando: segue a velocidade desejada e, de lado, mantém o ponto de
       // captura entre os pés (não deriva para fora da passada).
-      force = this.walkVel.clone().sub(new THREE.Vector3(this.comVel.x, 0, this.comVel.z)).multiplyScalar(mass * GAIT.forceKv)
+      // Andando, a velocidade oscila com a passada: mais lenta no meio do
+      // apoio (corpo passando por cima da perna), mais rápida no duplo apoio.
+      const surge = swing && !this.running ? 1 + GAIT.surge * Math.cos(2 * Math.PI * Math.min(1, swing.t / swing.duration)) : 1
+      force = this.walkVel.clone().multiplyScalar(surge).sub(new THREE.Vector3(this.comVel.x, 0, this.comVel.z)).multiplyScalar(mass * GAIT.forceKv)
       const dir = this.walkVel.lengthSq() > 1e-4 ? this.walkVel.clone().normalize() : this.fromLocal(1, 0)
       const perp = new THREE.Vector3(-dir.z, 0, dir.x)
       const lat = perp.dot(new THREE.Vector3(capture.x - mid.x, 0, capture.z - mid.z))
@@ -769,10 +999,13 @@ export class Npc {
     if (moving || this.crouchNow > 0.05) {
       // Sustentação: andando (ou agachado), a perna de apoio é ajudada a
       // não ceder (o joelho físico sozinho afunda quando o pé fica atrás).
-      const want = 0.95 - 0.25 * this.crouchNow
-      const h = pelvis.translation().y - feetY
+      // A altura pedida sai da geometria da perna (ver supportHeight): sem
+      // isso o quadril ficava "pendurado" acima do que a perna alcança e
+      // os pés mal tocavam o chão (andar flutuando).
+      const { want, stanceY } = this.supportHeight(swing, fl, fr, moving)
+      const h = pelvis.translation().y - stanceY
       const vy = pelvis.linvel().y
-      const up = THREE.MathUtils.clamp(mass * (GAIT.supportKp * (want - h) - GAIT.supportKd * vy), 0, GAIT.supportMax * mass * 9.81 * legs)
+      const up = THREE.MathUtils.clamp(mass * (GAIT.supportKp * (want - h) - GAIT.supportKd * vy), 0, (GAIT.supportMax + 0.5 * THREE.MathUtils.clamp((want - h) / 0.2, 0, 1)) * mass * 9.81 * legs)
       pelvis.applyImpulse({ x: 0, y: up * dt, z: 0 }, true)
     }
     if (force.length() > maxF) force.setLength(maxF)
@@ -842,6 +1075,12 @@ export class Npc {
 
   // --- Ferimentos: desmaio e rastejar -------------------------------------------
 
+  /** Motores desligam gradualmente até o corpo ficar totalmente passivo. */
+  private updateDead() {
+    const k = Math.max(0, 1 - this.stateTime / 1.5)
+    this.ragdoll.setMotors(POSES.stand.pose, 0.15 * k * k + 0.0005)
+  }
+
   private updateUnconscious(dt: number) {
     if (this.knockout === Infinity) return
     this.knockout -= dt
@@ -898,34 +1137,107 @@ export class Npc {
       return
     }
 
-    // Ciclo: estende os braços (alcançar) e depois puxa.
-    const period = 1.4
-    const phase = (this.crawlT % period) / period
-    const reach = phase < 0.5
-    const armPose: Pose = reach
-      ? { upperArmL: [2.6, 0, -0.35], upperArmR: [2.6, 0, 0.35], forearmL: [0.2, 0, 0], forearmR: [0.2, 0, 0], head: [0.4, 0, 0] }
-      : { upperArmL: [0.9, 0, -0.5], upperArmR: [0.9, 0, 0.5], forearmL: [1.8, 0, 0], forearmR: [1.8, 0, 0], head: [0.4, 0, 0] }
-    this.ragdoll.setMotors(armPose, 0.55 * (1 - 0.35 * this.damage.pain), {}, limbs)
-
-    if (!reach) {
-      // Puxada: força no tronco na direção da cabeça (como as mãos agarrando o chão).
-      const pull = Math.sin(((phase - 0.5) / 0.5) * Math.PI) * 1100 * (this.damage.overall / 100)
-      const impulse = headDir.clone().multiplyScalar(pull * dt * 0.5)
-      chest.applyImpulse(impulse, true)
-      pelvis.applyImpulse(impulse, true)
+    // Rastejar "de comando": os braços alternam. Cada braço alcança à
+    // frente com a mão no ar, finca a mão no chão (âncora) e puxa o corpo
+    // até ela, dobrando o cotovelo. A perna boa encolhe (joelho para o
+    // lado) junto com o alcance do braço oposto e empurra junto com a
+    // puxada dele. O corpo é arrastado pela mão, não empurrado do nada.
+    const period = CRAWL.period * (this.traits ? 0.8 : 1)
+    const vigor = (this.traits ? Math.max(0.5, this.damage.overall / 100) : this.damage.overall / 100) * (1 - 0.3 * this.damage.pain)
+    const pose: Pose = { head: [0.45, 0, 0], chest: [-0.05, 0, 0] }
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(q).setY(0)
+    if (right.lengthSq() < 1e-4) right.set(-headDir.z, 0, headDir.x)
+    right.normalize()
+    const phaseOf = (side: Side) => (this.crawlT / period + (side === 'R' ? 0.5 : 0)) % 1
+    const smooth = (x: number) => THREE.MathUtils.smoothstep(x, 0, 1)
+    const legPush = new THREE.Vector3()
+    for (const side of ['L', 'R'] as const) {
+      const out = side === 'L' ? -1 : 1
+      const phase = phaseOf(side)
+      const hand = this.ragdoll.isAttached(`hand${side}`) ? this.ragdoll.part(`hand${side}`).body : null
+      const armOk = hand && this.damage.region(side === 'L' ? 'armL' : 'armR') >= 25
+      if (phase < CRAWL.reach) {
+        // Alcança: braço vai por cima, à frente da cabeça, cotovelo estica.
+        const u = smooth(phase / CRAWL.reach)
+        pose[`upperArm${side}`] = [0.9 + 1.7 * u, 0, out * 0.4]
+        pose[`forearm${side}`] = [1.9 - 1.6 * u, 0, 0]
+        this.crawlAnchor[side] = null
+      } else {
+        const u = (phase - CRAWL.reach) / (1 - CRAWL.reach)
+        // Puxa: o braço volta para baixo do peito e o cotovelo dobra.
+        pose[`upperArm${side}`] = [2.6 - 1.9 * smooth(u), 0, out * (0.4 + 0.2 * u)]
+        pose[`forearm${side}`] = [0.3 + 1.6 * smooth(u), 0, 0]
+        if (hand && armOk) {
+          const hp = hand.translation()
+          let anchor = this.crawlAnchor[side]
+          // Mão escorregou para longe (corpo girou, foi empurrado): finca de novo.
+          if (!anchor || Math.hypot(anchor.x - hp.x, anchor.z - hp.z) > 0.35) anchor = this.crawlAnchor[side] = new THREE.Vector3(hp.x, 0, hp.z)
+          // A mão fica presa onde fincou (atrito da palma no chão).
+          const hv = hand.linvel()
+          const m = hand.mass()
+          hand.applyImpulse(
+            { x: (CRAWL.gripKp * (anchor.x - hp.x) - CRAWL.gripKd * hv.x) * m * dt, y: 0, z: (CRAWL.gripKp * (anchor.z - hp.z) - CRAWL.gripKd * hv.z) * m * dt },
+            true,
+          )
+          // O ombro é puxado em direção à mão.
+          const c = chest.translation()
+          const shoulder = new THREE.Vector3(c.x, c.y, c.z).addScaledVector(right, out * 0.18)
+          const toHand = new THREE.Vector3(anchor.x - shoulder.x, 0, anchor.z - shoulder.z)
+          const dist = toHand.length()
+          if (dist > 0.12) {
+            toHand.divideScalar(dist)
+            // Ainda puxa um pouco para a frente mesmo com a mão de lado.
+            toHand.lerp(headDir, 0.35).normalize()
+            const f = Math.sin(Math.PI * u) * (this.traits ? CRAWL.zombiePull : CRAWL.pull) * vigor * Math.min(1, dist / 0.3)
+            chest.applyImpulseAtPoint(toHand.clone().multiplyScalar(f * 0.6 * dt), shoulder, true)
+            pelvis.applyImpulse(toHand.multiplyScalar(f * 0.4 * dt), true)
+          }
+        }
+      }
+      // Perna deste lado acompanha o braço do outro lado.
+      const other = phaseOf(side === 'L' ? 'R' : 'L')
+      const legHealth = this.damage.region(side === 'L' ? 'legL' : 'legR')
+      const legOk = this.ragdoll.isAttached(`foot${side}`) && legHealth >= 30
+      if (other < CRAWL.reach) {
+        const u = smooth(other / CRAWL.reach)
+        pose[`thigh${side}`] = [0.9 * u, 0, out * 0.75 * u]
+        pose[`shin${side}`] = [-1.6 * u, 0, 0]
+      } else {
+        const u = smooth((other - CRAWL.reach) / (1 - CRAWL.reach))
+        pose[`thigh${side}`] = [0.9 * (1 - u), 0, out * (0.75 - 0.5 * u)]
+        pose[`shin${side}`] = [-1.6 * (1 - u) - 0.15, 0, 0]
+        if (legOk) legPush.addScaledVector(headDir, Math.sin(Math.PI * u) * CRAWL.legPush * (legHealth / 100) * vigor)
+      }
     }
+    if (legPush.lengthSq() > 0) pelvis.applyImpulse(legPush.multiplyScalar(dt), true)
+    const legScale = (side: Side) => {
+      const h = this.damage.region(side === 'L' ? 'legL' : 'legR')
+      return h >= 30 ? 0.25 + 0.25 * (h / 100) : 0.04
+    }
+    const crawlLimbs = {
+      ...this.limbScale(),
+      thighL: legScale('L'),
+      shinL: legScale('L'),
+      footL: 0.05,
+      thighR: legScale('R'),
+      shinR: legScale('R'),
+      footR: 0.05,
+    }
+    this.ragdoll.setMotors(pose, 0.55 * (1 - 0.35 * this.damage.pain), {}, crawlLimbs)
 
     // Vira a cabeça (direção do rastejar) para longe do jogador.
     if (this.lookTarget) {
       const p = pelvis.translation()
       const away = new THREE.Vector3(p.x - this.lookTarget.x, 0, p.z - this.lookTarget.z).normalize()
+      // Zumbi rasteja em direção ao alvo; os outros, para longe dele.
+      if (this.traits) away.negate()
       const yawErr = Math.atan2(headDir.clone().cross(away).y, headDir.dot(away))
       const w = pelvis.angvel()
       for (const name of ['pelvis', 'chest'] as const) {
         const b = this.ragdoll.part(name).body
         const inertia = b.principalInertia()
         const i = (inertia.x + inertia.y + inertia.z) / 3
-        b.applyTorqueImpulse({ x: 0, y: (20 * yawErr - 6 * w.y) * i * dt, z: 0 }, true)
+        b.applyTorqueImpulse({ x: 0, y: ((this.traits ? 70 : 20) * yawErr - (this.traits ? 14 : 6) * w.y) * i * dt, z: 0 }, true)
       }
     }
   }
@@ -935,6 +1247,47 @@ export class Npc {
     this.debug.overall = this.damage.overall
     this.debug.pain = this.damage.pain
     this.debug.outCold = this.knockout === Infinity
+    this.debug.life = this.damage.life
+    this.debug.bleedRate = this.damage.bleedRate
+    this.debug.dead = this.dead
+    this.debug.deathCause = this.causeOfDeath ?? ''
+  }
+
+  /**
+   * Altura da pélvis (acima do centro do pé de apoio) que a perna de apoio
+   * realmente alcança: quanto mais longe o pé está do quadril na
+   * horizontal, mais baixo o quadril (perna como um compasso). Isso dá o
+   * sobe-e-desce natural do andar: alto no meio do apoio, baixo quando os
+   * dois pés estão no chão. Correndo, o joelho cede no meio do apoio.
+   */
+  private supportHeight(swing: Swing | null, fl: RAPIER.Vector, fr: RAPIER.Vector, moving: boolean) {
+    const crouch = CROUCH.drop * this.crouchNow
+    const stand = GAIT.legLength + GAIT.hipToPelvis
+    if (!moving) return { want: stand - 0.005 - crouch, stanceY: (fl.y + fr.y) / 2 }
+    const p = this.ragdoll.part('pelvis').body.translation()
+    const use = this.running ? GAIT.runLegUse : GAIT.walkLegUse
+    const L = GAIT.legLength * use
+    const reachFrom = (side: Side, foot: RAPIER.Vector) => {
+      const hip = this.fromLocal(0, side === 'R' ? 0.1 : -0.1)
+      const d = Math.hypot(foot.x - (p.x + hip.x), foot.z - (p.z + hip.z))
+      return Math.sqrt(Math.max(L * L - d * d, 0.55 * 0.55)) + GAIT.hipToPelvis
+    }
+    let want: number
+    let stanceY: number
+    if (swing) {
+      const side: Side = swing.side === 'L' ? 'R' : 'L'
+      const foot = side === 'L' ? fl : fr
+      want = reachFrom(side, foot)
+      stanceY = foot.y
+      if (this.running) want -= GAIT.runCompress * Math.sin(Math.PI * Math.min(1, swing.t / swing.duration))
+    } else {
+      // Duplo apoio: a perna mais esticada manda (quadril no ponto baixo).
+      const l = reachFrom('L', fl) + fl.y
+      const r = reachFrom('R', fr) + fr.y
+      stanceY = (fl.y + fr.y) / 2
+      want = Math.min(l, r) - stanceY
+    }
+    return { want: THREE.MathUtils.clamp(want, 0.87, stand) - crouch, stanceY }
   }
 
   /** 0 logo após pousar o pé deste lado → 1 depois do pouso. */
@@ -968,13 +1321,13 @@ export class Npc {
     const c = this.crouchNow
     if (c > 0.01) {
       for (const side of ['L', 'R'] as const) {
-        add(`thigh${side}`, 0.75 * c, 0, 0)
-        add(`shin${side}`, -1.3 * c, 0, 0)
+        add(`thigh${side}`, 1.1 * c, 0, 0)
+        add(`shin${side}`, -1.65 * c, 0, 0)
         add(`foot${side}`, 0.55 * c, 0, 0)
       }
-      add('abdomen', -0.25 * c, 0, 0)
+      add('abdomen', -0.3 * c, 0, 0)
       add('chest', -0.15 * c, 0, 0)
-      add('head', 0.3 * c, 0, 0)
+      add('head', 0.4 * c, 0, 0)
     }
 
     if (!moving && LEG_LINE_STANDING) {
@@ -997,12 +1350,16 @@ export class Npc {
         const [pitch, roll] = this.legLine(side, footAt)
         const lift = swingThis ? Math.sin(Math.PI * Math.min(1, swing!.t / swing!.duration)) : 0
         const k = swingThis
-          ? (pose[`shin${side}`]?.[0] ?? 0) - STEP.kneeLift * lift * (swing!.height / STEP.height)
+          ? (pose[`shin${side}`]?.[0] ?? 0) - STEP.kneeLift * lift * Math.min(1.6, swing!.height / STEP.height)
           : knee
         pose[`thigh${side}`] = [pitch + Math.abs(k) / 2, 0, roll]
         if (!swingThis) {
           pose[`shin${side}`] = [k, 0, 0]
-          pose[`foot${side}`] = [-(pitch + Math.abs(k) / 2) - k, 0, 0]
+          // Fim do apoio (o outro pé quase pousando): o calcanhar sobe e a
+          // ponta do pé empurra o chão.
+          const u = swing ? Math.min(1, swing.t / swing.duration) : 0
+          const toe = swing && pitch < 0 ? GAIT.toeOff * THREE.MathUtils.smoothstep(u, 0.45, 1) : 0
+          pose[`foot${side}`] = [-(pitch + Math.abs(k) / 2) - k - toe, 0, 0]
         }
       }
       // Braços balançam contra as pernas; correndo, cotovelos dobrados.
@@ -1053,8 +1410,9 @@ export class Npc {
     // Perna do passo: joelho dobra no meio.
     if (swing) {
       const lift = Math.sin(Math.PI * Math.min(1, swing.t / swing.duration))
-      add(`shin${swing.side}`, -STEP.kneeLift * lift * (swing.height / STEP.height), 0, 0)
+      add(`shin${swing.side}`, -STEP.kneeLift * lift * Math.min(1.6, swing.height / STEP.height), 0, 0)
     }
+    this.traits?.shape(pose, this.legPhase, this.walkVel.length())
     if (this.overlay && this.overlayWeight > 0.01) {
       const w = this.overlayWeight
       for (const [name, v] of Object.entries(this.overlay) as [PartName, [number, number, number]][]) {
@@ -1145,6 +1503,7 @@ export class Npc {
     target.y = start.y
 
     this.swing = { side, start, target, t: 0, duration: STEP.duration, height: STEP.height }
+    adaptSwing(this.physics, this.swing, this.acceptGround)
     this.debug.steps++
   }
 
@@ -1192,6 +1551,7 @@ export class Npc {
       duration: COMFORT.duration,
       height: COMFORT.height,
     }
+    adaptSwing(this.physics, this.swing, this.acceptGround)
     this.debug.comfortSteps++
     this.comfortAttempts++
     this.stableTime = 0
@@ -1310,7 +1670,7 @@ export class Npc {
     const swingFoot = side === 'L' ? fl : fr
     const stance = side === 'L' ? fr : fl
     const run = this.running && vd.length() > GAIT.walkSpeed + 0.2
-    const duration = run ? GAIT.runDuration : GAIT.walkDuration
+    const duration = (run ? GAIT.runDuration : GAIT.walkDuration) * this.stride.duration(vd.length(), GAIT.walkSpeed, GAIT.runSpeed, side)
     const period = duration + STEP.cooldown
     // Velocidade prevista no pouso: a desejada continua subindo na rampa.
     const want = this.cmdVel.clone()
@@ -1342,6 +1702,7 @@ export class Npc {
     const start = new THREE.Vector3(swingFoot.x, swingFoot.y, swingFoot.z)
     target.y = start.y
     this.swing = { side, start, target, t: 0, duration, height: run ? GAIT.runHeight : GAIT.walkHeight }
+    adaptSwing(this.physics, this.swing, this.acceptGround)
     this.lastGait = side
     this.gaitStreak++
     this.debug.steps++
@@ -1411,14 +1772,17 @@ export class Npc {
    */
   /** Braços em condição de agarrar algo. */
   private armsOk() {
-    return { L: this.damage.region('armL') >= 40, R: this.damage.region('armR') >= 40 }
+    return {
+      L: this.damage.region('armL') >= 40 && this.ragdoll.isAttached('handL'),
+      R: this.damage.region('armR') >= 40 && this.ragdoll.isAttached('handR'),
+    }
   }
 
   private limbScale(): Partial<Record<PartName, number>> {
     const out: Partial<Record<PartName, number>> = {}
     for (const side of ['L', 'R'] as const) {
       const arm = this.damage.region(side === 'L' ? 'armL' : 'armR')
-      const a = arm < 40 ? 0.03 : 0.5 + (0.5 * arm) / 100
+      const a = arm < 40 ? 0.03 : (0.5 + (0.5 * arm) / 100) * this.armBoost[side]
       out[`upperArm${side}`] = a
       out[`forearm${side}`] = a
       out[`hand${side}`] = a
@@ -1486,7 +1850,10 @@ export class Npc {
     const q = this.tmpQ.set(r.x, r.y, r.z, r.w)
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q)
     // Vertical desejado: inclina um pouco na direção do caminhar.
-    const goal = UP.clone().addScaledVector(this.walkVel, GAIT.lean).normalize()
+    const goal = UP.clone().addScaledVector(this.walkVel, GAIT.lean)
+    // Agachado: o tronco inclina para a frente (centro de massa sobre os pés).
+    if (name !== 'pelvis' && this.crouchNow > 0.01) goal.add(this.fromLocal(CROUCH.lean * this.crouchNow, 0))
+    goal.normalize()
     // Eixo (e seno do ângulo) para levar `up` ao vertical: up × Y.
     const accel = new THREE.Vector3().crossVectors(up, goal).multiplyScalar(BALANCE.uprightKp)
     const w = body.angvel()

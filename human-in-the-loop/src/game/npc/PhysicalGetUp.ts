@@ -146,7 +146,10 @@ export class PhysicalGetUp {
    */
   private track(targets: Map<PartName, PartTransform>, dt: number, strength: number) {
     let errSum = 0
+    let n = 0
     for (const [name, target] of targets) {
+      if (this.ragdoll.isDetached(name)) continue
+      n++
       const part = this.ragdoll.part(name)
       const body = part.body
       const p = body.translation()
@@ -180,7 +183,7 @@ export class PhysicalGetUp {
       const inertia = body.principalInertia()
       body.applyTorqueImpulse(ang.multiplyScalar(((inertia.x + inertia.y + inertia.z) / 3) * dt), true)
     }
-    return errSum / targets.size
+    return errSum / Math.max(1, n)
   }
 
   /** Não acompanhou: recomeça da pose atual; depois de várias falhas, muda de lugar. */

@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { Physics, RAPIER } from '../engine/physics'
-import { buildPartVisual, createDummyMaterials, disposeVisual, type DummyMaterials } from './dummyVisual'
+import { buildPartVisual, createDummyMaterials, disposeVisual, LOOKS, type DummyMaterials, type Look } from './dummyVisual'
 import type { Pose } from './poses'
 import { JOINTS, PARTS, type JointDef, type PartDef, type PartName } from './skeleton'
 
@@ -8,6 +8,10 @@ export interface RagdollPart {
   def: PartDef
   body: RAPIER.RigidBody
   visual: THREE.Object3D
+  /** Destacada do corpo (corpo livre, sem junta). */
+  detached: boolean
+  /** Corpo livre já descartado (longe demais): desativado e invisível. */
+  gone: boolean
 }
 
 export interface PhysicalMotor {
@@ -44,6 +48,14 @@ const DAMPING_RATIO = 0.9
 /** Iterações extras do solver para os corpos do ragdoll: cadeias de juntas ficam mais firmes. */
 const EXTRA_SOLVER_ITERATIONS = 8
 
+/** Grupos de colisão: o ragdoll não colide com membros soltos (evita explosão no toco). */
+const GROUP_BODY = (0x0001 << 16) | 0xfffb
+const GROUP_LIMB = (0x0004 << 16) | 0xfffe
+/** Membros soltos: velocidade máxima ao se soltar, distância e altura de descarte. */
+const LIMB_MAX_SPEED = 25
+const LIMB_FAR = 25
+const LIMB_FLOOR = -20
+
 const AXES = [RAPIER.JointAxis.AngX, RAPIER.JointAxis.AngY, RAPIER.JointAxis.AngZ] as const
 
 /**
@@ -57,6 +69,11 @@ export class Ragdoll {
   private readonly materials: DummyMaterials
   private readonly skins = new Map<PartName, THREE.MeshStandardMaterial>()
   private readonly baseSkin = new THREE.Color()
+  /** Cor de pele de cada parte (o zumbi tem leve variação entre partes) e dano atual. */
+  private readonly partSkin = new Map<PartName, THREE.Color>()
+  private readonly partDamage = new Map<PartName, number>()
+  private readonly damageColor = new THREE.Color(LOOKS.dummy.damage)
+  look: Look = 'dummy'
   readonly root = new THREE.Group()
 
   constructor(physics: Physics, scene: THREE.Scene) {
@@ -75,7 +92,10 @@ export class Ragdoll {
           .setAngularDamping(0.3)
           .setAdditionalSolverIterations(EXTRA_SOLVER_ITERATIONS),
       )
-      world.createCollider(colliderFor(def).setMass(def.mass).setFriction(0.8).setRestitution(0), body)
+      world.createCollider(
+        colliderFor(def).setMass(def.mass).setFriction(0.8).setRestitution(0).setCollisionGroups(GROUP_BODY),
+        body,
+      )
 
       // Cada parte tem sua própria cor de pele (para mostrar o dano nela).
       const skin = this.materials.skin.clone()
@@ -83,48 +103,120 @@ export class Ragdoll {
       const visual = buildPartVisual(def, { ...this.materials, skin })
       this.root.add(visual)
       physics.sync(body, visual)
-      this.parts.set(def.name, { def, body, visual })
+      this.parts.set(def.name, { def, body, visual, detached: false, gone: false })
     }
 
-    for (const def of JOINTS) {
-      const parent = this.parts.get(def.parent)!
-      const child = this.parts.get(def.child)!
-      const a1 = localAnchor(def.anchor, parent.def.center)
-      const a2 = localAnchor(def.anchor, child.def.center)
-      const friction = JOINT_FRICTION_PER_KG * child.def.mass
+    for (const def of JOINTS) this.joints.push(this.makeJoint(def))
+  }
 
-      let joint: RAPIER.ImpulseJoint
-      if (def.type === 'hinge') {
-        const hinge = world.createImpulseJoint(
-          RAPIER.JointData.revolute(a1, a2, { x: 1, y: 0, z: 0 }),
-          parent.body,
-          child.body,
-          true,
-        ) as RAPIER.RevoluteImpulseJoint
-        hinge.setLimits(def.limits.x[0], def.limits.x[1])
-        hinge.configureMotorModel(RAPIER.MotorModel.AccelerationBased)
-        hinge.configureMotorVelocity(0, friction)
-        joint = hinge
-      } else {
-        const ball = world.createImpulseJoint(
-          RAPIER.JointData.spherical(a1, a2),
-          parent.body,
-          child.body,
-          true,
-        )
-        const ranges = [def.limits.x, def.limits.y, def.limits.z]
-        AXES.forEach((axis, i) => {
-          const r = ranges[i]
-          if (r) raw(ball).jointSetLimits(ball.handle, axis, r[0], r[1])
-          raw(ball).jointConfigureMotorModel(ball.handle, axis, RAPIER.MotorModel.AccelerationBased)
-          raw(ball).jointConfigureMotorVelocity(ball.handle, axis, 0, friction)
-        })
-        joint = ball
+  private makeJoint(def: JointDef): RagdollJoint {
+    const world = this.physics.world
+    const parent = this.parts.get(def.parent)!
+    const child = this.parts.get(def.child)!
+    const a1 = localAnchor(def.anchor, parent.def.center)
+    const a2 = localAnchor(def.anchor, child.def.center)
+    const friction = JOINT_FRICTION_PER_KG * child.def.mass
+
+    let joint: RAPIER.ImpulseJoint
+    if (def.type === 'hinge') {
+      const hinge = world.createImpulseJoint(
+        RAPIER.JointData.revolute(a1, a2, { x: 1, y: 0, z: 0 }),
+        parent.body,
+        child.body,
+        true,
+      ) as RAPIER.RevoluteImpulseJoint
+      hinge.setLimits(def.limits.x[0], def.limits.x[1])
+      hinge.configureMotorModel(RAPIER.MotorModel.AccelerationBased)
+      hinge.configureMotorVelocity(0, friction)
+      joint = hinge
+    } else {
+      const ball = world.createImpulseJoint(RAPIER.JointData.spherical(a1, a2), parent.body, child.body, true)
+      const ranges = [def.limits.x, def.limits.y, def.limits.z]
+      AXES.forEach((axis, i) => {
+        const r = ranges[i]
+        if (r) raw(ball).jointSetLimits(ball.handle, axis, r[0], r[1])
+        raw(ball).jointConfigureMotorModel(ball.handle, axis, RAPIER.MotorModel.AccelerationBased)
+        raw(ball).jointConfigureMotorVelocity(ball.handle, axis, 0, friction)
+      })
+      joint = ball
+    }
+    // Partes vizinhas não colidem entre si (elas se sobrepõem na junta).
+    joint.setContactsEnabled(false)
+    return { def, joint, friction, loadStiffness: gravityLoad(def, child.body) / TARGET_SAG }
+  }
+
+  /** A parte ainda está presa ao corpo? */
+  isAttached(name: PartName) {
+    return !this.parts.get(name)!.detached
+  }
+
+  isDetached(name: PartName) {
+    return this.parts.get(name)!.detached
+  }
+
+  /** Nomes das partes soltas. */
+  get detachedParts() {
+    return [...this.parts.values()].filter((p) => p.detached).map((p) => p.def.name)
+  }
+
+  /**
+   * Desmembramento: remove a junta que liga `name` ao pai. O segmento e tudo
+   * que pende dele (filhos) viram corpos livres com a velocidade que já
+   * tinham; o toco continua no corpo. Devolve as partes soltas (vazio se
+   * `name` é tronco ou já estava solto).
+   */
+  detach(name: PartName): PartName[] {
+    const idx = this.joints.findIndex((j) => j.def.child === name)
+    if (idx < 0) return []
+    this.physics.world.removeImpulseJoint(this.joints[idx].joint, true)
+    this.joints.splice(idx, 1)
+    const freed: PartName[] = []
+    for (const def of subtree(name)) {
+      const part = this.parts.get(def.name)!
+      part.detached = true
+      part.body.collider(0).setCollisionGroups(GROUP_LIMB)
+      // Velocidade herdada, limitada para não disparar o membro.
+      const v = part.body.linvel()
+      const speed = Math.hypot(v.x, v.y, v.z)
+      if (speed > LIMB_MAX_SPEED) {
+        const k = LIMB_MAX_SPEED / speed
+        part.body.setLinvel({ x: v.x * k, y: v.y * k, z: v.z * k }, true)
       }
-      // Partes vizinhas não colidem entre si (elas se sobrepõem na junta).
-      joint.setContactsEnabled(false)
-      this.joints.push({ def, joint, friction, loadStiffness: gravityLoad(def, child.body) / TARGET_SAG })
+      part.body.setLinearDamping(0.15)
+      part.body.setAngularDamping(0.6)
+      part.body.wakeUp()
+      freed.push(def.name)
     }
+    return freed
+  }
+
+  /** Descarta membros soltos que caíram do mundo ou estão longe de `origin`. */
+  cleanup(origin: THREE.Vector3) {
+    for (const part of this.parts.values()) {
+      if (!part.detached || part.gone) continue
+      const t = part.body.translation()
+      const far = Math.hypot(t.x - origin.x, t.z - origin.z) > LIMB_FAR
+      if (!far && t.y > LIMB_FLOOR && Number.isFinite(t.x + t.y + t.z)) continue
+      part.gone = true
+      part.body.setEnabled(false)
+      part.visual.visible = false
+    }
+  }
+
+  /** Recoloca membros soltos: religa as juntas (usado ao reposicionar o corpo). */
+  private restoreLimbs() {
+    const gone = [...this.parts.values()].filter((p) => p.detached)
+    if (!gone.length) return
+    for (const part of gone) {
+      part.detached = false
+      part.gone = false
+      part.body.setEnabled(true)
+      part.body.collider(0).setCollisionGroups(GROUP_BODY)
+      part.body.setLinearDamping(0.05)
+      part.body.setAngularDamping(0.3)
+      part.visual.visible = true
+    }
+    for (const def of JOINTS) if (!this.joints.some((j) => j.def === def)) this.joints.push(this.makeJoint(def))
   }
 
   /**
@@ -133,6 +225,7 @@ export class Ragdoll {
    * `tilt` inclina (para quedas variadas), `spin` dá giro inicial.
    */
   placeAt(feet: THREE.Vector3, yaw: number, opts: { lift?: number; tilt?: THREE.Euler; spin?: THREE.Vector3 } = {}) {
+    this.restoreLimbs()
     const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0))
     if (opts.tilt) rot.multiply(new THREE.Quaternion().setFromEuler(opts.tilt))
     const origin = feet.clone().setY(feet.y + (opts.lift ?? 0))
@@ -170,8 +263,11 @@ export class Ragdoll {
       // (O modelo por força do Rapier fica instável no pé, que é leve.)
       const phys = physical[def.child]
       const inertia = phys ? this.inertiaOf(def.child) : 1
-      const k = (phys ? phys.stiffness / inertia : s2 * (BASE_STIFFNESS + loadStiffness)) * (scale[def.child] ?? 1)
-      const damping = phys ? phys.damping / inertia : friction + DAMPING_RATIO * 2 * Math.sqrt(k)
+      const k0 = (phys ? phys.stiffness / inertia : s2 * (BASE_STIFFNESS + loadStiffness)) * (scale[def.child] ?? 1)
+      const k = this.parts.get(def.parent)!.detached ? 0 : k0
+      // Membro solto: junta mole (só atrito), sem tentar seguir a pose.
+      const free = k === 0
+      const damping = free ? friction : phys ? phys.damping / inertia : friction + DAMPING_RATIO * 2 * Math.sqrt(k)
       const target = pose[def.child] ?? [0, 0, 0]
       if (def.type === 'hinge') {
         const t = clamp(target[0], def.limits.x)
@@ -185,7 +281,7 @@ export class Ragdoll {
       }
     }
     // Motores só agem em corpos acordados.
-    for (const part of this.parts.values()) part.body.wakeUp()
+    for (const part of this.parts.values()) if (!part.gone) part.body.wakeUp()
   }
 
   /**
@@ -194,7 +290,7 @@ export class Ragdoll {
    */
   setKinematic(on: boolean) {
     const type = on ? RAPIER.RigidBodyType.KinematicPositionBased : RAPIER.RigidBodyType.Dynamic
-    for (const p of this.parts.values()) p.body.setBodyType(type, true)
+    for (const p of this.parts.values()) if (!p.detached) p.body.setBodyType(type, true)
   }
 
   /**
@@ -234,7 +330,8 @@ export class Ragdoll {
     pos.set(0, 0, 0)
     vel.set(0, 0, 0)
     let total = 0
-    for (const { body, def } of this.parts.values()) {
+    for (const { body, def, detached } of this.parts.values()) {
+      if (detached) continue
       const t = body.translation()
       const v = body.linvel()
       pos.x += t.x * def.mass
@@ -251,7 +348,7 @@ export class Ragdoll {
 
   get totalMass() {
     let m = 0
-    for (const { def } of this.parts.values()) m += def.mass
+    for (const { def, detached } of this.parts.values()) if (!detached) m += def.mass
     return m
   }
 
@@ -267,8 +364,35 @@ export class Ragdoll {
   setDamageTint(name: PartName, damage: number) {
     const skin = this.skins.get(name)
     if (!skin) return
-    skin.color.copy(this.baseSkin).lerp(BRUISE, Math.min(1, damage) * 0.85)
-    skin.roughness = 0.55 + damage * 0.3
+    this.partDamage.set(name, damage)
+    skin.color.copy(this.partSkin.get(name) ?? this.baseSkin).lerp(this.damageColor, Math.min(1, damage) * 0.85)
+    skin.roughness = (this.look === 'zombie' ? 0.75 : 0.55) + damage * 0.2
+  }
+
+  /**
+   * Troca a aparência (boneco de teste ou zumbi): cor da pele por parte,
+   * juntas, olhos e quais decalques aparecem. Mantém a cor de dano atual.
+   */
+  setLook(look: Look) {
+    this.look = look
+    const L = LOOKS[look]
+    this.baseSkin.set(L.skin)
+    this.damageColor.set(L.damage)
+    this.materials.metal.color.set(L.metal)
+    this.materials.eye.color.set(L.eye)
+    this.materials.eye.emissive.set(L.eyeGlow)
+    this.materials.eye.emissiveIntensity = L.glow
+    let i = 0
+    for (const name of this.skins.keys()) {
+      // Variação fixa por parte (manchado), só no zumbi.
+      const k = L.mottle * Math.sin(i++ * 12.9898 + 4.1)
+      const c = new THREE.Color(L.skin).offsetHSL(k * 0.25, -Math.abs(k) * 0.5, k * 0.6)
+      this.partSkin.set(name, c)
+      this.setDamageTint(name, this.partDamage.get(name) ?? 0)
+    }
+    this.root.traverse((o) => {
+      if (o.userData.look) o.visible = o.userData.look === look
+    })
   }
 
   /** Nome da parte de um corpo rígido (ou null se não for do ragdoll). */
@@ -327,8 +451,6 @@ function gravityLoad(def: JointDef, childBody: RAPIER.RigidBody) {
   return torque / meanInertia
 }
 
-/** Tom de hematoma (dano), misturado à pele. */
-const BRUISE = new THREE.Color('#6e3f45')
 
 const clamp = (v: number, [min, max]: [number, number]) => Math.min(max, Math.max(min, v))
 

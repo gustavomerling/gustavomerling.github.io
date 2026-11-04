@@ -1204,3 +1204,178 @@ kbd.wide {
   background: var(--on-glass);
   color: var(--ink);
 }
+
+/* --- Modos zumbi / SWAT ------------------------------------------------------ */
+
+.weapon-ammo {
+  padding: 4px 12px;
+  border-radius: 2px;
+  background: var(--glass);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.weapon-ammo.empty {
+  font-family: var(--sans);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+
+.arena-hud {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  display: grid;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.hp {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 2px;
+  background: var(--glass);
+  color: var(--on-glass);
+}
+
+.hp-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hp-bar {
+  width: 180px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.hp-fill {
+  height: 100%;
+  background: #6cc25a;
+  transition: width 0.15s;
+}
+
+.hp.low .hp-fill {
+  background: #e0402f;
+}
+
+.hp-num {
+  min-width: 3ch;
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.arena-stats {
+  padding: 4px 12px;
+  border-radius: 2px;
+  background: var(--glass-soft);
+  color: rgba(242, 240, 235, 0.8);
+  font-size: 12px;
+  font-weight: 600;
+  justify-self: start;
+}
+
+.arena-msg {
+  position: fixed;
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%);
+  padding: 6px 16px;
+  background: var(--glass);
+  color: #fff;
+  box-shadow: inset 3px 0 0 var(--hazard);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+  animation: arena-msg 1.6s ease-out forwards;
+}
+
+@keyframes arena-msg {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  12%,
+  75% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.hurt-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(190, 10, 10, 0.55));
+  animation: hurt 0.45s ease-out forwards;
+}
+
+@keyframes hurt {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.death-screen {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  background: rgba(60, 0, 0, 0.55);
+  color: #fff;
+  text-align: center;
+}
+
+.death-title {
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.death-sub {
+  font-size: 15px;
+  opacity: 0.85;
+}
+
+.death-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border: 0;
+  background: var(--hazard);
+  color: var(--hazard-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .hp-bar {
+    width: 110px;
+  }
+  .death-title {
+    font-size: 36px;
+  }
+}

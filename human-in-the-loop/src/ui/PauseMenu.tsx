@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { DebugState } from '../game/Game'
 import { POSE_IDS, POSES, type PoseId } from '../game/npc/poses'
+import type { NpcKind } from '../game/npc/types'
 import { ControlsSheet, SettingsForm } from './MenuPanels'
 import { MenuLayout, type NavItem } from './MenuLayout'
 
@@ -20,7 +21,11 @@ interface Props {
   built: number
   onClearBuilt: () => void
   fov?: number
+  blood?: number
+  onBlood?: (v: number) => void
   onFov?: (v: number) => void
+  npcKind?: NpcKind
+  onNpcKind?: (k: NpcKind) => void
   /** Volta para a tela inicial. */
   onMainMenu?: () => void
 }

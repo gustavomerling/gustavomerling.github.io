@@ -10,7 +10,12 @@ const AI_LABEL: Record<string, string> = {
   fleeing: 'fugindo',
   cover: 'na cobertura',
   walkTo: 'indo ao ponto',
+  search: 'procurando',
   body: 'corpo no controle',
+  chase: 'perseguindo',
+  attack: 'agarrando',
+  crawl: 'rastejando',
+  dead: 'morto',
 }
 
 function npcStateLabel(n: NpcDebug) {
@@ -27,6 +32,8 @@ function npcStateLabel(n: NpcDebug) {
       return n.outCold ? 'inconsciente' : 'desmaiado'
     case 'crawling':
       return 'rastejando'
+    case 'dead':
+      return `morto (${n.deathCause})`
   }
 }
 
@@ -52,6 +59,16 @@ function Health({ n }: { n: NpcDebug }) {
           <em>{Math.round(h)}</em>
         </div>
       ))}
+      <div className="health-row">
+        <span>vida</span>
+        <i>
+          <b style={{ width: `${n.life}%`, background: n.dead ? '#555' : '#d94a4a' }} />
+        </i>
+        <em>
+          {Math.round(n.life)}
+          {n.bleedRate > 0.05 ? ` -${n.bleedRate.toFixed(1)}/s` : ''}
+        </em>
+      </div>
       <div className="health-row">
         <span>dor</span>
         <i>
@@ -94,22 +111,24 @@ export function DebugPanel({ stats, debug }: { stats: GameStats | null; debug: D
         NPC força {Math.round(debug.npcStrength * 100)}% · pose {POSES[debug.npcPose].label} · equilíbrio{' '}
         {debug.npcBalance ? 'ligado' : 'desligado'}
       </div>
-      {stats && (
+      {stats && stats.npcs !== 1 && <div className="debug-row">NPCs na cena: {stats.npcs}{stats.npc ? ' · mostrando o mais perto' : ''}</div>}
+      {stats?.npc && stats.brain && (
         <div className="debug-row">
-          NPC {npcStateLabel(stats.npc)} ·{' '}
-          {stats.npc.steps} passos · inclinação {stats.npc.tilt.toFixed(2)} rad · captura{' '}
-          {fmt(stats.npc.captureForward)} frente {fmt(stats.npc.captureSide)} lado
+          NPC {npcStateLabel(stats.npc!)} ·{' '}
+          {stats.npc!.steps} passos · inclinação {stats.npc!.tilt.toFixed(2)} rad · captura{' '}
+          {fmt(stats.npc!.captureForward)} frente {fmt(stats.npc!.captureSide)} lado
         </div>
       )}
-      {stats && (
+      {stats?.npc && stats.brain && (
         <div className="debug-row">
-          IA <b>{AI_LABEL[stats.brain.ai]}</b> · {stats.brain.sees ? 'vê o jogador' : 'não vê'}
-          {stats.brain.aimed ? ' · mirado' : ''} · ameaça {stats.brain.threat.toFixed(2)}
-          {stats.brain.reflex ? ` · reflexo: ${stats.brain.reflex}` : ''}
-          {stats.npc.grip ? ` · ${stats.npc.grip}` : ''}
+          IA <b>{AI_LABEL[stats.brain!.ai] ?? stats.brain!.ai}</b> · {stats.brain!.sees ? 'vê o jogador' : 'não vê'}
+          {stats.brain!.aimed ? ' · mirado' : ''} · ameaça {stats.brain!.threat.toFixed(2)}
+          {stats.brain!.reflex ? ` · reflexo: ${stats.brain!.reflex}` : ''}
+          {stats.npc!.grip ? ` · ${stats.npc!.grip}` : ''}
         </div>
       )}
-      {stats && <Health n={stats.npc} />}
+      {stats?.brain && <div className="debug-row">Memória: {stats.brain!.memory}</div>}
+      {stats?.npc && <Health n={stats.npc!} />}
       <div className="debug-flags">
         <span className={debug.paused ? 'on warn' : ''}>P pausar física</span>
         <span className={debug.paused ? '' : 'off'}>. avançar 1 passo</span>
