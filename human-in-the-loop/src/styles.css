@@ -369,3 +369,35 @@ kbd {
     transform: scale(1);
   }
 }
+
+.health {
+  display: grid;
+  grid-template-columns: repeat(2, 150px);
+  gap: 2px 14px;
+  margin-top: 6px;
+}
+
+.health-row {
+  display: grid;
+  grid-template-columns: 52px 1fr 24px;
+  align-items: center;
+  gap: 6px;
+}
+
+.health-row i {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.health-row b {
+  display: block;
+  height: 100%;
+}
+
+.health-row em {
+  font-style: normal;
+  text-align: right;
+  opacity: 0.75;
+}

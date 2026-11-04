@@ -25,7 +25,7 @@ export function PauseMenu(p: Props) {
     <div className="pause" onClick={p.onPlay}>
       <div className="pause-card" onClick={(e) => e.stopPropagation()}>
         <h1>Human in the Loop</h1>
-        <p className="step">Passo 15 · mira pela alça</p>
+        <p className="step">Passo 16 · golpes</p>
         <button className="play" disabled={!p.ready} onClick={p.onPlay}>
           {p.ready ? 'Clique para entrar' : 'Carregando física…'}
         </button>
@@ -145,6 +145,7 @@ export function PauseMenu(p: Props) {
           <li>1–4 ou roda: trocar de arma (mãos, pistola, rifle, taco)</li>
           <li>Clique: atirar (pistola: um por clique · rifle: segurar)</li>
           <li>Botão direito (segurar): mirar pela alça</li>
+          <li>Taco e mãos: clique golpeia · segure para carregar um golpe forte</li>
           <li>B: modo construção · T: soltar o NPC à sua frente</li>
           <li>F: empurrão médio · G: empurrão forte (na direção do olhar)</li>
           <li>Esc: soltar o mouse · P, V e . funcionam com o painel aberto</li>

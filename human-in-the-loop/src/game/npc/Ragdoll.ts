@@ -55,6 +55,8 @@ export class Ragdoll {
   readonly joints: RagdollJoint[] = []
   private readonly physics: Physics
   private readonly materials: DummyMaterials
+  private readonly skins = new Map<PartName, THREE.MeshStandardMaterial>()
+  private readonly baseSkin = new THREE.Color()
   readonly root = new THREE.Group()
 
   constructor(physics: Physics, scene: THREE.Scene) {
@@ -62,6 +64,7 @@ export class Ragdoll {
     const world = physics.world
     this.root.name = 'ragdoll'
     this.materials = createDummyMaterials()
+    this.baseSkin.copy(this.materials.skin.color)
     scene.add(this.root)
 
     for (const def of PARTS) {
@@ -74,7 +77,10 @@ export class Ragdoll {
       )
       world.createCollider(colliderFor(def).setMass(def.mass).setFriction(0.8).setRestitution(0), body)
 
-      const visual = buildPartVisual(def, this.materials)
+      // Cada parte tem sua própria cor de pele (para mostrar o dano nela).
+      const skin = this.materials.skin.clone()
+      this.skins.set(def.name, skin)
+      const visual = buildPartVisual(def, { ...this.materials, skin })
       this.root.add(visual)
       physics.sync(body, visual)
       this.parts.set(def.name, { def, body, visual })
@@ -150,7 +156,12 @@ export class Ragdoll {
    * `physical` troca juntas específicas para motor por força (N·m/rad),
    * usado nas pernas enquanto sustentam o corpo em pé.
    */
-  setMotors(pose: Pose, strength: number, physical: Partial<Record<PartName, PhysicalMotor>> = {}) {
+  setMotors(
+    pose: Pose,
+    strength: number,
+    physical: Partial<Record<PartName, PhysicalMotor>> = {},
+    scale: Partial<Record<PartName, number>> = {},
+  ) {
     const s2 = strength * strength
     for (const { def, joint, friction, loadStiffness } of this.joints) {
       // Normal: rigidez por aceleração (independe da massa da parte).
@@ -159,7 +170,7 @@ export class Ragdoll {
       // (O modelo por força do Rapier fica instável no pé, que é leve.)
       const phys = physical[def.child]
       const inertia = phys ? this.inertiaOf(def.child) : 1
-      const k = phys ? phys.stiffness / inertia : s2 * (BASE_STIFFNESS + loadStiffness)
+      const k = (phys ? phys.stiffness / inertia : s2 * (BASE_STIFFNESS + loadStiffness)) * (scale[def.child] ?? 1)
       const damping = phys ? phys.damping / inertia : friction + DAMPING_RATIO * 2 * Math.sqrt(k)
       const target = pose[def.child] ?? [0, 0, 0]
       if (def.type === 'hinge') {
@@ -223,6 +234,23 @@ export class Ragdoll {
   }
 
   /** Corpo rígido a partir de um colisor (para saber se algo acertou o NPC). */
+  /**
+   * Mostra o dano de uma parte (0 = intacta, 1 = destruída): a pele escurece
+   * para um tom de hematoma. Sem gore.
+   */
+  setDamageTint(name: PartName, damage: number) {
+    const skin = this.skins.get(name)
+    if (!skin) return
+    skin.color.copy(this.baseSkin).lerp(BRUISE, Math.min(1, damage) * 0.85)
+    skin.roughness = 0.55 + damage * 0.3
+  }
+
+  /** Nome da parte de um corpo rígido (ou null se não for do ragdoll). */
+  partOf(body: RAPIER.RigidBody): PartName | null {
+    for (const [name, part] of this.parts) if (part.body.handle === body.handle) return name
+    return null
+  }
+
   hasBody(body: RAPIER.RigidBody) {
     for (const part of this.parts.values()) if (part.body.handle === body.handle) return true
     return false
@@ -237,6 +265,7 @@ export class Ragdoll {
     this.root.removeFromParent()
     disposeVisual(this.root)
     this.materials.dispose()
+    for (const s of this.skins.values()) s.dispose()
   }
 }
 
@@ -271,6 +300,9 @@ function gravityLoad(def: JointDef, childBody: RAPIER.RigidBody) {
   const meanInertia = (inertia.x + inertia.y + inertia.z) / 3
   return torque / meanInertia
 }
+
+/** Tom de hematoma (dano), misturado à pele. */
+const BRUISE = new THREE.Color('#6e3f45')
 
 const clamp = (v: number, [min, max]: [number, number]) => Math.min(max, Math.max(min, v))
 

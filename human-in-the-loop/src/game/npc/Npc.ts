@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { Physics, RAPIER } from '../engine/physics'
+import { Damage, OUT_COLD, REGIONS, REGION_OF, type HitKind, type Region } from './Damage'
 import { GetUp } from './getUp'
 import { POSES, type Pose, type PoseId } from './poses'
 import { Ragdoll, type PhysicalMotor } from './Ragdoll'
@@ -114,6 +115,20 @@ export const FALL = {
   downTime: 1.0,
 }
 
+/**
+ * Atordoamento por impacto: um golpe/tiro forte enfraquece o equilíbrio por
+ * um instante (o corpo "acusa" o golpe). Impactos fracos quase não afetam.
+ */
+export const STAGGER = {
+  /** Impulso (N·s) abaixo do qual não atordoa. */
+  threshold: 20,
+  /** Segundos de atordoamento por N·s acima do limiar, e o máximo. */
+  secondsPerImpulse: 0.012,
+  max: 1.2,
+  /** Fração da força de equilíbrio e dos motores durante o atordoamento. */
+  balanceScale: 0.35,
+}
+
 /** Olhar: limites e suavidade. */
 export const GAZE = {
   /** Fora deste ângulo (rad, para o lado) ele não tenta olhar (está atrás dele). */
@@ -134,7 +149,7 @@ interface Swing {
   height: number
 }
 
-export type NpcState = 'standing' | 'falling' | 'down' | 'gettingUp'
+export type NpcState = 'standing' | 'falling' | 'down' | 'gettingUp' | 'unconscious' | 'crawling'
 
 export interface NpcDebug {
   state: NpcState
@@ -149,11 +164,21 @@ export interface NpcDebug {
   getUpStage: string
   /** Passos de conforto (arrumar os pés) desde o último reset. */
   comfortSteps: number
+  /** Atordoado por um impacto forte. */
+  staggered: boolean
+  /** Integridade por região (0–100), saúde geral e dor (0–1). */
+  health: Record<Region, number>
+  overall: number
+  pain: number
+  /** Desmaio permanente (até o reset). */
+  outCold: boolean
 }
 
 type FallDir = 'forward' | 'back' | 'left' | 'right'
 
 const UP = new THREE.Vector3(0, 1, 0)
+/** Duração da transição de pouso de um passo (s). */
+const LANDING = 0.1
 const TORSO: PartName[] = ['pelvis', 'abdomen', 'chest']
 
 /** Poses de proteção na queda, por direção. */
@@ -240,15 +265,33 @@ export class Npc {
     stepping: false,
     getUpStage: '',
     comfortSteps: 0,
+    staggered: false,
+    health: { head: 100, torso: 100, armL: 100, armR: 100, legL: 100, legR: 100 },
+    overall: 100,
+    pain: 0,
+    outCold: false,
   }
+  readonly damage = new Damage()
+  /** Tempo restante desmaiado (Infinity = até o reset). */
+  private knockout = 0
+  /** Ciclo do rastejar (s). */
+  private crawlT = 0
 
   private swing: Swing | null = null
   private stepCooldown = 0
   private stableTime = 0
+  /**
+   * Pouso: depois de um passo, o pé que pousou passa aos poucos (LANDING s)
+   * dos motores macios do passo para os de apoio, e o tornozelo dele
+   * acompanha o equilíbrio aos poucos. Evita um "tranco" visual no pouso.
+   */
+  private landing: { side: Side; t: number } | null = null
   /** Passos de conforto seguidos desde o último desequilíbrio. */
   private comfortAttempts = 0
   private stateTime = 0
   private getUp: GetUp | null = null
+  /** Tempo restante de atordoamento (s). */
+  private stagger = 0
   private fallPose: Pose = {}
   /** Desequilíbrio suavizado (para braços e tornozelos). */
   private readonly smoothErr = { forward: 0, side: 0 }
@@ -271,6 +314,7 @@ export class Npc {
     this.getUp = null
     this.ragdoll.placeAt(feet, yaw)
     this.heading = yaw
+    this.heal()
     this.debug.steps = 0
     this.debug.comfortSteps = 0
     this.enterStanding()
@@ -301,12 +345,49 @@ export class Npc {
    * cuida (o impulso já foi aplicado). Levantando (corpo cinemático), um
    * impacto relevante interrompe a animação e devolve o corpo à física.
    */
-  hit(body: RAPIER.RigidBody, impulse: THREE.Vector3, point: THREE.Vector3) {
-    if (this.state !== 'gettingUp' || impulse.length() < 8) return
+  hit(body: RAPIER.RigidBody, impulse: THREE.Vector3, point: THREE.Vector3, kind?: HitKind) {
+    const strength = impulse.length()
+    if (kind) this.wound(body, strength, kind)
+    if (this.state === 'standing' && strength > STAGGER.threshold) {
+      const s = (strength - STAGGER.threshold) * STAGGER.secondsPerImpulse
+      this.stagger = Math.min(STAGGER.max, this.stagger + s)
+    }
+    if (this.state !== 'gettingUp' || strength < 8) return
     this.getUp?.cancel()
     this.getUp = null
     this.enterFalling('back')
     body.applyImpulseAtPoint(impulse, point, true)
+  }
+
+  /** Aplica o dano de um impacto e reage (desmaio, perder as pernas...). */
+  private wound(body: RAPIER.RigidBody, impulse: number, kind: HitKind) {
+    const part = this.ragdoll.partOf(body)
+    if (!part) return
+    const ev = this.damage.apply(part, impulse, kind)
+    this.ragdoll.setDamageTint(part, 1 - this.damage.health.get(part)! / 100)
+    if (this.damage.overall < OUT_COLD) {
+      this.knockOut(Infinity)
+    } else if (ev.knockout) {
+      this.knockOut(2.5 + Math.random() * 2)
+    } else if (this.state === 'standing' && !this.damage.canStand) {
+      this.enterFalling('forward')
+    }
+  }
+
+  private heal() {
+    this.damage.reset()
+    this.knockout = 0
+    for (const name of Object.keys(REGION_OF) as PartName[]) this.ragdoll.setDamageTint(name, 0)
+  }
+
+  /** Desmaia: corpo mole por um tempo (ou até o reset). */
+  private knockOut(seconds: number) {
+    this.getUp?.cancel()
+    this.getUp = null
+    this.knockout = Math.max(this.knockout, seconds)
+    this.swing = null
+    this.setState('unconscious')
+    this.ragdoll.setMotors(POSES.stand.pose, 0.02)
   }
 
   /** O corpo rígido pertence ao NPC? */
@@ -332,8 +413,14 @@ export class Npc {
   update(dt: number) {
     this.stateTime += dt
     this.debug.state = this.state
+    this.damage.update(dt)
+    this.updateDamageDebug()
     this.updateGaze(dt)
     switch (this.state) {
+      case 'unconscious':
+        return this.updateUnconscious(dt)
+      case 'crawling':
+        return this.updateCrawling(dt)
       case 'standing':
         return this.updateStanding(dt)
       case 'falling':
@@ -362,6 +449,7 @@ export class Npc {
 
   private enterStanding() {
     this.setState('standing')
+    this.stagger = 0
     this.swing = null
     this.stableTime = 0
     this.applyStandingMotors(POSES[this.poseId].pose)
@@ -371,10 +459,20 @@ export class Npc {
     this.setState('falling')
     this.swing = null
     this.fallPose = FALL_POSES[dir]
-    this.ragdoll.setMotors(this.fallPose, FALL.strength)
+    this.ragdoll.setMotors(this.fallPose, FALL.strength * (1 - 0.35 * this.damage.pain), {}, this.limbScale())
   }
 
   private updateStanding(dt: number) {
+    if (!this.damage.canStand) {
+      this.enterFalling('forward')
+      return
+    }
+    if (this.landing) {
+      this.landing.t += dt
+      if (this.landing.t >= LANDING) this.landing = null
+    }
+    this.stagger = Math.max(0, this.stagger - dt)
+    this.debug.staggered = this.stagger > 0
     const pelvis = this.ragdoll.part('pelvis').body
     const r = pelvis.rotation()
     this.tmpQ.set(r.x, r.y, r.z, r.w)
@@ -421,7 +519,10 @@ export class Npc {
     this.debug.stepping = swing !== null
 
     // Apoio: os dois pés; durante o passo, só o pé que ficou no chão.
-    const support = swing ? (swing.side === 'L' ? fr : fl) : mid
+    // Perna ferida: apoia o peso na outra (manca).
+    const bias = THREE.MathUtils.clamp((this.damage.region('legR') - this.damage.region('legL')) / 100, -1, 1) * 0.45
+    const shifted = mid.clone().lerp(new THREE.Vector3(bias > 0 ? fr.x : fl.x, 0, bias > 0 ? fr.z : fl.z), Math.abs(bias))
+    const support = swing ? (swing.side === 'L' ? fr : fl) : shifted
     const ex = capture.x - support.x
     const ez = capture.z - support.z
 
@@ -436,14 +537,16 @@ export class Npc {
     // --- Força de equilíbrio no tronco -------------------------------------
     const mass = this.ragdoll.totalMass
     const force = new THREE.Vector3(-ex, 0, -ez).multiplyScalar(mass * BALANCE.comKp)
-    const maxF = BALANCE.comMaxForce * mass * 9.81 * Math.min(1, this.strength / 0.6)
+    const staggerScale = this.stagger > 0 ? STAGGER.balanceScale : 1
+    const legs = Math.min(1, (this.damage.region('legL') + this.damage.region('legR')) / 160)
+    const maxF = BALANCE.comMaxForce * mass * 9.81 * Math.min(1, this.muscle / 0.6) * staggerScale * legs
     if (force.length() > maxF) force.setLength(maxF)
     force.multiplyScalar(dt / 2)
     this.ragdoll.part('pelvis').body.applyImpulse(force, true)
     this.ragdoll.part('chest').body.applyImpulse(force, true)
 
     // --- Assistência de postura (torques "invisíveis") ----------------------
-    for (const part of TORSO) this.assistUpright(part, part === 'pelvis', dt)
+    if (this.stagger <= 0) for (const part of TORSO) this.assistUpright(part, part === 'pelvis', dt)
   }
 
   private updateFalling() {
@@ -460,6 +563,11 @@ export class Npc {
     if (!this.autoGetUp || this.stateTime < FALL.downTime) return
     const speed = this.pelvisSpeed()
     if (speed > FALL.restSpeed) return
+    if (!this.damage.canStand) {
+      this.setState('crawling')
+      this.crawlT = 0
+      return
+    }
     this.getUp = new GetUp(this.ragdoll, POSES.stand.pose)
     this.heading = this.getUp.plan.yaw
     this.setState('gettingUp')
@@ -475,6 +583,110 @@ export class Npc {
       this.debug.steps = 0
       this.enterStanding()
     }
+  }
+
+  // --- Ferimentos: desmaio e rastejar -------------------------------------------
+
+  private updateUnconscious(dt: number) {
+    if (this.knockout === Infinity) return
+    this.knockout -= dt
+    if (this.knockout <= 0 && this.pelvisSpeed() < FALL.restSpeed) {
+      this.setState('down')
+      this.ragdoll.setMotors(POSES.stand.pose, FALL.downStrength, {}, this.limbScale())
+    }
+  }
+
+  /**
+   * Rastejar (pernas sem condição de sustentar): de bruços, alterna
+   * estender os braços à frente e puxar o corpo, afastando-se do jogador.
+   * Se estiver de costas, primeiro rola para ficar de bruços.
+   */
+  private updateCrawling(dt: number) {
+    if (this.damage.canStand) {
+      this.setState('down')
+      return
+    }
+    this.crawlT += dt
+    const pelvis = this.ragdoll.part('pelvis').body
+    const chest = this.ragdoll.part('chest').body
+    const r = chest.rotation()
+    const q = new THREE.Quaternion(r.x, r.y, r.z, r.w)
+    const belly = new THREE.Vector3(0, 0, -1).applyQuaternion(q)
+    const headDir = new THREE.Vector3(0, 1, 0).applyQuaternion(q).setY(0)
+    if (headDir.lengthSq() < 1e-4) headDir.set(0, 0, -1)
+    headDir.normalize()
+    const limbs = { ...this.limbScale(), thighL: 0.1, thighR: 0.1, shinL: 0.1, shinR: 0.1, footL: 0.1, footR: 0.1 }
+
+    if (belly.y > -0.4) {
+      // De costas ou de lado: rola para ficar de bruços, como uma pessoa:
+      // empurra o chão com um ombro (impulso para cima naquele lado) e
+      // cruza o braço do outro lado por cima do corpo.
+      const axis = new THREE.Vector3(0, 1, 0).applyQuaternion(q)
+      const rightSide = new THREE.Vector3(1, 0, 0).applyQuaternion(q)
+      // Rola para o lado que já está mais baixo (menos esforço).
+      const turn = rightSide.y <= 0 ? 1 : -1
+      const pushSide = rightSide.clone().multiplyScalar(-turn) // ombro que empurra o chão
+      const c = chest.translation()
+      const shoulder = new THREE.Vector3(c.x, c.y, c.z).addScaledVector(pushSide, 0.16)
+      chest.applyImpulseAtPoint({ x: 0, y: 260 * dt, z: 0 }, shoulder, true)
+      for (const name of ['pelvis', 'abdomen', 'chest'] as const) {
+        const b = this.ragdoll.part(name).body
+        const inertia = b.principalInertia()
+        const i = (inertia.x + inertia.y + inertia.z) / 3
+        b.applyTorqueImpulse(axis.clone().multiplyScalar(-turn * 120 * i * dt), true)
+      }
+      const across: Pose =
+        turn > 0
+          ? { upperArmL: [1.2, 0, 0.25], forearmL: [0.6, 0, 0], upperArmR: [0.2, 0, 0.8] }
+          : { upperArmR: [1.2, 0, -0.25], forearmR: [0.6, 0, 0], upperArmL: [0.2, 0, -0.8] }
+      this.ragdoll.setMotors(across, 0.5, {}, limbs)
+      return
+    }
+
+    // Ciclo: estende os braços (alcançar) e depois puxa.
+    const period = 1.4
+    const phase = (this.crawlT % period) / period
+    const reach = phase < 0.5
+    const armPose: Pose = reach
+      ? { upperArmL: [2.6, 0, -0.35], upperArmR: [2.6, 0, 0.35], forearmL: [0.2, 0, 0], forearmR: [0.2, 0, 0], head: [0.4, 0, 0] }
+      : { upperArmL: [0.9, 0, -0.5], upperArmR: [0.9, 0, 0.5], forearmL: [1.8, 0, 0], forearmR: [1.8, 0, 0], head: [0.4, 0, 0] }
+    this.ragdoll.setMotors(armPose, 0.55 * (1 - 0.35 * this.damage.pain), {}, limbs)
+
+    if (!reach) {
+      // Puxada: força no tronco na direção da cabeça (como as mãos agarrando o chão).
+      const pull = Math.sin(((phase - 0.5) / 0.5) * Math.PI) * 1100 * (this.damage.overall / 100)
+      const impulse = headDir.clone().multiplyScalar(pull * dt * 0.5)
+      chest.applyImpulse(impulse, true)
+      pelvis.applyImpulse(impulse, true)
+    }
+
+    // Vira a cabeça (direção do rastejar) para longe do jogador.
+    if (this.lookTarget) {
+      const p = pelvis.translation()
+      const away = new THREE.Vector3(p.x - this.lookTarget.x, 0, p.z - this.lookTarget.z).normalize()
+      const yawErr = Math.atan2(headDir.clone().cross(away).y, headDir.dot(away))
+      const w = pelvis.angvel()
+      for (const name of ['pelvis', 'chest'] as const) {
+        const b = this.ragdoll.part(name).body
+        const inertia = b.principalInertia()
+        const i = (inertia.x + inertia.y + inertia.z) / 3
+        b.applyTorqueImpulse({ x: 0, y: (20 * yawErr - 6 * w.y) * i * dt, z: 0 }, true)
+      }
+    }
+  }
+
+  private updateDamageDebug() {
+    for (const r of REGIONS) this.debug.health[r] = this.damage.region(r)
+    this.debug.overall = this.damage.overall
+    this.debug.pain = this.damage.pain
+    this.debug.outCold = this.knockout === Infinity
+  }
+
+  /** 0 logo após pousar o pé deste lado → 1 depois do pouso. */
+  private landingWeight(side: Side) {
+    if (!this.landing || this.landing.side !== side) return 1
+    const u = Math.min(1, this.landing.t / LANDING)
+    return u * u * (3 - 2 * u)
   }
 
   private pelvisSpeed() {
@@ -499,8 +711,10 @@ export class Npc {
 
     // Tornozelos: centro de massa à frente, aponta os pés para baixo.
     const ankleX = THREE.MathUtils.clamp(-BALANCE.ankleGain * err.forward, -BALANCE.maxAnkle, BALANCE.maxAnkle)
-    if (swing?.side !== 'L') add('footL', ankleX, 0, 0)
-    if (swing?.side !== 'R') add('footR', ankleX, 0, 0)
+    for (const side of ['L', 'R'] as const) {
+      if (swing?.side === side) continue
+      add(`foot${side}`, ankleX * this.landingWeight(side), 0, 0)
+    }
 
     // Braços: abrem com o tamanho do desequilíbrio e giram contra ele.
     // Caindo para trás, os braços vão à frente (e vice-versa); para um
@@ -520,6 +734,12 @@ export class Npc {
     // Olhar.
     add('head', this.gazePitch, this.gazeYaw * (1 - GAZE.chestShare), 0)
     add('chest', 0, this.gazeYaw * GAZE.chestShare, 0)
+
+    // Perna ferida: joelho levemente dobrado (alivia o peso).
+    for (const side of ['L', 'R'] as const) {
+      const hurt = 1 - this.damage.region(side === 'L' ? 'legL' : 'legR') / 100
+      if (hurt > 0.3) add(`shin${side}`, -0.35 * hurt, 0, 0)
+    }
 
     // Perna do passo: joelho dobra no meio.
     if (swing) {
@@ -690,6 +910,7 @@ export class Npc {
     if (u >= 1) {
       this.swing = null
       this.stepCooldown = STEP.cooldown
+      this.landing = { side: swing.side, t: 0 }
     }
   }
 
@@ -712,23 +933,67 @@ export class Npc {
 
   // --- Motores e assistência ---------------------------------------------------
 
+  /** Força efetiva: a dor tira um pouco da força dos músculos. */
+  get muscle() {
+    return this.strength * (1 - 0.35 * this.damage.pain)
+  }
+
+  /**
+   * Multiplicador de força por parte, pelos ferimentos: braço muito ferido
+   * fica mole (pendurado); perna ferida perde força aos poucos.
+   */
+  private limbScale(): Partial<Record<PartName, number>> {
+    const out: Partial<Record<PartName, number>> = {}
+    for (const side of ['L', 'R'] as const) {
+      const arm = this.damage.region(side === 'L' ? 'armL' : 'armR')
+      const a = arm < 40 ? 0.03 : 0.5 + (0.5 * arm) / 100
+      out[`upperArm${side}`] = a
+      out[`forearm${side}`] = a
+      out[`hand${side}`] = a
+      const leg = this.damage.region(side === 'L' ? 'legL' : 'legR')
+      const l = Math.max(0.15, leg / 100) ** 1.5
+      out[`thigh${side}`] = l
+      out[`shin${side}`] = l
+      out[`foot${side}`] = l
+    }
+    return out
+  }
+
   private applyStandingMotors(pose: Pose) {
+    const scale = this.limbScale()
     if (!this.balanceEnabled) {
-      this.ragdoll.setMotors(pose, this.strength)
+      this.ragdoll.setMotors(pose, this.muscle, {}, scale)
       return
     }
     // Rigidez das pernas escala com a força (0,6 = valores nominais).
-    const f = (this.strength / 0.6) ** 2
+    const f = (this.muscle / 0.6) ** 2
     const m = (k: number, d: number): PhysicalMotor => ({ stiffness: k * f, damping: d * Math.sqrt(f) })
     const knee = m(BALANCE.kneeK, BALANCE.kneeD)
     const hip = m(BALANCE.hipK, BALANCE.hipD)
     // A perna que está dando o passo fica com os motores normais (mais
     // macios), para a mola do pé conseguir levá-la.
     const swing = this.swing?.side
-    this.ragdoll.setMotors(pose, this.strength, {
-      ...(swing === 'L' ? {} : { shinL: knee, thighL: hip }),
-      ...(swing === 'R' ? {} : { shinR: knee, thighR: hip }),
-    })
+    const limbs = scale
+    // Perna pousando: rigidez de apoio cresce aos poucos.
+    const leg = (side: Side) => {
+      // Começa com metade da rigidez (a perna precisa sustentar logo).
+      const w = 0.5 + 0.5 * this.landingWeight(side)
+      const scale = (pm: PhysicalMotor): PhysicalMotor => ({ stiffness: pm.stiffness * w, damping: pm.damping * w })
+      const hurt = (scale_: PhysicalMotor): PhysicalMotor => ({
+        stiffness: scale_.stiffness * (limbs[`thigh${side}`] ?? 1),
+        damping: scale_.damping * Math.sqrt(limbs[`thigh${side}`] ?? 1),
+      })
+      return { [`shin${side}`]: hurt(scale(knee)), [`thigh${side}`]: hurt(scale(hip)) }
+    }
+    this.ragdoll.setMotors(
+      pose,
+      this.muscle,
+      {
+        ...(swing === 'L' ? {} : leg('L')),
+        ...(swing === 'R' ? {} : leg('R')),
+      },
+      limbs,
+    )
   }
 
   /**
@@ -755,7 +1020,7 @@ export class Npc {
     }
     const inertia = body.principalInertia()
     const i = (inertia.x + inertia.y + inertia.z) / 3
-    accel.multiplyScalar(i * dt * Math.min(1, this.strength / 0.6))
+    accel.multiplyScalar(i * dt * Math.min(1, this.muscle / 0.6))
     body.applyTorqueImpulse(accel, true)
   }
 }

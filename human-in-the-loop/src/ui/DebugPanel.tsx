@@ -5,14 +5,51 @@ import { POSES } from '../game/npc/poses'
 function npcStateLabel(n: NpcDebug) {
   switch (n.state) {
     case 'standing':
-      return n.stepping ? 'dando passo' : 'em pé'
+      return (n.stepping ? 'dando passo' : 'em pé') + (n.staggered ? ' (atordoado)' : '')
     case 'falling':
       return 'caindo'
     case 'down':
       return 'no chão'
     case 'gettingUp':
       return `levantando (${n.getUpStage})`
+    case 'unconscious':
+      return n.outCold ? 'inconsciente' : 'desmaiado'
+    case 'crawling':
+      return 'rastejando'
   }
+}
+
+const REGION_LABEL: Record<string, string> = {
+  head: 'cabeça',
+  torso: 'tronco',
+  armL: 'braço E',
+  armR: 'braço D',
+  legL: 'perna E',
+  legR: 'perna D',
+}
+
+/** Barras de integridade por região + dor. */
+function Health({ n }: { n: NpcDebug }) {
+  return (
+    <div className="health">
+      {Object.entries(n.health).map(([r, h]) => (
+        <div key={r} className="health-row">
+          <span>{REGION_LABEL[r]}</span>
+          <i>
+            <b style={{ width: `${h}%`, background: h > 60 ? '#9bc47a' : h > 30 ? '#e8b931' : '#e8742c' }} />
+          </i>
+          <em>{Math.round(h)}</em>
+        </div>
+      ))}
+      <div className="health-row">
+        <span>dor</span>
+        <i>
+          <b style={{ width: `${n.pain * 100}%`, background: '#c8607a' }} />
+        </i>
+        <em>{Math.round(n.pain * 100)}</em>
+      </div>
+    </div>
+  )
 }
 
 const fmt = (n: number) => n.toFixed(2).padStart(6)
@@ -49,6 +86,7 @@ export function DebugPanel({ stats, debug }: { stats: GameStats | null; debug: D
           {fmt(stats.npc.captureForward)} frente {fmt(stats.npc.captureSide)} lado
         </div>
       )}
+      {stats && <Health n={stats.npc} />}
       <div className="debug-flags">
         <span className={debug.paused ? 'on warn' : ''}>P pausar física</span>
         <span className={debug.paused ? '' : 'off'}>. avançar 1 passo</span>

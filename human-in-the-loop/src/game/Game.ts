@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { BuildMode, type BuildState } from './build/BuildMode'
 import { Gunfire } from './weapons/Gunfire'
+import { Melee } from './weapons/Melee'
 import { WeaponSystem, type WeaponState } from './weapons/WeaponSystem'
 import { ColliderDebug } from './debug/ColliderDebug'
 import { createLoop } from './engine/loop'
@@ -141,6 +142,8 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const weapons = new WeaponSystem(events.onWeaponChange)
   disposers.push(() => weapons.dispose())
   events.onWeaponChange(weapons.state)
+  const melee = new Melee(physics, player.collider)
+  weapons.melee = melee
   const gunfire = new Gunfire(ctx.scene, physics, player.collider)
   disposers.push(() => gunfire.dispose())
   let wasAiming = false
@@ -162,7 +165,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
     const impulse = w.impulse ?? 10
     const hit = gunfire.fire(camPos, camDir, weapons.muzzleWorld(ctx.camera, muzzle), impulse)
     if (hit?.body && npc.owns(hit.body)) {
-      npc.hit(hit.body, camDir.clone().multiplyScalar(impulse), hit.point)
+      npc.hit(hit.body, camDir.clone().multiplyScalar(impulse), hit.point, 'shot')
       events.onHitMarker()
     }
     // Recuo: a mira sobe e desvia um pouco para o lado.
@@ -315,7 +318,18 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
       build.frame(ctx.camera, input)
       weapons.setHolstered(build.active)
       ctx.camera.updateMatrixWorld()
-      if (weapons.trigger(build.active ? null : input, frameDt)) shoot()
+      if (weapons.current.kind === 'gun') {
+        melee.reset()
+        if (weapons.trigger(build.active ? null : input, frameDt)) shoot()
+      } else {
+        const ready = !build.active && weapons.ready
+        for (const hit of melee.update(frameDt, ready ? input : null, weapons.current, ctx.camera)) {
+          if (npc.owns(hit.body)) {
+            npc.hit(hit.body, hit.impulse, hit.point, 'melee')
+            events.onHitMarker()
+          }
+        }
+      }
       weaponContact(frameDt)
       weapons.frame(frameDt, build.active ? null : input, look.yaw, look.pitch, player.speed, player.isGrounded)
       gunfire.update(frameDt)

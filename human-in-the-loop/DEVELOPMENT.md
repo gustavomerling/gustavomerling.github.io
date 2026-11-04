@@ -38,14 +38,14 @@ simulação, o NPC nunca usa armas, o jogador não cria NPCs.
 | 13 ✅ | **Sistema de armas**: modelo da arma na tela, troca por 1–9 e roda do mouse, estrutura de dados das armas. | Trocar entre pistola, rifle e taco. |
 | 14 ✅ | **Tiro**: raycast, impulso físico na parte atingida, recuo, cadência, marcas de impacto. | Atirar no braço do NPC empurra o braço; atirar em caixas as move. |
 | 15 ✅ | **Iron sight**: botão direito leva a arma ao centro, alinha as miras, reduz o FOV e a sensibilidade e mostra a respiração da arma. | A mira alinhada acerta onde aponta. |
-| 16 | **Melee**: golpe com arma física, dano e impulso pela velocidade do impacto. | Um golpe forte derruba o NPC; um fraco só o desequilibra. |
+| 16 ✅ | **Melee**: golpe com arma física, dano e impulso pela velocidade do impacto. | Um golpe forte derruba o NPC; um fraco só o desequilibra. |
 
 ## Fase D: Dano e ferimentos
 
 | # | Passo | Como testar |
 |---|-------|-------------|
-| 17 | **Dano por parte**: integridade e dor por membro; o membro muda de cor ou ganha marcas (sem gore); painel de debug mostra o estado. | Acertar a perna muda só a perna. |
-| 18 | **Ferimentos afetam os motores**: perna ferida faz mancar, duas pernas fazem rastejar, braço ferido fica pendurado, tiro na cabeça atordoa (fica mole por um tempo), dano grande deixa inconsciente. | Cada ferimento muda o comportamento físico de forma visível. |
+| 17 ✅ | **Dano por parte**: integridade e dor por membro; o membro muda de cor ou ganha marcas (sem gore); painel de debug mostra o estado. | Acertar a perna muda só a perna. |
+| 18 ✅ | **Ferimentos afetam os motores**: perna ferida faz mancar, duas pernas fazem rastejar, braço ferido fica pendurado, tiro na cabeça atordoa (fica mole por um tempo), dano grande deixa inconsciente. | Cada ferimento muda o comportamento físico de forma visível. |
 
 ## Fase E: Locomoção e IA
 

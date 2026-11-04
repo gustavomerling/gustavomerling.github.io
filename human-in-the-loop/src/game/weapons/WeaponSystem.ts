@@ -1,5 +1,7 @@
 import * as THREE from 'three'
 import type { Input } from '../player/Input'
+import type { Melee } from './Melee'
+import { BAT_SWING } from './Melee'
 import { buildViewmodel, createViewmodelMaterials, type ViewmodelMaterials } from './viewmodels'
 import { WEAPONS, type WeaponDef } from './weapons'
 
@@ -50,6 +52,10 @@ export class WeaponSystem {
   private tuckTarget = 0
   private readonly flash: THREE.Mesh
   private flashTime = 0
+
+  /** Golpe corpo a corpo em andamento (para animar). */
+  melee: Melee | null = null
+  private shake = 0
 
   /** 0..1: quanto está mirando pela alça (iron sight). */
   ads = 0
@@ -115,6 +121,11 @@ export class WeaponSystem {
   /** Pede para mirar pela alça (só armas de fogo, prontas e não recolhidas). */
   setAiming(aiming: boolean) {
     this.aiming = aiming
+  }
+
+  /** Arma pronta (não está trocando nem guardada). */
+  get ready() {
+    return this.phase === 'idle' && !this.holstered
   }
 
   /** Pode mirar agora? */
@@ -270,12 +281,60 @@ export class WeaponSystem {
       (w.hipRotation.y + this.sway.x * 2) * (1 - ads) + this.tuck * 0.3,
       (w.hipRotation.z + this.sway.x * 1.5) * (1 - ads),
     )
+    this.applyMelee(model, dt)
+
     // A câmera das armas também fecha um pouco (a arma não "cresce" demais).
     const vmFov = THREE.MathUtils.lerp(58, 48, ads)
     if (Math.abs(this.camera.fov - vmFov) > 0.01) {
       this.camera.fov = vmFov
       this.camera.updateProjectionMatrix()
     }
+  }
+
+  /**
+   * Animação do golpe por cima da pose normal.
+   * Taco: carregar puxa para trás sobre o ombro; o golpe gira no mesmo arco
+   * usado pelo cálculo físico; a recuperação volta à pose normal.
+   * Mãos: a mão direita recua ao carregar e vai à frente no soco.
+   */
+  private applyMelee(model: THREE.Group, dt: number) {
+    const m = this.melee
+    const w = this.current
+    const right = model.children[0]
+    if (w.kind === 'hands' && right) right.position.set(0.17, 0, 0)
+    if (!m || m.phase === 'idle') return
+    if (m.blocked && m.phase === 'recovering' && this.shake <= 0) this.shake = 0.12
+    this.shake = Math.max(0, this.shake - dt)
+    const jitter = this.shake > 0 ? (Math.random() - 0.5) * 0.02 : 0
+
+    if (w.kind === 'hands' && right) {
+      const c = m.phase === 'charging' ? m.progress : 0
+      const punch = m.phase === 'swinging' ? Math.sin(m.progress * Math.PI * 0.5) : m.phase === 'recovering' ? 1 - m.progress : 0
+      right.position.set(0.17 - punch * 0.12, punch * 0.08, c * 0.08 - punch * 0.32 + jitter)
+      return
+    }
+    if (w.id !== 'bat') return
+
+    if (m.phase === 'charging') {
+      const c = m.progress
+      model.position.x += 0.08 * c
+      model.position.y += 0.06 * c
+      model.position.z += 0.06 * c
+      model.rotation.x += 0.35 * c
+      model.rotation.y -= 0.7 * c
+      return
+    }
+    // Pose do golpe: taco quase horizontal, girando da direita para a esquerda.
+    const s = m.phase === 'swinging' ? m.progress : 1
+    const weight = m.phase === 'swinging' ? 1 : 1 - m.progress * m.progress * (3 - 2 * m.progress)
+    const yaw = THREE.MathUtils.lerp(BAT_SWING.fromYaw, BAT_SWING.toYaw, s)
+    const swingPos = new THREE.Vector3(THREE.MathUtils.lerp(0.22, -0.18, s), -0.24 + jitter, -0.22)
+    model.position.lerp(swingPos, weight)
+    model.rotation.set(
+      THREE.MathUtils.lerp(model.rotation.x, BAT_SWING.pitch + 0.1, weight),
+      THREE.MathUtils.lerp(model.rotation.y, yaw, weight),
+      THREE.MathUtils.lerp(model.rotation.z, -0.2, weight),
+    )
   }
 
   /** Desenha a camada das armas por cima do que já foi renderizado. */
