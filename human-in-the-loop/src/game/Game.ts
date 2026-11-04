@@ -216,6 +216,15 @@ export async function createGame(
     return Math.atan2(right, fwd)
   }
 
+  /** Origem do último dano: o arco na tela acompanha enquanto o jogador vira. */
+  const hurtFrom = new THREE.Vector3()
+  let hurtUntil = 0
+  const markHurt = (from: THREE.Vector3) => {
+    hurtFrom.copy(from)
+    hurtUntil = performance.now() + 1200
+  }
+  const rootStyle = document.documentElement.style
+
   /** Liga um cérebro novo ao corpo do ator (tipo, aparência, arma). */
   const makeBrain = (npc: Npc, kind: NpcKind): NpcBrain => {
     const config = NPC_CONFIGS[kind]
@@ -228,7 +237,9 @@ export async function createGame(
       // Tiro que acerta o jogador: empurrão e, na masmorra, dano.
       b.weapon.onHit = (e) => {
         player.shove(e.impulse.x / 80, e.impulse.z / 80)
-        arena?.damage(ARENA.shotDamage[e.region], screenAngle(e.point.clone().addScaledVector(e.dir, -Math.max(1, e.distance))))
+        const from = e.point.clone().addScaledVector(e.dir, -Math.max(1, e.distance))
+        markHurt(from)
+        arena?.damage(ARENA.shotDamage[e.region], screenAngle(from))
       }
       // Arma largada: no sandbox vira item pegável (E); na masmorra, munição no chão.
       b.weapon.onDrop = (d) => {
@@ -345,7 +356,10 @@ export async function createGame(
     collider: player.collider,
     shove: (x, z) => player.shove(x, z),
     slow: (f) => player.slow(f),
-    damage: (n, from) => arena?.damage(n, from ? screenAngle(from) : null),
+    damage: (n, from) => {
+      if (from) markHurt(from)
+      arena?.damage(n, from ? screenAngle(from) : null)
+    },
   }
 
   /** Debug (M / Shift+M): o NPC anda (corre) até o ponto do chão na mira. */
@@ -710,6 +724,7 @@ export async function createGame(
       if (!debug.paused && near) blood.update(frameDt, near.npc)
       colliderDebug.update()
       updateBars()
+      if (hurtUntil && performance.now() < hurtUntil) rootStyle.setProperty('--hurt-angle', `${screenAngle(hurtFrom)}rad`)
       ctx.renderer.render(ctx.scene, ctx.camera)
       weapons.render(ctx.renderer, ctx.camera.aspect)
 

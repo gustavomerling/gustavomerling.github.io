@@ -17,7 +17,7 @@ export function ArenaHud({ arena, onRestart }: { arena: ArenaState; onRestart: (
     <>
       {arena.hurtAt > 0 && <div key={arena.hurtAt} className="hurt-flash" />}
       {arena.hurtAt > 0 && arena.hurtAngle !== null && (
-        <div key={`d${arena.hurtAt}`} className="hurt-dir" style={{ transform: `rotate(${arena.hurtAngle}rad)` }}>
+        <div key={`d${arena.hurtAt}`} className="hurt-dir" style={{ transform: `rotate(var(--hurt-angle, ${arena.hurtAngle}rad))` }}>
           <div className="hurt-arc" />
         </div>
       )}
