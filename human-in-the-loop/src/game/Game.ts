@@ -3,8 +3,8 @@ import { BuildMode, type BuildState } from './build/BuildMode'
 import { ColliderDebug } from './debug/ColliderDebug'
 import { createLoop } from './engine/loop'
 import { initPhysics, Physics } from './engine/physics'
-import { POSE_IDS, POSES, type PoseId } from './npc/poses'
-import { Ragdoll } from './npc/Ragdoll'
+import { Npc, type NpcDebug } from './npc/Npc'
+import { POSE_IDS, type PoseId } from './npc/poses'
 import { createRenderContext } from './engine/render'
 import { FpsLook } from './player/FpsLook'
 import { Input } from './player/Input'
@@ -20,6 +20,7 @@ export interface GameStats {
   /** Tempo médio de CPU por frame para montar o render, em ms (a GPU roda depois). */
   renderMs: number
   bodies: number
+  npc: NpcDebug
   player: {
     x: number
     y: number
@@ -39,6 +40,8 @@ export interface DebugState {
   npcStrength: number
   /** Pose-alvo dos motores do NPC. */
   npcPose: PoseId
+  /** Controle de equilíbrio do NPC ligado. */
+  npcBalance: boolean
 }
 
 export interface GameEvents {
@@ -94,19 +97,22 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const lookAtCenter = () => look.lookAt(player.eyePosition(1, eye), new THREE.Vector3(0, 1.2, 0))
   lookAtCenter()
 
-  // NPC: ragdoll (boneco de crash test), de frente para o jogador.
-  const ragdoll = new Ragdoll(physics, ctx.scene)
-  disposers.push(() => ragdoll.dispose())
+  // NPC: ragdoll ativo (boneco de crash test), de frente para o jogador.
+  const npc = new Npc(physics, ctx.scene)
+  disposers.push(() => npc.dispose())
   const NPC_SPAWN = new THREE.Vector3(0, 0, 9)
   const NPC_YAW = Math.PI
-  ragdoll.placeAt(NPC_SPAWN, NPC_YAW)
+  npc.spawn(NPC_SPAWN, NPC_YAW)
+
+  const lookForward = () => new THREE.Vector3(-Math.sin(look.yaw), 0, -Math.cos(look.yaw))
+  /** Debug (F/G): empurrão horizontal no peito do NPC, na direção do olhar. */
+  const pushNpc = (impulse: number) => npc.push(lookForward().multiplyScalar(impulse))
 
   /** Debug (T): solta o NPC 2,5 m à frente do jogador, de 1,5 m de altura, girando. */
   const dropRagdoll = () => {
-    const forward = new THREE.Vector3(-Math.sin(look.yaw), 0, -Math.cos(look.yaw))
-    const feet = player.eyePosition(1, new THREE.Vector3()).setY(0).addScaledVector(forward, 2.5)
+    const feet = player.eyePosition(1, new THREE.Vector3()).setY(0).addScaledVector(lookForward(), 2.5)
     const r = () => Math.random() * 2 - 1
-    ragdoll.placeAt(feet, look.yaw + Math.PI, {
+    npc.drop(feet, look.yaw + Math.PI, {
       lift: 1.5,
       tilt: new THREE.Euler(r() * 1.2, 0, r() * 1.2),
       spin: new THREE.Vector3(r() * 3, r() * 3, r() * 3),
@@ -124,22 +130,20 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const debug: DebugState = { ...initialDebug }
   let stepRequested = false
   const setDebug = (patch: Partial<DebugState>) => {
-    const motorsChanged =
-      (patch.npcStrength !== undefined && patch.npcStrength !== debug.npcStrength) ||
-      (patch.npcPose !== undefined && patch.npcPose !== debug.npcPose)
     Object.assign(debug, patch)
     debug.npcStrength = Math.round(Math.min(1, Math.max(0, debug.npcStrength)) * 100) / 100
     colliderDebug.visible = debug.colliders
-    if (motorsChanged) ragdoll.setMotors(POSES[debug.npcPose].pose, debug.npcStrength)
+    if (debug.npcStrength !== npc.strength) npc.setStrength(debug.npcStrength)
+    if (debug.npcPose !== npc.poseId) npc.setPose(debug.npcPose)
+    if (debug.npcBalance !== npc.balanceEnabled) npc.setBalance(debug.npcBalance)
     events.onDebugChange({ ...debug })
   }
   setDebug({})
-  ragdoll.setMotors(POSES[debug.npcPose].pose, debug.npcStrength)
 
   const resetScene = () => {
     props.reset()
     build.resetPlaced()
-    ragdoll.placeAt(NPC_SPAWN, NPC_YAW)
+    npc.spawn(NPC_SPAWN, NPC_YAW)
     player.respawn()
     lookAtCenter()
   }
@@ -148,6 +152,8 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const handleDebugKeys = () => {
     if (input.consume('KeyR')) resetScene()
     if (input.consume('KeyT')) dropRagdoll()
+    if (input.consume('KeyF')) pushNpc(25)
+    if (input.consume('KeyG')) pushNpc(70)
     if (input.consume('Backquote')) setDebug({ panel: !debug.panel })
     if (!debug.panel) return
     if (input.consume('KeyP')) setDebug({ paused: !debug.paused })
@@ -155,6 +161,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
     if (input.consume('Period')) stepRequested = true
     if (input.consume('BracketLeft')) setDebug({ npcStrength: debug.npcStrength - 0.1 })
     if (input.consume('BracketRight')) setDebug({ npcStrength: debug.npcStrength + 0.1 })
+    if (input.consume('KeyK')) setDebug({ npcBalance: !debug.npcBalance })
     if (input.consume('KeyN')) {
       setDebug({ npcPose: POSE_IDS[(POSE_IDS.indexOf(debug.npcPose) + 1) % POSE_IDS.length] })
     }
@@ -172,6 +179,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
       physicsMs: physicsAcc / frames,
       renderMs: renderAcc / frames,
       bodies: physics.world.bodies.len(),
+      npc: { ...npc.debug },
       player: {
         x: t.x,
         y: t.y,
@@ -190,6 +198,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
       stepRequested = false
 
       const t0 = performance.now()
+      npc.update(dt)
       player.update(
         dt,
         {

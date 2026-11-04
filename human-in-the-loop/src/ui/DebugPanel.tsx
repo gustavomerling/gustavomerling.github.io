@@ -25,8 +25,15 @@ export function DebugPanel({ stats, debug }: { stats: GameStats | null; debug: D
         <div className="debug-row">medindo…</div>
       )}
       <div className="debug-row">
-        NPC força {Math.round(debug.npcStrength * 100)}% · pose {POSES[debug.npcPose].label}
+        NPC força {Math.round(debug.npcStrength * 100)}% · pose {POSES[debug.npcPose].label} · equilíbrio{' '}
+        {debug.npcBalance ? 'ligado' : 'desligado'}
       </div>
+      {stats && (
+        <div className="debug-row">
+          NPC {stats.npc.state === 'standing' ? 'em pé' : 'caído'} · inclinação {stats.npc.tilt.toFixed(2)} rad · captura{' '}
+          {fmt(stats.npc.captureForward)} frente {fmt(stats.npc.captureSide)} lado
+        </div>
+      )}
       <div className="debug-flags">
         <span className={debug.paused ? 'on warn' : ''}>P pausar física</span>
         <span className={debug.paused ? '' : 'off'}>. avançar 1 passo</span>
@@ -35,6 +42,8 @@ export function DebugPanel({ stats, debug }: { stats: GameStats | null; debug: D
         <span>T soltar NPC</span>
         <span>[ ] força</span>
         <span>N pose</span>
+        <span className={debug.npcBalance ? 'on' : ''}>K equilíbrio</span>
+        <span>F/G empurrar</span>
         <span>` fechar</span>
       </div>
     </div>

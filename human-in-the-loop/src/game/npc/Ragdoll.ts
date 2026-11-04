@@ -10,6 +10,13 @@ export interface RagdollPart {
   visual: THREE.Object3D
 }
 
+export interface PhysicalMotor {
+  /** N·m por rad. */
+  stiffness: number
+  /** N·m·s por rad. */
+  damping: number
+}
+
 export interface RagdollJoint {
   def: JointDef
   joint: RAPIER.ImpulseJoint
@@ -140,13 +147,21 @@ export class Ragdoll {
    * `strength` 0 = mole (só atrito), 1 = rígido como uma estátua.
    * A rigidez cresce com o quadrado da força: o meio do controle fica
    * "humano" e o topo fica realmente duro.
+   * `physical` troca juntas específicas para motor por força (N·m/rad),
+   * usado nas pernas enquanto sustentam o corpo em pé.
    */
-  setMotors(pose: Pose, strength: number) {
+  setMotors(pose: Pose, strength: number, physical: Partial<Record<PartName, PhysicalMotor>> = {}) {
     const s2 = strength * strength
     for (const { def, joint, friction, loadStiffness } of this.joints) {
-      const k = s2 * (BASE_STIFFNESS + loadStiffness)
+      // Normal: rigidez por aceleração (independe da massa da parte).
+      // "Física" (N·m/rad), para juntas que sustentam o corpo em pé: é
+      // convertida para aceleração dividindo pela inércia da parte filha.
+      // (O modelo por força do Rapier fica instável no pé, que é leve.)
+      const phys = physical[def.child]
+      const inertia = phys ? this.inertiaOf(def.child) : 1
+      const k = phys ? phys.stiffness / inertia : s2 * (BASE_STIFFNESS + loadStiffness)
+      const damping = phys ? phys.damping / inertia : friction + DAMPING_RATIO * 2 * Math.sqrt(k)
       const target = pose[def.child] ?? [0, 0, 0]
-      const damping = friction + DAMPING_RATIO * 2 * Math.sqrt(k)
       if (def.type === 'hinge') {
         const t = clamp(target[0], def.limits.x)
         ;(joint as RAPIER.RevoluteImpulseJoint).configureMotor(t, 0, k, damping)
@@ -160,6 +175,42 @@ export class Ragdoll {
     }
     // Motores só agem em corpos acordados.
     for (const part of this.parts.values()) part.body.wakeUp()
+  }
+
+  /** Inércia média (kg·m²) de uma parte. */
+  private inertiaOf(name: PartName) {
+    const i = this.parts.get(name)!.body.principalInertia()
+    return (i.x + i.y + i.z) / 3
+  }
+
+  /** Centro de massa e sua velocidade (soma ponderada das partes). */
+  centerOfMass(pos: THREE.Vector3, vel: THREE.Vector3) {
+    pos.set(0, 0, 0)
+    vel.set(0, 0, 0)
+    let total = 0
+    for (const { body, def } of this.parts.values()) {
+      const t = body.translation()
+      const v = body.linvel()
+      pos.x += t.x * def.mass
+      pos.y += t.y * def.mass
+      pos.z += t.z * def.mass
+      vel.x += v.x * def.mass
+      vel.y += v.y * def.mass
+      vel.z += v.z * def.mass
+      total += def.mass
+    }
+    pos.divideScalar(total)
+    vel.divideScalar(total)
+  }
+
+  get totalMass() {
+    let m = 0
+    for (const { def } of this.parts.values()) m += def.mass
+    return m
+  }
+
+  part(name: PartName) {
+    return this.parts.get(name)!
   }
 
   /** Corpo rígido a partir de um colisor (para saber se algo acertou o NPC). */
