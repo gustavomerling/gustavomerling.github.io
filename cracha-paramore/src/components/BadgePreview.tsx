@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { renderBadge, type BadgeData } from '@/lib/badge'
-import { cn } from '@/lib/utils'
 
 interface BadgePreviewProps {
   data: BadgeData
@@ -46,7 +45,6 @@ export function BadgePreview({ data, assetsReady, ready, busy, onDownload }: Bad
   }, [data, assetsReady])
 
   const displayName = data.name.trim() || 'Seu nome'
-  const label = data.isAdmin ? 'Crachá da equipe' : 'Crachá de fã'
 
   return (
     <Card className="gap-0 overflow-hidden border-white/10 bg-card/85 py-0 backdrop-blur-md">
@@ -63,12 +61,9 @@ export function BadgePreview({ data, assetsReady, ready, busy, onDownload }: Bad
         </div>
         <Badge
           variant="outline"
-          className={cn(
-            'border-white/15 bg-white/[0.03] text-[10px] font-semibold uppercase tracking-[0.14em]',
-            data.isAdmin ? 'border-amber-200/25 text-amber-200/85' : 'text-white/55',
-          )}
+          className="border-white/15 bg-white/[0.03] text-[10px] font-semibold uppercase tracking-[0.14em] text-white/55"
         >
-          {label}
+          Crachá da equipe · V{data.variant}
         </Badge>
       </div>
 
@@ -90,7 +85,6 @@ export function BadgePreview({ data, assetsReady, ready, busy, onDownload }: Bad
             </div>
             <div className="badge-mockup-holder">
               <span className="badge-mockup-slot" aria-hidden="true" />
-              <span className="badge-mockup-glare" aria-hidden="true" />
               <div ref={hostRef} className="badge-mockup-card">
                 {assetsReady ? (
                   <canvas
@@ -113,11 +107,15 @@ export function BadgePreview({ data, assetsReady, ready, busy, onDownload }: Bad
               {displayName}
             </p>
             <p className="truncate text-[11px] text-white/40">
-              {data.isAdmin ? data.role : 'Fã oficial'} · {data.album.title}
+              {data.role.trim() || 'Administrador'}
             </p>
           </div>
-          <span className="shrink-0 rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-white/35">
-            {data.album.year}
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-white/35">
+            <span
+              className="size-2 rounded-full border border-white/20"
+              style={{ backgroundColor: data.palette.block }}
+            />
+            {data.palette.name}
           </span>
         </div>
 
