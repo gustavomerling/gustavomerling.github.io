@@ -16,8 +16,10 @@ import type { Npc } from '../npc/Npc'
  * a quantidade.
  */
 
-const MAX_PARTICLES = 220
-const MAX_DECALS = 180
+const MAX_PARTICLES = 360
+const MAX_DECALS = 300
+/** Morto: sangra mais um tempo (s) e forma poça embaixo do corpo. */
+const DEATH_BLEED = 7
 const GRAVITY = 9.8
 const POOL_MAX_R = 0.42
 const TRAIL_STEP = 0.32 // m entre borrões do rastro
@@ -46,9 +48,11 @@ export class Blood {
   private readonly dRot = new Float32Array(MAX_DECALS)
 
   /** 0..1 por parte: quanto sangue ainda sai (decai com o tempo). */
-  private readonly dripAcc = new Map<PartName, number>()
-  private readonly lastTrail = new THREE.Vector3()
+  private dripAcc = new Map<PartName, number>()
+  private lastTrail = new THREE.Vector3()
   private trailValid = false
+  /** Estado de gotejamento/rastro de cada NPC (vários NPCs sangram ao mesmo tempo). */
+  private perNpc = new WeakMap<Npc, { drip: Map<PartName, number>; last: THREE.Vector3; valid: boolean; deadT: number; poolAcc: number }>()
 
   // temporários
   private readonly m = new THREE.Matrix4()
@@ -116,6 +120,7 @@ export class Blood {
     this.dCount = 0
     this.dripAcc.clear()
     this.trailValid = false
+    this.perNpc = new WeakMap()
   }
 
   dispose() {
@@ -154,10 +159,40 @@ export class Blood {
   }
 
   update(dt: number, npc: Npc) {
+    this.updateAll(dt, [npc])
+  }
+
+  /** Todos os NPCs: gotejamento, rastro e poça de morte de cada um; partículas uma vez. */
+  updateAll(dt: number, npcs: readonly Npc[]) {
     if (this.level <= 0) return
-    this.drip(dt, npc)
-    this.trail(npc)
+    for (const npc of npcs) {
+      let s = this.perNpc.get(npc)
+      if (!s) this.perNpc.set(npc, (s = { drip: new Map(), last: new THREE.Vector3(), valid: false, deadT: 0, poolAcc: 0 }))
+      this.dripAcc = s.drip
+      this.lastTrail = s.last
+      this.trailValid = s.valid
+      this.drip(dt, npc)
+      this.trail(npc)
+      s.valid = this.trailValid
+      if (npc.isDead && s.deadT < DEATH_BLEED) this.deathPool(dt, npc, s)
+    }
     this.stepParticles(dt)
+  }
+
+  /** Morto: gotas caem do tronco, juntam numa poça que cresce e para devagar. */
+  private deathPool(dt: number, npc: Npc, s: { deadT: number; poolAcc: number }) {
+    s.deadT += dt
+    const pelvis = npc.ragdoll.part('pelvis')
+    if (pelvis.gone) return
+    const t = pelvis.body.translation()
+    if (t.y > 0.7) return // ainda caindo
+    const rate = 6 * (1 - s.deadT / DEATH_BLEED) * this.level
+    s.poolAcc += rate * dt
+    while (s.poolAcc >= 1) {
+      s.poolAcc--
+      this.hitPt.set(t.x + (Math.random() - 0.5) * 0.25, t.y, t.z + (Math.random() - 0.5) * 0.25)
+      this.spawn(this.hitPt, this.v2.set((Math.random() - 0.5) * 0.3, -0.5, (Math.random() - 0.5) * 0.3), 0.018)
+    }
   }
 
   // --- partículas -------------------------------------------------------------
