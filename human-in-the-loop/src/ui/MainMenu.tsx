@@ -107,25 +107,44 @@ function Home({
           </span>
           atirar / golpear
         </li>
-        <li>
-          <span className="keys">
-            <kbd>F</kbd>
-            <kbd>G</kbd>
-          </span>
-          empurrar o NPC
-        </li>
+        {mode === 'sandbox' ? (
+          <li>
+            <span className="keys">
+              <kbd>F</kbd>
+              <kbd>G</kbd>
+            </span>
+            empurrar o NPC
+          </li>
+        ) : (
+          <li>
+            <span className="keys">
+              <kbd>C</kbd>
+            </span>
+            agachar (alterna)
+          </li>
+        )}
         <li>
           <span className="keys">
             <kbd className="wide">Botão dir.</kbd>
           </span>
           agarrar (mãos) / mirar
         </li>
-        <li>
-          <span className="keys">
-            <kbd>Q</kbd>
-          </span>
-          menu de spawn
-        </li>
+        {mode === 'sandbox' ? (
+          <li>
+            <span className="keys">
+              <kbd>Q</kbd>
+            </span>
+            menu de spawn
+          </li>
+        ) : (
+          <li>
+            <span className="keys">
+              <kbd>Q</kbd>
+              <kbd>E</kbd>
+            </span>
+            inclinar (mirando)
+          </li>
+        )}
       </ul>
       <button className="link-button" onClick={onControls}>
         Ver todos os controles →

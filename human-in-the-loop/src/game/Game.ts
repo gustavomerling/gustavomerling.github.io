@@ -526,6 +526,8 @@ export async function createGame(
       }
     }
     player.respawn()
+    crouchToggle = false
+    lean = 0
     lookAtCenter()
   }
 

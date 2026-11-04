@@ -1451,3 +1451,7 @@ kbd.wide {
 .death-screen.won {
   background: rgba(10, 50, 20, 0.55);
 }
+
+.weapon-ammo.low {
+  color: var(--accent);
+}

@@ -21,7 +21,7 @@ export function ArenaHud({ arena, onRestart }: { arena: ArenaState; onRestart: (
           <div className="hurt-arc" />
         </div>
       )}
-      <Minimap rooms={arena.map} exitOpen={arena.exitOpen} />
+      {!over && <Minimap rooms={arena.map} exitOpen={arena.exitOpen} />}
       <div className="arena-hud">
         <div className={pct < 0.3 ? 'hp low' : 'hp'}>
           <span className="hp-label">Vida</span>
