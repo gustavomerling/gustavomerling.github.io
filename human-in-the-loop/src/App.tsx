@@ -205,6 +205,7 @@ export default function App() {
           onDebug={(patch) => game()?.setDebug(patch)}
           onStep={() => game()?.stepOnce()}
           onReset={() => game()?.resetScene()}
+          resetLabel={mode === 'sandbox' ? undefined : 'Nova masmorra'}
           built={build.placed}
           onClearBuilt={() => game()?.clearBuilt()}
           fov={settings.fov}

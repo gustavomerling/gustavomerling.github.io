@@ -18,6 +18,8 @@ interface Props {
   onDebug: (patch: Partial<DebugState>) => void
   onStep: () => void
   onReset: () => void
+  /** Rótulo do botão de reset (masmorra: "Nova masmorra"). */
+  resetLabel?: string
   built: number
   onClearBuilt: () => void
   fov?: number
@@ -78,7 +80,7 @@ function Lab(p: Props) {
     <div className="lab">
       <div className="lab-actions">
         <button onClick={p.onReset}>
-          Resetar cena <kbd>R</kbd>
+          {p.resetLabel ?? 'Resetar cena'} <kbd>R</kbd>
         </button>
         <button disabled={p.built === 0} onClick={p.onClearBuilt}>
           Remover construções <span className="count">{p.built}</span>
