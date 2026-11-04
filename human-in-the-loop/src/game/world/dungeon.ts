@@ -333,7 +333,9 @@ export function buildDungeon(scene: THREE.Scene, physics: Physics, materials: Ma
     ),
   )
   scene.add(group)
+  const clutter = addClutter(scene, physics, layout)
   return () => {
+    clutter()
     scene.remove(group)
     for (const g of geometries) g.dispose()
     for (const m of Object.values(decor)) m.dispose()
@@ -400,5 +402,60 @@ export function showcaseLayout(origin: THREE.Vector3): DungeonLayout {
     end: rooms[rooms.length - 1],
     at,
     roomAt: () => undefined,
+  }
+}
+
+/**
+ * Objetos pequenos soltos (garrafas, latas, caixinhas) em cima de mesas,
+ * bancadas, caixotes e bancos: corpos dinâmicos leves que caem com um tiro.
+ */
+function addClutter(scene: THREE.Scene, physics: Physics, layout: DungeonLayout) {
+  const kinds = [
+    { geo: new THREE.CylinderGeometry(0.035, 0.035, 0.27, 12), shape: () => RAPIER.ColliderDesc.cylinder(0.135, 0.035), h: 0.27, color: '#2f6b3a', mass: 0.5 },
+    { geo: new THREE.CylinderGeometry(0.033, 0.033, 0.12, 12), shape: () => RAPIER.ColliderDesc.cylinder(0.06, 0.033), h: 0.12, color: '#b8322a', mass: 0.35 },
+    { geo: new THREE.CylinderGeometry(0.033, 0.033, 0.12, 12), shape: () => RAPIER.ColliderDesc.cylinder(0.06, 0.033), h: 0.12, color: '#c9ccd0', mass: 0.35 },
+    { geo: new THREE.BoxGeometry(0.13, 0.19, 0.06), shape: () => RAPIER.ColliderDesc.cuboid(0.065, 0.095, 0.03), h: 0.19, color: '#d8a23a', mass: 0.3 },
+  ]
+  const mats = kinds.map((k) => new THREE.MeshStandardMaterial({ color: k.color, roughness: 0.45, metalness: k.color === '#c9ccd0' ? 0.6 : 0.1 }))
+  const bodies: RAPIER.RigidBody[] = []
+  const meshes: THREE.Mesh[] = []
+  for (const r of layout.rooms) {
+    for (const o of r.obstacles) {
+      const top = (o.y ?? 0) + o.h
+      if (o.solid === false || top < 0.4 || top > 1.6 || o.w < 0.5 || o.d < 0.5) continue
+      const n = Math.floor(Math.random() * 3.2)
+      for (let k = 0; k < n; k++) {
+        const ki = Math.floor(Math.random() * kinds.length)
+        const kind = kinds[ki]
+        const x = r.center.x + o.x + (Math.random() - 0.5) * (o.w - 0.2)
+        const z = r.center.z + o.z + (Math.random() - 0.5) * (o.d - 0.2)
+        const body = physics.world.createRigidBody(
+          RAPIER.RigidBodyDesc.dynamic()
+            .setTranslation(x, top + kind.h / 2 + 0.005, z)
+            .setRotation(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * 6.28))
+            .setLinearDamping(0.2)
+            .setAngularDamping(0.4)
+            .setCcdEnabled(true)
+            .setCanSleep(true),
+        )
+        physics.world.createCollider(kind.shape().setMass(kind.mass).setFriction(0.6).setRestitution(0.2), body)
+        body.sleep()
+        const mesh = new THREE.Mesh(kind.geo, mats[ki])
+        mesh.castShadow = true
+        scene.add(mesh)
+        physics.sync(body, mesh)
+        bodies.push(body)
+        meshes.push(mesh)
+      }
+    }
+  }
+  return () => {
+    for (const b of bodies) {
+      physics.unsync(b)
+      physics.world.removeRigidBody(b)
+    }
+    for (const m of meshes) m.removeFromParent()
+    for (const k of kinds) k.geo.dispose()
+    for (const m of mats) m.dispose()
   }
 }
