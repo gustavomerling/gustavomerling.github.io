@@ -279,6 +279,11 @@ export async function createGame(
       if (!a.bar.visible || !head) continue
       const t = head.body.translation()
       a.bar.position.copy(headPos.set(t.x, t.y + 0.38, t.z))
+      // Longe demais: sem barra (menos poluição na tela).
+      if (headPos.distanceToSquared(ctx.camera.position) > 22 * 22) {
+        a.bar.visible = false
+        continue
+      }
       a.bar.quaternion.copy(ctx.camera.quaternion)
       const f = THREE.MathUtils.clamp(a.npc.health / 100, 0, 1)
       const fill = a.bar.getObjectByName('fill') as THREE.Mesh
