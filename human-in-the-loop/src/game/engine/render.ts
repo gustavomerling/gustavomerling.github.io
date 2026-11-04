@@ -5,18 +5,22 @@ export interface RenderContext {
   renderer: THREE.WebGLRenderer
   scene: THREE.Scene
   camera: THREE.PerspectiveCamera
+  /** Pixels renderizados por pixel CSS (1 = nítido em tela comum). */
+  setPixelRatio: (ratio: number) => void
   dispose: () => void
 }
 
 /** Cria renderer, cena e câmera, e mantém o tamanho sincronizado com o host. */
 export function createRenderContext(host: HTMLElement): RenderContext {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  // Começa em 1: em telas com zoom do Windows (125%/150%) o padrão do
+  // navegador renderizaria 1,5–2,25× mais pixels. Ajustável no menu.
+  renderer.setPixelRatio(1)
   renderer.outputColorSpace = THREE.SRGBColorSpace
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.05
   renderer.shadowMap.enabled = true
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap
+  renderer.shadowMap.type = THREE.PCFShadowMap
   host.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
@@ -39,6 +43,10 @@ export function createRenderContext(host: HTMLElement): RenderContext {
     renderer,
     scene,
     camera,
+    setPixelRatio(ratio) {
+      renderer.setPixelRatio(ratio)
+      resize()
+    },
     dispose() {
       observer.disconnect()
       renderer.dispose()

@@ -8,7 +8,7 @@ Stack: **Vite + React + TypeScript + Three.js + Rapier** (física em WASM).
 Publicado no GitHub Pages em `/human-in-the-loop/dist/`.
 
 > Status: **etapa 3**, desenvolvimento passo a passo (ver [DEVELOPMENT.md](DEVELOPMENT.md)).
-> Concluído: passos 1–2.
+> Concluído: passos 1–3.
 
 ---
 
@@ -55,7 +55,8 @@ dá para trocar pela versão WASM separada mais à frente.
 
 | Ação | Tecla |
 |------|-------|
-| Mover / pular / agachar | WASD / Espaço / Ctrl |
+| Mover / correr / pular / agachar | WASD / Shift / Espaço / C (Ctrl não: Ctrl+W fecha a aba) |
+| Voltar ao início | R |
 | Atirar / golpear | Botão esquerdo |
 | Mirar (iron sight) | Botão direito |
 | Trocar arma | 1–9 / roda do mouse |

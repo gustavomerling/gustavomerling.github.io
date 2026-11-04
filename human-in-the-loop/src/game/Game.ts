@@ -3,17 +3,29 @@ import { createLoop } from './engine/loop'
 import { initPhysics, Physics, RAPIER } from './engine/physics'
 import { createRenderContext } from './engine/render'
 import { FpsLook } from './player/FpsLook'
+import { Input } from './player/Input'
+import { PlayerBody } from './player/PlayerBody'
 import { buildLab, buildLights, LAB } from './world/lab'
 import { createMaterials } from './world/materials'
 
+export interface GameStats {
+  fps: number
+  /** Tempo médio de CPU por frame gasto na física, em ms. */
+  physicsMs: number
+  /** Tempo médio de CPU por frame para montar o render, em ms (a GPU roda depois). */
+  renderMs: number
+}
+
 export interface GameEvents {
   onLockChange: (locked: boolean) => void
+  onStats: (stats: GameStats) => void
 }
 
 export interface Game {
   /** Captura o mouse e entra no jogo. */
   lock: () => void
   setSensitivity: (value: number) => void
+  setPixelRatio: (value: number) => void
   dispose: () => void
 }
 
@@ -32,14 +44,20 @@ export async function createGame(host: HTMLElement, events: GameEvents): Promise
   disposers.push(buildLights(ctx.scene))
   disposers.push(buildLab(ctx.scene, physics, materials))
 
-  // Câmera em primeira pessoa, parada no ponto de nascimento (o corpo do
-  // jogador entra no passo 3).
-  const look = new FpsLook(ctx.renderer.domElement, events.onLockChange)
-  ctx.camera.position.copy(LAB.playerSpawn)
-  look.lookAt(LAB.playerSpawn, new THREE.Vector3(0, 1.2, 0))
+  const input = new Input()
+  disposers.push(() => input.dispose())
+  const look = new FpsLook(ctx.renderer.domElement, (locked) => {
+    input.enabled = locked
+    if (!locked) input.clear()
+    events.onLockChange(locked)
+  })
   disposers.push(() => look.dispose())
 
-  // Algumas caixas dinâmicas para validar física, sombras e interpolação.
+  const player = new PlayerBody(physics.world, LAB.playerSpawn)
+  const eye = new THREE.Vector3()
+  look.lookAt(player.eyePosition(1, eye), new THREE.Vector3(0, 1.2, 0))
+
+  // Algumas caixas dinâmicas para empurrar e testar física/interpolação.
   const propGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6)
   disposers.push(() => propGeo.dispose())
   const propSpots: [number, number][] = [
@@ -61,12 +79,48 @@ export async function createGame(host: HTMLElement, events: GameEvents): Promise
     physics.sync(body, mesh)
   })
 
+  // Medição simples de desempenho, enviada ao HUD 2× por segundo.
+  let frames = 0
+  let physicsAcc = 0
+  let renderAcc = 0
+  let statsTimer = 0
+
   const loop = createLoop({
-    fixedUpdate: () => physics.step(),
-    render: (alpha) => {
+    fixedUpdate: (dt) => {
+      const t0 = performance.now()
+      if (input.consume('KeyR')) player.respawn()
+      player.update(
+        dt,
+        {
+          forward: input.axis('KeyS', 'KeyW'),
+          right: input.axis('KeyA', 'KeyD'),
+          sprint: input.isDown('ShiftLeft') || input.isDown('ShiftRight'),
+          // Ctrl ficaria perigoso: Ctrl+W fecha a aba do navegador.
+          crouch: input.isDown('KeyC'),
+          jump: input.consume('Space'),
+        },
+        look.yaw,
+      )
+      physics.step()
+      physicsAcc += performance.now() - t0
+    },
+    render: (alpha, frameDt) => {
+      const t0 = performance.now()
       physics.interpolate(alpha)
+      ctx.camera.position.copy(player.eyePosition(alpha, eye))
       look.apply(ctx.camera)
       ctx.renderer.render(ctx.scene, ctx.camera)
+
+      frames++
+      renderAcc += performance.now() - t0
+      statsTimer += frameDt
+      if (statsTimer >= 0.5) {
+        events.onStats({ fps: frames / statsTimer, physicsMs: physicsAcc / frames, renderMs: renderAcc / frames })
+        frames = 0
+        physicsAcc = 0
+        renderAcc = 0
+        statsTimer = 0
+      }
     },
   })
   loop.start()
@@ -76,6 +130,7 @@ export async function createGame(host: HTMLElement, events: GameEvents): Promise
     setSensitivity: (value) => {
       look.sensitivity = value
     },
+    setPixelRatio: (value) => ctx.setPixelRatio(value),
     dispose() {
       loop.stop()
       for (const d of disposers.reverse()) d()

@@ -100,8 +100,31 @@ body,
   accent-color: var(--accent);
 }
 
+.field select {
+  padding: 6px;
+  font: inherit;
+  border: 1px solid #c9c5bc;
+  border-radius: 4px;
+  background: #fff;
+}
+
 .hint {
   margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
   font-size: 12px;
-  opacity: 0.55;
+  line-height: 1.7;
+  opacity: 0.6;
+}
+
+.stats {
+  position: fixed;
+  top: 10px;
+  left: 12px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: rgba(30, 30, 30, 0.55);
+  color: #fff;
+  font: 11px/1.4 ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  pointer-events: none;
 }
