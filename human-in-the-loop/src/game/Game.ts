@@ -199,7 +199,12 @@ export async function createGame(
   const eye = new THREE.Vector3()
   const lookAtCenter = () => {
     const p = player.eyePosition(1, eye)
-    if (arena) look.lookAt(p, p.clone().add(new THREE.Vector3(0, 0, -5)))
+    if (arena) {
+      // Olhando para a única porta da sala inicial.
+      const d = Math.max(0, arena.layout.start.doors.indexOf(true))
+      const dir = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 0, -1)][d]
+      look.lookAt(p, p.clone().addScaledVector(dir, 5).setY(p.y))
+    }
     else look.lookAt(p, new THREE.Vector3(0, 1.2, 0))
   }
   lookAtCenter()

@@ -92,7 +92,8 @@ function generateOnce(seed: number, count: number): DungeonLayout {
 
   // 1) Cresce um blob: prefere células com poucos vizinhos (corredores, não um quadradão).
   let guard = 0
-  while (cells.size < count && guard++ < 5000) {
+  // Só as salas do meio; início e saída entram depois, como folhas.
+  while (cells.size < count - 2 && guard++ < 5000) {
     const [i, j] = pick([...cells.values()])
     const [di, dj] = pick(DIRS)
     const ni = i + di
@@ -140,9 +141,10 @@ function generateOnce(seed: number, count: number): DungeonLayout {
     r.doors[d] = true
     o.doors[(d + 2) % 4] = true
   }
-  const start = at(0, 0)!
-  const seen = new Set<Room>([start])
-  const stack = [start]
+  // Labirinto das salas do meio (a partir de qualquer uma).
+  const root = rooms[0]
+  const seen = new Set<Room>([root])
+  const stack = [root]
   while (stack.length) {
     const r = stack[stack.length - 1]
     const options = DIRS.map((_, d) => d).filter((d) => {
@@ -166,6 +168,29 @@ function generateOnce(seed: number, count: number): DungeonLayout {
     for (const d of closed()) if (rng() < 0.12) open(r, d)
   }
 
+  // Início e saída: salas-folha com UMA porta, presas por fora do labirinto.
+  const freeSides = (r: Room) => DIRS.map((_, d) => d).filter((d) => !at(r.i + DIRS[d][0], r.j + DIRS[d][1]))
+  const addLeaf = (from: Room, d: number): Room => {
+    const i = from.i + DIRS[d][0]
+    const j = from.j + DIRS[d][1]
+    const r: Room = {
+      index: rooms.length,
+      i,
+      j,
+      center: new THREE.Vector3(i * DUNGEON.room, 0, j * DUNGEON.room),
+      doors: [false, false, false, false],
+      depth: 0,
+      type: 'start',
+      obstacles: [],
+    }
+    rooms.push(r)
+    byKey.set(key(i, j), r)
+    open(from, d)
+    return r
+  }
+  const sHost = pick(rooms.filter((r) => freeSides(r).length))
+  const start = addLeaf(sHost, pick(freeSides(sHost)))
+
   // 4) Profundidade (BFS pelas portas): salas mais fundas têm mais inimigos.
   const queue = [start]
   const depthSeen = new Set([start])
@@ -181,9 +206,14 @@ function generateOnce(seed: number, count: number): DungeonLayout {
     })
   }
 
-  // 5) Tipos: início, fim (a sala mais funda) e os 4 tipos de meio, embaralhados.
-  const maxDepth = Math.max(...rooms.map((r) => r.depth))
-  const end = pick(rooms.filter((r) => r.depth === maxDepth))
+  // A saída sai da sala do meio mais funda que tenha um lado livre.
+  const hosts = rooms.filter((r) => r !== start && freeSides(r).length)
+  const deepest = Math.max(...hosts.map((r) => r.depth))
+  const eHost = pick(hosts.filter((r) => r.depth === deepest))
+  const end = addLeaf(eHost, pick(freeSides(eHost)))
+  end.depth = eHost.depth + 1
+
+  // 5) Tipos: início, saída e os 4 tipos de meio, embaralhados.
   const middles = [...MIDDLE_TYPES].sort(() => rng() - 0.5)
   let m = 0
   for (const r of rooms) {
