@@ -30,7 +30,8 @@ export function DebugPanel({ stats, debug }: { stats: GameStats | null; debug: D
       </div>
       {stats && (
         <div className="debug-row">
-          NPC {stats.npc.state === 'standing' ? 'em pé' : 'caído'} · inclinação {stats.npc.tilt.toFixed(2)} rad · captura{' '}
+          NPC {stats.npc.state === 'standing' ? (stats.npc.stepping ? 'dando passo' : 'em pé') : 'caído'} ·{' '}
+          {stats.npc.steps} passos · inclinação {stats.npc.tilt.toFixed(2)} rad · captura{' '}
           {fmt(stats.npc.captureForward)} frente {fmt(stats.npc.captureSide)} lado
         </div>
       )}

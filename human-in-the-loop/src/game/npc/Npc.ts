@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { Physics } from '../engine/physics'
+import type { Physics, RAPIER } from '../engine/physics'
 import { POSES, type Pose, type PoseId } from './poses'
 import { Ragdoll, type PhysicalMotor } from './Ragdoll'
 import type { PartName } from './skeleton'
@@ -46,6 +46,36 @@ export const BALANCE = {
   fallenStrength: 0.12,
 }
 
+/** Passo de recuperação (passo 10). Distâncias em m, tempos em s. */
+export const STEP = {
+  /** Dispara um passo quando o ponto de captura sai destes limites (em relação ao centro dos pés). */
+  triggerForward: 0.1,
+  triggerBack: 0.08,
+  triggerSide: 0.16,
+  duration: 0.25,
+  height: 0.1,
+  /** Pisa um pouco além do ponto de captura. */
+  overshoot: 0.1,
+  maxLength: 0.7,
+  /** Distância lateral mínima entre os pés (não cruza as pernas). */
+  minWidth: 0.16,
+  /** Mola (aceleração) que leva o pé pela trajetória. */
+  footKp: 700,
+  footKd: 40,
+  /** Joelho dobra no meio do passo (rad). */
+  kneeLift: 1.0,
+  cooldown: 0.05,
+}
+
+type Side = 'L' | 'R'
+
+interface Swing {
+  side: Side
+  start: THREE.Vector3
+  target: THREE.Vector3
+  t: number
+}
+
 export type NpcState = 'standing' | 'fallen'
 
 export interface NpcDebug {
@@ -54,6 +84,9 @@ export interface NpcDebug {
   captureForward: number
   captureSide: number
   tilt: number
+  /** Passos de recuperação dados desde o último reset. */
+  steps: number
+  stepping: boolean
 }
 
 const UP = new THREE.Vector3(0, 1, 0)
@@ -74,7 +107,9 @@ export class Npc {
   /** Direção (yaw) que ele tenta manter. */
   private heading = 0
 
-  readonly debug: NpcDebug = { state: 'standing', captureForward: 0, captureSide: 0, tilt: 0 }
+  readonly debug: NpcDebug = { state: 'standing', captureForward: 0, captureSide: 0, tilt: 0, steps: 0, stepping: false }
+  private swing: Swing | null = null
+  private stepCooldown = 0
 
   private readonly com = new THREE.Vector3()
   private readonly comVel = new THREE.Vector3()
@@ -90,6 +125,8 @@ export class Npc {
     this.ragdoll.placeAt(feet, yaw)
     this.heading = yaw
     this.state = 'standing'
+    this.swing = null
+    this.debug.steps = 0
     this.applyMotors(POSES[this.poseId].pose)
   }
 
@@ -144,33 +181,48 @@ export class Npc {
     this.ragdoll.centerOfMass(this.com, this.comVel)
     const height = Math.max(0.3, this.com.y - feetY)
     const t = Math.sqrt(height / 9.81)
+    const capture = new THREE.Vector3(this.com.x + this.comVel.x * t, 0, this.com.z + this.comVel.z * t)
     const fl = this.ragdoll.part('footL').body.translation()
     const fr = this.ragdoll.part('footR').body.translation()
-    // O centro do apoio fica um pouco à frente do tornozelo (meio do pé).
-    const supportX = (fl.x + fr.x) / 2
-    const supportZ = (fl.z + fr.z) / 2
-    const ex = this.com.x + this.comVel.x * t - supportX
-    const ez = this.com.z + this.comVel.z * t - supportZ
-    // Para o espaço do NPC (olha para -Z local).
-    const sin = Math.sin(this.heading)
-    const cos = Math.cos(this.heading)
-    const forward = -sin * ex - cos * ez
-    const side = cos * ex - sin * ez
-    this.debug.captureForward = forward
-    this.debug.captureSide = side
+    const mid = new THREE.Vector3((fl.x + fr.x) / 2, 0, (fl.z + fr.z) / 2)
+    const err = this.toLocal(capture.clone().sub(mid))
+    this.debug.captureForward = err.forward
+    this.debug.captureSide = err.side
 
-    // --- Estratégia do tornozelo e do quadril ------------------------------
+    // --- Passo de recuperação ----------------------------------------------
+    this.stepCooldown -= dt
+    if (!this.swing && this.stepCooldown <= 0) {
+      const out =
+        err.forward > STEP.triggerForward || err.forward < -STEP.triggerBack || Math.abs(err.side) > STEP.triggerSide
+      if (out) this.startStep(capture, fl, fr, err)
+    }
+    const swing = this.swing
+    this.debug.stepping = swing !== null
+
+    // Apoio: os dois pés; durante o passo, só o pé que ficou no chão.
+    const support = swing ? (swing.side === 'L' ? fr : fl) : mid
+    const ex = capture.x - support.x
+    const ez = capture.z - support.z
+
+    // --- Pose: tornozelos acompanham; perna do passo dobra o joelho ---------
     const base: Pose = POSES[this.poseId].pose
     const pose: Pose = { ...base }
     const clampA = (v: number) => THREE.MathUtils.clamp(v, -BALANCE.maxAnkle, BALANCE.maxAnkle)
-    // Centro de massa à frente → aponta os pés para baixo (x−) e empurra o corpo para trás.
-    const ankleX = clampA(-BALANCE.ankleGain * forward)
-    for (const s of ['L', 'R'] as const) {
-      const foot = `foot${s}` as const
+    // Centro de massa à frente: aponta os pés para baixo (x−) e empurra o corpo para trás.
+    const ankleX = clampA(-BALANCE.ankleGain * err.forward)
+    for (const side of ['L', 'R'] as const) {
+      const foot = `foot${side}` as const
       const fb = base[foot] ?? [0, 0, 0]
-      pose[foot] = [fb[0] + ankleX, fb[1], fb[2]]
+      pose[foot] = [fb[0] + (swing?.side === side ? 0 : ankleX), fb[1], fb[2]]
+    }
+    if (swing) {
+      const shin = `shin${swing.side}` as const
+      const sb = base[shin] ?? [0, 0, 0]
+      const lift = Math.sin(Math.PI * Math.min(1, swing.t / STEP.duration))
+      pose[shin] = [sb[0] - STEP.kneeLift * lift, sb[1], sb[2]]
     }
     this.applyMotors(pose)
+    if (swing) this.driveSwing(swing, dt)
 
     // --- Força de equilíbrio no tronco -------------------------------------
     const mass = this.ragdoll.totalMass
@@ -189,7 +241,100 @@ export class Npc {
     this.ragdoll.dispose()
   }
 
+  /** Vetor no plano: componentes "para a frente" e "para a direita" do NPC (olha para -Z local). */
+  private toLocal(v: THREE.Vector3) {
+    const sin = Math.sin(this.heading)
+    const cos = Math.cos(this.heading)
+    return { forward: -sin * v.x - cos * v.z, side: cos * v.x - sin * v.z }
+  }
+
+  private fromLocal(forward: number, side: number) {
+    const sin = Math.sin(this.heading)
+    const cos = Math.cos(this.heading)
+    return new THREE.Vector3(-sin * forward + cos * side, 0, -cos * forward - sin * side)
+  }
+
+  /**
+   * Escolhe o pé e o ponto onde pisar. Desequilíbrio para o lado: pisa com o
+   * pé daquele lado (sem cruzar). Para frente/trás: o pé mais longe do
+   * ponto de captura, que vira o novo apoio.
+   */
+  private startStep(capture: THREE.Vector3, fl: RAPIER.Vector, fr: RAPIER.Vector, err: { forward: number; side: number }) {
+    let side: Side
+    if (Math.abs(err.side) > STEP.triggerSide && Math.abs(err.side) > Math.abs(err.forward)) {
+      side = err.side > 0 ? 'R' : 'L'
+    } else {
+      const dl = Math.hypot(fl.x - capture.x, fl.z - capture.z)
+      const dr = Math.hypot(fr.x - capture.x, fr.z - capture.z)
+      side = dl > dr ? 'L' : 'R'
+    }
+    const swingFoot = side === 'L' ? fl : fr
+    const stance = side === 'L' ? fr : fl
+    const start = new THREE.Vector3(swingFoot.x, swingFoot.y, swingFoot.z)
+
+    // Alvo: ponto de captura + um pouco além, na direção do desequilíbrio.
+    const dir = this.fromLocal(err.forward, err.side)
+    if (dir.lengthSq() > 1e-6) dir.normalize()
+    const target = capture.clone().addScaledVector(dir, STEP.overshoot)
+    // Garante a largura mínima em relação ao pé de apoio (não cruza).
+    const rel = this.toLocal(new THREE.Vector3(target.x - stance.x, 0, target.z - stance.z))
+    rel.side = side === 'R' ? Math.max(rel.side, STEP.minWidth) : Math.min(rel.side, -STEP.minWidth)
+    target.copy(this.fromLocal(rel.forward, rel.side)).add(new THREE.Vector3(stance.x, 0, stance.z))
+    // Comprimento máximo do passo.
+    const delta = target.clone().sub(start).setY(0)
+    if (delta.length() > STEP.maxLength) delta.setLength(STEP.maxLength)
+    target.copy(start).add(delta)
+    target.y = start.y
+
+    this.swing = { side, start, target, t: 0 }
+    this.debug.steps++
+  }
+
+  /** Leva o pé pela trajetória (arco) com uma mola; a canela vai junto. */
+  private driveSwing(swing: Swing, dt: number) {
+    swing.t += dt
+    const u = Math.min(1, swing.t / STEP.duration)
+    const s = u * u * (3 - 2 * u)
+    const desired = swing.start.clone().lerp(swing.target, s)
+    desired.y += Math.sin(Math.PI * u) * STEP.height
+
+    const foot = this.ragdoll.part(`foot${swing.side}`)
+    const shin = this.ragdoll.part(`shin${swing.side}`)
+    const p = foot.body.translation()
+    const v = foot.body.linvel()
+    const accel = new THREE.Vector3(desired.x - p.x, desired.y - p.y, desired.z - p.z)
+      .multiplyScalar(STEP.footKp)
+      .sub(new THREE.Vector3(v.x, v.y, v.z).multiplyScalar(STEP.footKd))
+    accel.y += 9.81 // compensa o peso da perna no ar
+    for (const part of [foot, shin]) part.body.applyImpulse(accel.clone().multiplyScalar(part.def.mass * dt), true)
+    this.orientFlat(`foot${swing.side}`, dt)
+
+    if (u >= 1) {
+      this.swing = null
+      this.stepCooldown = STEP.cooldown
+    }
+  }
+
+  /** Mantém o pé reto e apontando para a frente durante o passo. */
+  private orientFlat(name: PartName, dt: number) {
+    const body = this.ragdoll.part(name).body
+    const r = body.rotation()
+    const q = this.tmpQ.set(r.x, r.y, r.z, r.w)
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q)
+    const accel = new THREE.Vector3().crossVectors(up, UP).multiplyScalar(300)
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(q)
+    const yaw = Math.atan2(-fwd.x, -fwd.z)
+    accel.y += 150 * Math.atan2(Math.sin(this.heading - yaw), Math.cos(this.heading - yaw))
+    const w = body.angvel()
+    accel.sub(new THREE.Vector3(w.x, w.y, w.z).multiplyScalar(25))
+    const inertia = body.principalInertia()
+    accel.multiplyScalar(((inertia.x + inertia.y + inertia.z) / 3) * dt)
+    body.applyTorqueImpulse(accel, true)
+  }
+
   private fall() {
+    this.swing = null
+    this.debug.stepping = false
     this.state = 'fallen'
     this.debug.state = 'fallen'
     this.ragdoll.setMotors(POSES.stand.pose, BALANCE.fallenStrength)
@@ -206,11 +351,12 @@ export class Npc {
     const m = (k: number, d: number): PhysicalMotor => ({ stiffness: k * f, damping: d * Math.sqrt(f) })
     const knee = m(BALANCE.kneeK, BALANCE.kneeD)
     const hip = m(BALANCE.hipK, BALANCE.hipD)
+    // A perna que está dando o passo fica com os motores normais (mais
+    // macios), para a mola do pé conseguir levá-la.
+    const swing = this.swing?.side
     this.ragdoll.setMotors(pose, this.strength, {
-      shinL: knee,
-      shinR: knee,
-      thighL: hip,
-      thighR: hip,
+      ...(swing === 'L' ? {} : { shinL: knee, thighL: hip }),
+      ...(swing === 'R' ? {} : { shinR: knee, thighR: hip }),
     })
   }
 

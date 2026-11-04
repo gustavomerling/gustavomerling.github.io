@@ -152,8 +152,8 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const handleDebugKeys = () => {
     if (input.consume('KeyR')) resetScene()
     if (input.consume('KeyT')) dropRagdoll()
-    if (input.consume('KeyF')) pushNpc(25)
-    if (input.consume('KeyG')) pushNpc(70)
+    if (input.consume('KeyF')) pushNpc(40)
+    if (input.consume('KeyG')) pushNpc(110)
     if (input.consume('Backquote')) setDebug({ panel: !debug.panel })
     if (!debug.panel) return
     if (input.consume('KeyP')) setDebug({ paused: !debug.paused })
