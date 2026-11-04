@@ -197,6 +197,32 @@ export class Ragdoll {
     for (const p of this.parts.values()) p.body.setBodyType(type, true)
   }
 
+  /**
+   * Erro médio (rad) entre as juntas atuais e uma pose, nos eixos com
+   * limite (mesma convenção dos motores: parte imaginária do quatérnio).
+   */
+  poseError(pose: Pose, children: PartName[]) {
+    let sum = 0
+    let n = 0
+    for (const { def } of this.joints) {
+      if (!children.includes(def.child)) continue
+      const pr = this.parts.get(def.parent)!.body.rotation()
+      const cr = this.parts.get(def.child)!.body.rotation()
+      const rel = new THREE.Quaternion(pr.x, pr.y, pr.z, pr.w).invert().multiply(new THREE.Quaternion(cr.x, cr.y, cr.z, cr.w))
+      if (rel.w < 0) rel.set(-rel.x, -rel.y, -rel.z, -rel.w)
+      const target = pose[def.child] ?? [0, 0, 0]
+      const axes = def.type === 'hinge' ? [0] : [0, 1, 2]
+      const ranges = [def.limits.x, def.limits.y, def.limits.z]
+      const imag = [rel.x, rel.y, rel.z]
+      for (const i of axes) {
+        const t = ranges[i] ? clamp(target[i], ranges[i]!) : target[i]
+        sum += Math.abs(2 * Math.asin(THREE.MathUtils.clamp(imag[i], -1, 1)) - t)
+        n++
+      }
+    }
+    return n ? sum / n : 0
+  }
+
   /** Inércia média (kg·m²) de uma parte. */
   private inertiaOf(name: PartName) {
     const i = this.parts.get(name)!.body.principalInertia()

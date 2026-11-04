@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { Physics, RAPIER } from '../engine/physics'
 import { Damage, OUT_COLD, REGIONS, REGION_OF, type HitKind, type Region } from './Damage'
-import { GetUp } from './getUp'
+import { PhysicalGetUp } from './PhysicalGetUp'
 import { POSES, type Pose, type PoseId } from './poses'
 import { Ragdoll, type PhysicalMotor } from './Ragdoll'
 import type { PartName } from './skeleton'
@@ -289,7 +289,8 @@ export class Npc {
   /** Passos de conforto seguidos desde o último desequilíbrio. */
   private comfortAttempts = 0
   private stateTime = 0
-  private getUp: GetUp | null = null
+  private getUp: PhysicalGetUp | null = null
+  private readonly physics: Physics
   /** Tempo restante de atordoamento (s). */
   private stagger = 0
   private fallPose: Pose = {}
@@ -305,12 +306,12 @@ export class Npc {
   private readonly tmpV = new THREE.Vector3()
 
   constructor(physics: Physics, scene: THREE.Scene) {
+    this.physics = physics
     this.ragdoll = new Ragdoll(physics, scene)
   }
 
   /** Coloca de pé em `feet`, virado para `yaw`, e volta a se equilibrar. */
   spawn(feet: THREE.Vector3, yaw: number) {
-    this.getUp?.cancel()
     this.getUp = null
     this.ragdoll.placeAt(feet, yaw)
     this.heading = yaw
@@ -322,7 +323,6 @@ export class Npc {
 
   /** Solta o corpo (debug): já entra caindo. */
   drop(feet: THREE.Vector3, yaw: number, opts: Parameters<Ragdoll['placeAt']>[2]) {
-    this.getUp?.cancel()
     this.getUp = null
     this.ragdoll.placeAt(feet, yaw, opts)
     this.heading = yaw
@@ -333,8 +333,7 @@ export class Npc {
   push(impulse: THREE.Vector3) {
     // Empurrão forte no meio da animação de levantar devolve o corpo à física.
     if (this.state === 'gettingUp' && impulse.length() > 30) {
-      this.getUp?.cancel()
-      this.getUp = null
+        this.getUp = null
       this.enterFalling('back')
     }
     this.ragdoll.part('chest').body.applyImpulse(impulse, true)
@@ -353,7 +352,6 @@ export class Npc {
       this.stagger = Math.min(STAGGER.max, this.stagger + s)
     }
     if (this.state !== 'gettingUp' || strength < 8) return
-    this.getUp?.cancel()
     this.getUp = null
     this.enterFalling('back')
     body.applyImpulseAtPoint(impulse, point, true)
@@ -382,7 +380,6 @@ export class Npc {
 
   /** Desmaia: corpo mole por um tempo (ou até o reset). */
   private knockOut(seconds: number) {
-    this.getUp?.cancel()
     this.getUp = null
     this.knockout = Math.max(this.knockout, seconds)
     this.swing = null
@@ -433,7 +430,6 @@ export class Npc {
   }
 
   dispose() {
-    this.getUp?.cancel()
     this.ragdoll.dispose()
   }
 
@@ -568,7 +564,7 @@ export class Npc {
       this.crawlT = 0
       return
     }
-    this.getUp = new GetUp(this.ragdoll, POSES.stand.pose)
+    this.getUp = new PhysicalGetUp(this.ragdoll, this.physics, POSES.stand.pose)
     this.heading = this.getUp.plan.yaw
     this.setState('gettingUp')
   }
@@ -576,9 +572,18 @@ export class Npc {
   private updateGettingUp(dt: number) {
     const g = this.getUp
     if (!g) return this.enterStanding()
-    g.update(dt)
+    if (!this.damage.canStand) {
+      // Ferido demais para ficar em pé: desiste e rasteja.
+      this.getUp = null
+      this.setState('crawling')
+      this.crawlT = 0
+      return
+    }
+    g.limbScale = this.limbScale()
+    const result = g.update(dt, Math.min(1, this.muscle / 0.6))
+    this.heading = g.plan.yaw
     this.debug.getUpStage = g.label
-    if (g.done) {
+    if (result === 'done') {
       this.getUp = null
       this.debug.steps = 0
       this.enterStanding()

@@ -1,46 +1,33 @@
 import * as THREE from 'three'
-
-import {
-  forwardKinematics,
-  lowestPoint,
-  poseRotations,
-  rootRotation,
-  type JointRotations,
-  type PartTransform,
-} from './kinematics'
 import type { Pose } from './poses'
 import type { Ragdoll } from './Ragdoll'
-import { JOINTS, type PartName } from './skeleton'
 
 /**
- * Levantar do chão com animação scriptada.
- *
- * Durante a animação o corpo fica cinemático: cada parte segue a
- * configuração calculada por cinemática direta. Cada trecho interpola das
- * rotações atuais para o próximo quadro-chave e:
- * - "apoia" o corpo no chão (o ponto mais baixo fica na altura do chão);
- * - mantém fixa no plano a parte-âncora do trecho (pés, joelhos, mãos...),
- *   para nada escorregar.
- * O primeiro trecho parte da pose exata em que ele caiu.
+ * Etapas para levantar do chão (poses e inclinação da pélvis) e a escolha
+ * de como levantar. Quem executa é o PhysicalGetUp: as etapas são alvos para
+ * os motores e para forças de apoio limitadas, com o corpo sempre dinâmico.
  */
 
-type Anchor = 'pelvis' | 'feet' | 'knees' | 'hands' | 'footL' | 'kneeR'
+export type Anchor = 'pelvis' | 'feet' | 'knees' | 'hands' | 'footL' | 'kneeR'
 
-interface Keyframe {
+export interface Keyframe {
   label: string
   /** Inclinação da pélvis em X: + deita para trás (barriga para cima), − para a frente. */
   pitch: number
   pose: Pose
   duration: number
   anchor: Anchor
+  /** Altura da pélvis acima do chão com a etapa cumprida (m). */
+  height: number
 }
 
 const H = Math.PI / 2
 
 /** De costas: senta, recolhe as pernas, agacha, levanta. */
-const FROM_BACK: Keyframe[] = [
+export const FROM_BACK: Keyframe[] = [
   {
     label: 'deitado',
+    height: 0.1,
     pitch: H,
     duration: 0.5,
     anchor: 'pelvis',
@@ -48,6 +35,7 @@ const FROM_BACK: Keyframe[] = [
   },
   {
     label: 'senta',
+    height: 0.12,
     pitch: 0.5,
     duration: 0.7,
     anchor: 'pelvis',
@@ -64,6 +52,7 @@ const FROM_BACK: Keyframe[] = [
   },
   {
     label: 'recolhe as pernas',
+    height: 0.12,
     pitch: 0.2,
     duration: 0.6,
     anchor: 'pelvis',
@@ -84,6 +73,7 @@ const FROM_BACK: Keyframe[] = [
   },
   {
     label: 'agacha',
+    height: 0.45,
     pitch: -0.35,
     duration: 0.6,
     anchor: 'feet',
@@ -105,6 +95,7 @@ const FROM_BACK: Keyframe[] = [
   },
   {
     label: 'levantando',
+    height: 0.72,
     pitch: -0.2,
     duration: 0.45,
     anchor: 'feet',
@@ -125,9 +116,10 @@ const FROM_BACK: Keyframe[] = [
 ]
 
 /** De bruços: flexão, quatro apoios, ajoelhado, um joelho, levanta. */
-const FROM_FRONT: Keyframe[] = [
+export const FROM_FRONT: Keyframe[] = [
   {
     label: 'mãos no chão',
+    height: 0.11,
     pitch: -H,
     duration: 0.45,
     anchor: 'pelvis',
@@ -135,6 +127,7 @@ const FROM_FRONT: Keyframe[] = [
   },
   {
     label: 'flexão',
+    height: 0.18,
     pitch: -1.0,
     duration: 0.5,
     anchor: 'hands',
@@ -152,6 +145,7 @@ const FROM_FRONT: Keyframe[] = [
   },
   {
     label: 'quatro apoios',
+    height: 0.5,
     pitch: -H,
     duration: 0.6,
     anchor: 'hands',
@@ -169,6 +163,7 @@ const FROM_FRONT: Keyframe[] = [
   },
   {
     label: 'ajoelhado',
+    height: 0.6,
     pitch: 0,
     duration: 0.6,
     anchor: 'knees',
@@ -185,6 +180,7 @@ const FROM_FRONT: Keyframe[] = [
   },
   {
     label: 'um joelho',
+    height: 0.58,
     pitch: -0.15,
     duration: 0.55,
     anchor: 'kneeR',
@@ -202,6 +198,7 @@ const FROM_FRONT: Keyframe[] = [
   },
   {
     label: 'levantando',
+    height: 0.72,
     pitch: -0.08,
     duration: 0.55,
     anchor: 'footL',
@@ -222,8 +219,8 @@ const FROM_FRONT: Keyframe[] = [
 ]
 
 /** Último quadro de qualquer sequência: em pé, pés no lugar. */
-function standFrame(pose: Pose): Keyframe {
-  return { label: 'em pé', pitch: 0, duration: 0.5, anchor: 'feet', pose }
+export function standFrame(pose: Pose): Keyframe {
+  return { label: 'em pé', pitch: 0, duration: 0.5, anchor: 'feet', pose, height: 0.9 }
 }
 
 export interface GetUpPlan {
@@ -246,130 +243,4 @@ export function planGetUp(ragdoll: Ragdoll): GetUpPlan {
   // cabeça); de bruços, termina olhando para onde a cabeça estava.
   const yaw = fromBack ? Math.atan2(up.x, up.z) : Math.atan2(-up.x, -up.z)
   return { yaw, fromBack }
-}
-
-export class GetUp {
-  readonly plan: GetUpPlan
-  private readonly frames: Keyframe[]
-  private readonly ragdoll: Ragdoll
-  private readonly ground: number
-  private index = 0
-  private t = 0
-  private fromJoints: JointRotations = new Map()
-  private fromRoot = new THREE.Quaternion()
-  private anchorWorld = new THREE.Vector3()
-  done = false
-
-  constructor(ragdoll: Ragdoll, standPose: Pose) {
-    this.ragdoll = ragdoll
-    this.plan = planGetUp(ragdoll)
-    this.frames = [...(this.plan.fromBack ? FROM_BACK : FROM_FRONT), standFrame(standPose)]
-
-    // Chão: o ponto mais baixo do corpo agora.
-    const now = this.currentTransforms()
-    this.ground = lowestPoint(now)
-    ragdoll.setKinematic(true)
-    this.beginSegment(now)
-  }
-
-  get label() {
-    return this.frames[Math.min(this.index, this.frames.length - 1)].label
-  }
-
-  /** Avança a animação e posiciona as partes. */
-  update(dt: number) {
-    if (this.done) return
-    const frame = this.frames[this.index]
-    this.t += dt
-    const u = Math.min(1, this.t / frame.duration)
-    const s = u * u * (3 - 2 * u)
-
-    const targetJoints = poseRotations(frame.pose)
-    const joints: JointRotations = new Map()
-    for (const [name, q] of this.fromJoints) joints.set(name, q.clone().slerp(targetJoints.get(name)!, s))
-    const root = this.fromRoot.clone().slerp(rootRotation(this.plan.yaw, frame.pitch), s)
-
-    const transforms = this.place(root, joints)
-    for (const [name, t] of transforms) {
-      const body = this.ragdoll.part(name).body
-      body.setNextKinematicTranslation(t.pos)
-      body.setNextKinematicRotation(t.rot)
-    }
-
-    if (u >= 1) {
-      this.index++
-      if (this.index >= this.frames.length) {
-        this.finish()
-        return
-      }
-      this.beginSegment(transforms)
-    }
-  }
-
-  /** Interrompe (ex.: reset) devolvendo o corpo à física. */
-  cancel() {
-    if (this.done) return
-    this.done = true
-    this.ragdoll.setKinematic(false)
-  }
-
-  private finish() {
-    this.done = true
-    this.ragdoll.setKinematic(false)
-    for (const p of this.ragdoll.parts.values()) {
-      p.body.setLinvel({ x: 0, y: 0, z: 0 }, true)
-      p.body.setAngvel({ x: 0, y: 0, z: 0 }, true)
-    }
-  }
-
-  /** Guarda a configuração de partida do trecho e a posição da âncora. */
-  private beginSegment(current: Map<PartName, PartTransform>) {
-    this.t = 0
-    const pelvis = current.get('pelvis')!
-    this.fromRoot = pelvis.rot.clone()
-    this.fromJoints = new Map()
-    for (const j of JOINTS) {
-      const parent = current.get(j.parent)!.rot
-      const child = current.get(j.child)!.rot
-      this.fromJoints.set(j.child, parent.clone().invert().multiply(child))
-    }
-    this.anchorWorld = anchorPoint(current, this.frames[this.index].anchor)
-  }
-
-  /** Posiciona a pélvis: âncora fixa no plano e ponto mais baixo no chão. */
-  private place(root: THREE.Quaternion, joints: JointRotations) {
-    const local = forwardKinematics(new THREE.Vector3(), root, joints)
-    const anchor = anchorPoint(local, this.frames[this.index].anchor)
-    const offset = new THREE.Vector3(this.anchorWorld.x - anchor.x, this.ground - lowestPoint(local), this.anchorWorld.z - anchor.z)
-    for (const t of local.values()) t.pos.add(offset)
-    return local
-  }
-
-  private currentTransforms() {
-    const out = new Map<PartName, PartTransform>()
-    for (const [name, p] of this.ragdoll.parts) {
-      const t = p.body.translation()
-      const r = p.body.rotation()
-      out.set(name, { pos: new THREE.Vector3(t.x, t.y, t.z), rot: new THREE.Quaternion(r.x, r.y, r.z, r.w) })
-    }
-    return out
-  }
-}
-
-function anchorPoint(t: Map<PartName, PartTransform>, anchor: Anchor): THREE.Vector3 {
-  const mid = (a: PartName, b: PartName) => t.get(a)!.pos.clone().add(t.get(b)!.pos).multiplyScalar(0.5)
-  switch (anchor) {
-    case 'pelvis':
-      return t.get('pelvis')!.pos.clone()
-    case 'feet':
-      return mid('footL', 'footR')
-    case 'knees':
-      return mid('shinL', 'shinR')
-    case 'hands':
-      return mid('handL', 'handR')
-    case 'footL':
-      return t.get('footL')!.pos.clone()
-    case 'kneeR':
-      return t.get('shinR')!.pos.clone()
-  }
 }

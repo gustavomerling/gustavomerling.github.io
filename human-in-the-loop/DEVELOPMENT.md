@@ -29,7 +29,7 @@ simulação, o NPC nunca usa armas, o jogador não cria NPCs.
 | 9 ✅ | **Equilíbrio em pé**: o controle mantém o centro de massa sobre os pés e o tronco ereto. | O NPC fica em pé sozinho e aguenta um empurrão leve. |
 | 10 ✅ | **Passo de recuperação**: quando o centro de massa sai da base, o NPC dá passos na direção certa para não cair. | Empurrão médio: ele cambaleia e se recupera. |
 | 11 ✅ | **Queda controlada**: se não recupera, estende os braços para amortecer e protege a cabeça. *Feito junto: braços ajudando no equilíbrio, volta à postura confortável (arruma os pés) depois de se estabilizar.* | Empurrão forte: cai apoiando as mãos, não como um saco. |
-| 12 ✅ | **Levantar**: sequência deitado, sentado, ajoelhado, em pé, guiada por poses, adaptada a quem caiu de bruços ou de costas. *Feito no passo 11: animação scriptada cinemática, apoiada no chão, partindo da pose da queda.* | Depois de cair, ele se levanta sozinho dos dois jeitos. |
+| 12 ✅ | **Levantar**: sequência deitado, sentado, ajoelhado, em pé, guiada por poses, adaptada a quem caiu de bruços ou de costas. *Refeito depois do passo 18: "semi-scriptado". Uma animação de referência (apoiada no chão, partindo da pose da queda) e o corpo **dinâmico** seguindo-a com forças limitadas. Não afunda nem arremessa objetos; o tempo desacelera quando ele não acompanha; travado, recomeça da pose atual ou se arrasta para um lugar livre.* | Depois de cair, ele se levanta sozinho dos dois jeitos. |
 
 ## Fase C: Armas do jogador
 
