@@ -424,6 +424,8 @@ export async function createGame(
   /** Inclinação (Q/E mirando): -1 esquerda .. 1 direita, suavizada. */
   let lean = 0
   const leanRight = new THREE.Vector3()
+  /** Deslocamento da cabeça pela inclinação (os NPCs veem/miram a cabeça inclinada). */
+  const leanOffset = new THREE.Vector3()
   const camDir = new THREE.Vector3()
   const muzzle = new THREE.Vector3()
 
@@ -610,7 +612,7 @@ export async function createGame(
 
       const t0 = performance.now()
       // Percepção da IA: onde o jogador está, para onde mira e com o quê.
-      player.eyePosition(1, playerInfo.eye)
+      player.eyePosition(1, playerInfo.eye).add(leanOffset)
       playerInfo.aimDir.set(
         -Math.sin(look.yaw) * Math.cos(look.pitch),
         Math.sin(look.pitch),
@@ -671,7 +673,8 @@ export async function createGame(
         const reach = hit ? Math.max(0, Math.min(want, hit.timeOfImpact - 0.2)) : want
         ctx.camera.position.addScaledVector(leanRight, reach)
         ctx.camera.position.y -= Math.abs(lean) * 0.06
-      }
+        leanOffset.copy(leanRight).multiplyScalar(reach).setY(-Math.abs(lean) * 0.06)
+      } else leanOffset.set(0, 0, 0)
       // Mira pela alça: FOV fecha e a sensibilidade cai na mesma proporção.
       weapons.setAiming(!build.active && !sb.menuOpen && input.isDown('Mouse2'))
       const fov = THREE.MathUtils.lerp(baseFov, Math.min(baseFov, weapons.current.adsFov ?? baseFov), weapons.ads)
