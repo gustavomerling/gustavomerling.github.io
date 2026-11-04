@@ -128,6 +128,7 @@ export class Arena {
   private messageAt = 0
   private hurtAt = 0
   private hurtAngle: number | null = null
+  private fullMsgAt = 0
   private won = false
   private readonly visited = new Set<Room>()
   private emittedHp = -1
@@ -334,7 +335,14 @@ export class Arena {
         if (w.owned[weaponIndex('shotgun')]) w.addAmmo(weaponIndex('shotgun'), 4)
         break
       case 'med':
-        if (this.hp >= ARENA.maxHp) return false
+        if (this.hp >= ARENA.maxHp) {
+          // Avisa (sem repetir a cada passo) e deixa o kit no chão.
+          if (performance.now() - this.fullMsgAt > 2500) {
+            this.fullMsgAt = performance.now()
+            this.say('Vida cheia')
+          }
+          return false
+        }
         this.hp = Math.min(ARENA.maxHp, this.hp + ARENA.medkit)
         break
       case 'rifle':
