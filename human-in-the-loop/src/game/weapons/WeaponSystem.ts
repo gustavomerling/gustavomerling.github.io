@@ -135,7 +135,14 @@ export class WeaponSystem {
     const pressed = input.consume('Mouse0')
     const wants = w.automatic ? input.isDown('Mouse0') : pressed
     if (!wants || this.cooldown > 0) return false
-    if (this.ammo[this.index] <= 0) return false
+    if (this.ammo[this.index] <= 0) {
+      // Sem munição: no clique, troca para outra arma de fogo que ainda tenha.
+      if (pressed) {
+        const other = WEAPONS.findIndex((x, i) => i !== this.index && this.owned[i] && x.kind === 'gun' && this.ammo[i] > 0)
+        if (other >= 0) this.select(other)
+      }
+      return false
+    }
     this.ammo[this.index]--
     if (Number.isFinite(this.ammo[this.index])) this.onChange(this.state)
     this.cooldown = 1 / (w.fireRate ?? 5)
