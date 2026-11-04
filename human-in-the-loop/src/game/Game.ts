@@ -1,12 +1,19 @@
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { createLoop } from './engine/loop'
 import { initPhysics, Physics, RAPIER } from './engine/physics'
 import { createRenderContext } from './engine/render'
+import { FpsLook } from './player/FpsLook'
 import { buildLab, buildLights, LAB } from './world/lab'
 import { createMaterials } from './world/materials'
 
+export interface GameEvents {
+  onLockChange: (locked: boolean) => void
+}
+
 export interface Game {
+  /** Captura o mouse e entra no jogo. */
+  lock: () => void
+  setSensitivity: (value: number) => void
   dispose: () => void
 }
 
@@ -14,7 +21,7 @@ export interface Game {
  * Monta e roda o jogo dentro de `host`. Tudo aqui é imperativo e fica fora
  * do React; o React só recebe eventos/estado para o HUD.
  */
-export async function createGame(host: HTMLElement): Promise<Game> {
+export async function createGame(host: HTMLElement, events: GameEvents): Promise<Game> {
   await initPhysics()
 
   const ctx = createRenderContext(host)
@@ -25,14 +32,12 @@ export async function createGame(host: HTMLElement): Promise<Game> {
   disposers.push(buildLights(ctx.scene))
   disposers.push(buildLab(ctx.scene, physics, materials))
 
-  // Câmera provisória (órbita) até a câmera em primeira pessoa do passo 2.
-  ctx.camera.position.copy(LAB.playerSpawn).add(new THREE.Vector3(0, 3, 4))
-  const orbit = new OrbitControls(ctx.camera, ctx.renderer.domElement)
-  orbit.target.set(0, 1, 0)
-  orbit.enableDamping = true
-  orbit.maxPolarAngle = Math.PI / 2 - 0.05
-  orbit.update()
-  disposers.push(() => orbit.dispose())
+  // Câmera em primeira pessoa, parada no ponto de nascimento (o corpo do
+  // jogador entra no passo 3).
+  const look = new FpsLook(ctx.renderer.domElement, events.onLockChange)
+  ctx.camera.position.copy(LAB.playerSpawn)
+  look.lookAt(LAB.playerSpawn, new THREE.Vector3(0, 1.2, 0))
+  disposers.push(() => look.dispose())
 
   // Algumas caixas dinâmicas para validar física, sombras e interpolação.
   const propGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6)
@@ -60,13 +65,17 @@ export async function createGame(host: HTMLElement): Promise<Game> {
     fixedUpdate: () => physics.step(),
     render: (alpha) => {
       physics.interpolate(alpha)
-      orbit.update()
+      look.apply(ctx.camera)
       ctx.renderer.render(ctx.scene, ctx.camera)
     },
   })
   loop.start()
 
   return {
+    lock: () => void look.lock(),
+    setSensitivity: (value) => {
+      look.sensitivity = value
+    },
     dispose() {
       loop.stop()
       for (const d of disposers.reverse()) d()

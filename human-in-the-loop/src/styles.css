@@ -1,3 +1,9 @@
+:root {
+  --ink: #1e1e1e;
+  --paper: #efece6;
+  --accent: #e8742c;
+}
+
 html,
 body,
 #root {
@@ -6,6 +12,7 @@ body,
   overflow: hidden;
   background: #d9d6cf;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--ink);
 }
 
 .viewport {
@@ -13,23 +20,88 @@ body,
   inset: 0;
 }
 
-.hud {
+.crosshair {
   position: fixed;
-  left: 24px;
-  bottom: 24px;
-  color: #1e1e1e;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.55);
   pointer-events: none;
 }
 
-.hud h1 {
+.pause {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(30, 30, 30, 0.25);
+  backdrop-filter: blur(2px);
+  cursor: pointer;
+}
+
+.pause-card {
+  width: min(360px, calc(100vw - 32px));
+  padding: 28px;
+  background: var(--paper);
+  border-radius: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  cursor: default;
+}
+
+.pause-card h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 26px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.hud p {
-  margin: 4px 0 0;
+.pause-card .step {
+  margin: 4px 0 20px;
   font-size: 13px;
-  opacity: 0.7;
+  opacity: 0.6;
+}
+
+.play {
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.play:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+  font-size: 13px;
+}
+
+.field span {
+  display: flex;
+  justify-content: space-between;
+}
+
+.field input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.hint {
+  margin: 18px 0 0;
+  font-size: 12px;
+  opacity: 0.55;
 }
