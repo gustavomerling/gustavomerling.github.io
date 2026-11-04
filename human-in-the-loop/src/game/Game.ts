@@ -188,6 +188,8 @@ export async function createGame(
       spawnActor: (pos, yaw, home) => {
         const a = addActor(MODE_NPC[mode], pos, yaw)
         a.home = home
+        // Inimigo já nasce sabendo de onde o jogador vem (sem susto).
+        a.brain.notice(player.eyePosition(1, new THREE.Vector3()), 0)
       },
       removeActor: (a) => removeActor(a as Actor),
       onChange: (st) => events.onArenaChange?.(st),
