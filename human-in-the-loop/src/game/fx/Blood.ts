@@ -74,7 +74,7 @@ export class Blood {
 
     this.pMesh = new THREE.InstancedMesh(
       new THREE.IcosahedronGeometry(1, 0),
-      new THREE.MeshBasicMaterial({ color: '#8e0f10' }),
+      new THREE.MeshStandardMaterial({ color: '#8e0f10', roughness: 0.35 }),
       MAX_PARTICLES,
     )
     this.pMesh.frustumCulled = false
@@ -83,7 +83,8 @@ export class Blood {
 
     this.dMesh = new THREE.InstancedMesh(
       new THREE.CircleGeometry(1, 10),
-      new THREE.MeshBasicMaterial({
+      new THREE.MeshStandardMaterial({
+        roughness: 0.3,
         color: '#ffffff',
         transparent: true,
         opacity: 0.92,
