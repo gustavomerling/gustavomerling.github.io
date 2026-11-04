@@ -1,12 +1,14 @@
 import * as THREE from 'three'
+import { ColliderDebug } from './debug/ColliderDebug'
 import { createLoop } from './engine/loop'
-import { initPhysics, Physics, RAPIER } from './engine/physics'
+import { initPhysics, Physics } from './engine/physics'
 import { createRenderContext } from './engine/render'
 import { FpsLook } from './player/FpsLook'
 import { Input } from './player/Input'
 import { PlayerBody } from './player/PlayerBody'
 import { buildLab, buildLights, LAB } from './world/lab'
 import { createMaterials } from './world/materials'
+import { createProps } from './world/props'
 
 export interface GameStats {
   fps: number
@@ -14,11 +16,28 @@ export interface GameStats {
   physicsMs: number
   /** Tempo médio de CPU por frame para montar o render, em ms (a GPU roda depois). */
   renderMs: number
+  bodies: number
+  player: {
+    x: number
+    y: number
+    z: number
+    speed: number
+    grounded: boolean
+    crouching: boolean
+  }
+}
+
+export interface DebugState {
+  /** Painel de debug visível durante o jogo. */
+  panel: boolean
+  colliders: boolean
+  paused: boolean
 }
 
 export interface GameEvents {
   onLockChange: (locked: boolean) => void
   onStats: (stats: GameStats) => void
+  onDebugChange: (debug: DebugState) => void
 }
 
 export interface Game {
@@ -26,6 +45,11 @@ export interface Game {
   lock: () => void
   setSensitivity: (value: number) => void
   setPixelRatio: (value: number) => void
+  setDebug: (patch: Partial<DebugState>) => void
+  /** Avança a física um único passo (com a física pausada). */
+  stepOnce: () => void
+  /** Volta jogador e objetos para o estado inicial. */
+  resetScene: () => void
   dispose: () => void
 }
 
@@ -33,7 +57,7 @@ export interface Game {
  * Monta e roda o jogo dentro de `host`. Tudo aqui é imperativo e fica fora
  * do React; o React só recebe eventos/estado para o HUD.
  */
-export async function createGame(host: HTMLElement, events: GameEvents): Promise<Game> {
+export async function createGame(host: HTMLElement, events: GameEvents, initialDebug: DebugState): Promise<Game> {
   await initPhysics()
 
   const ctx = createRenderContext(host)
@@ -43,6 +67,8 @@ export async function createGame(host: HTMLElement, events: GameEvents): Promise
 
   disposers.push(buildLights(ctx.scene))
   disposers.push(buildLab(ctx.scene, physics, materials))
+  const props = createProps(ctx.scene, physics, materials)
+  disposers.push(() => props.dispose())
 
   const input = new Input()
   disposers.push(() => input.dispose())
@@ -55,40 +81,68 @@ export async function createGame(host: HTMLElement, events: GameEvents): Promise
 
   const player = new PlayerBody(physics.world, LAB.playerSpawn)
   const eye = new THREE.Vector3()
-  look.lookAt(player.eyePosition(1, eye), new THREE.Vector3(0, 1.2, 0))
+  const lookAtCenter = () => look.lookAt(player.eyePosition(1, eye), new THREE.Vector3(0, 1.2, 0))
+  lookAtCenter()
 
-  // Algumas caixas dinâmicas para empurrar e testar física/interpolação.
-  const propGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6)
-  disposers.push(() => propGeo.dispose())
-  const propSpots: [number, number][] = [
-    [-1, 6],
-    [0, 6.3],
-    [1, 6],
-    [0.5, 5.5],
-  ]
-  propSpots.forEach(([x, z], i) => {
-    const body = physics.world.createRigidBody(
-      RAPIER.RigidBodyDesc.dynamic()
-        .setTranslation(x, 3 + i * 0.9, z)
-        .setRotation(new THREE.Quaternion().setFromEuler(new THREE.Euler(i * 0.4, i * 0.7, 0))),
-    )
-    physics.world.createCollider(RAPIER.ColliderDesc.cuboid(0.3, 0.3, 0.3).setDensity(300).setFriction(0.7), body)
-    const mesh = new THREE.Mesh(propGeo, materials.prop)
-    mesh.castShadow = mesh.receiveShadow = true
-    ctx.scene.add(mesh)
-    physics.sync(body, mesh)
-  })
+  const colliderDebug = new ColliderDebug(ctx.scene, physics.world, (c) => c.handle === player.collider.handle)
+  disposers.push(() => colliderDebug.dispose())
 
-  // Medição simples de desempenho, enviada ao HUD 2× por segundo.
+  // --- Debug ---------------------------------------------------------------
+  const debug: DebugState = { ...initialDebug }
+  let stepRequested = false
+  const setDebug = (patch: Partial<DebugState>) => {
+    Object.assign(debug, patch)
+    colliderDebug.visible = debug.colliders
+    events.onDebugChange({ ...debug })
+  }
+  setDebug({})
+
+  const resetScene = () => {
+    props.reset()
+    player.respawn()
+    lookAtCenter()
+  }
+
+  /** Atalhos: ` abre/fecha o painel; P, V e . só valem com o painel aberto. */
+  const handleDebugKeys = () => {
+    if (input.consume('KeyR')) resetScene()
+    if (input.consume('Backquote')) setDebug({ panel: !debug.panel })
+    if (!debug.panel) return
+    if (input.consume('KeyP')) setDebug({ paused: !debug.paused })
+    if (input.consume('KeyV')) setDebug({ colliders: !debug.colliders })
+    if (input.consume('Period')) stepRequested = true
+  }
+
+  // --- Medição de desempenho, enviada ao HUD 2× por segundo -----------------
   let frames = 0
   let physicsAcc = 0
   let renderAcc = 0
   let statsTimer = 0
+  const emitStats = () => {
+    const t = player.body.translation()
+    events.onStats({
+      fps: frames / statsTimer,
+      physicsMs: physicsAcc / frames,
+      renderMs: renderAcc / frames,
+      bodies: physics.world.bodies.len(),
+      player: {
+        x: t.x,
+        y: t.y,
+        z: t.z,
+        speed: player.speed,
+        grounded: player.isGrounded,
+        crouching: player.isCrouching,
+      },
+    })
+  }
 
   const loop = createLoop({
     fixedUpdate: (dt) => {
+      handleDebugKeys()
+      if (debug.paused && !stepRequested) return
+      stepRequested = false
+
       const t0 = performance.now()
-      if (input.consume('KeyR')) player.respawn()
       player.update(
         dt,
         {
@@ -106,16 +160,19 @@ export async function createGame(host: HTMLElement, events: GameEvents): Promise
     },
     render: (alpha, frameDt) => {
       const t0 = performance.now()
-      physics.interpolate(alpha)
-      ctx.camera.position.copy(player.eyePosition(alpha, eye))
+      // Pausado, mostra o último passo exato (sem interpolar entre dois passos).
+      const a = debug.paused ? 1 : alpha
+      physics.interpolate(a)
+      ctx.camera.position.copy(player.eyePosition(a, eye))
       look.apply(ctx.camera)
+      colliderDebug.update()
       ctx.renderer.render(ctx.scene, ctx.camera)
 
       frames++
       renderAcc += performance.now() - t0
       statsTimer += frameDt
       if (statsTimer >= 0.5) {
-        events.onStats({ fps: frames / statsTimer, physicsMs: physicsAcc / frames, renderMs: renderAcc / frames })
+        emitStats()
         frames = 0
         physicsAcc = 0
         renderAcc = 0
@@ -131,6 +188,11 @@ export async function createGame(host: HTMLElement, events: GameEvents): Promise
       look.sensitivity = value
     },
     setPixelRatio: (value) => ctx.setPixelRatio(value),
+    setDebug,
+    stepOnce: () => {
+      stepRequested = true
+    },
+    resetScene,
     dispose() {
       loop.stop()
       for (const d of disposers.reverse()) d()

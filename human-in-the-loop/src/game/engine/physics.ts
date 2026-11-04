@@ -44,6 +44,18 @@ export class Physics {
     object.quaternion.copy(rot)
   }
 
+  /** Após mover um corpo "na mão", evita que o render interpole do lugar antigo. */
+  teleport(body: RAPIER.RigidBody) {
+    const s = this.synced.find((x) => x.body === body)
+    if (!s) return
+    const t = body.translation()
+    const r = body.rotation()
+    s.currPos.set(t.x, t.y, t.z)
+    s.currRot.set(r.x, r.y, r.z, r.w)
+    s.prevPos.copy(s.currPos)
+    s.prevRot.copy(s.currRot)
+  }
+
   unsync(body: RAPIER.RigidBody) {
     this.synced = this.synced.filter((s) => s.body !== body)
   }

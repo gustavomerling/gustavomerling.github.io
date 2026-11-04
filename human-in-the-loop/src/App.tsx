@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { createGame, type Game, type GameStats } from './game/Game'
+import { createGame, type DebugState, type Game, type GameStats } from './game/Game'
+import { DebugPanel } from './ui/DebugPanel'
+import { PauseMenu, RES_OPTIONS } from './ui/PauseMenu'
+import { loadJson, saveJson } from './ui/storage'
 
-const SENS_KEY = 'hitl.sensitivity'
-const RES_KEY = 'hitl.pixelRatio'
+const SETTINGS_KEY = 'hitl.settings'
 
-function loadNumber(key: string, fallback: number): number {
+interface Settings {
+  sensitivity: number
+  pixelRatio: number
+  debugPanel: boolean
+  colliders: boolean
+}
+
+/** Lê também as chaves antigas (passos 2–3) para não perder o que já foi ajustado. */
+function legacy(key: string, fallback: number) {
   try {
     const v = Number(localStorage.getItem(key))
     return v > 0 ? v : fallback
@@ -13,17 +23,16 @@ function loadNumber(key: string, fallback: number): number {
   }
 }
 
-function saveNumber(key: string, value: number) {
-  try {
-    localStorage.setItem(key, String(value))
-  } catch {
-    // Sem storage (aba privada etc.): só não lembra o valor.
-  }
+function loadSettings(): Settings {
+  const s = loadJson<Settings>(SETTINGS_KEY, {
+    sensitivity: legacy('hitl.sensitivity', 1),
+    pixelRatio: legacy('hitl.pixelRatio', 1),
+    debugPanel: true,
+    colliders: false,
+  })
+  if (!RES_OPTIONS.includes(s.pixelRatio)) s.pixelRatio = 1
+  return s
 }
-
-/** Opções de resolução (pixels por pixel CSS), até o máximo da tela. */
-const maxRatio = Math.min(Math.max(window.devicePixelRatio, 1), 2)
-const RES_OPTIONS = [0.5, 0.75, 1, 1.5, 2].filter((r) => r <= maxRatio)
 
 /**
  * React cuida só da camada de UI (HUD, menus). A cena 3D e a física rodam
@@ -32,20 +41,21 @@ const RES_OPTIONS = [0.5, 0.75, 1, 1.5, 2].filter((r) => r <= maxRatio)
 export default function App() {
   const hostRef = useRef<HTMLDivElement>(null)
   const gameRef = useRef<Game | undefined>(undefined)
+  const [settings, setSettings] = useState(loadSettings)
   const [ready, setReady] = useState(false)
   const [locked, setLocked] = useState(false)
-  const [sensitivity, setSensitivity] = useState(() => loadNumber(SENS_KEY, 1))
-  const [pixelRatio, setPixelRatio] = useState(() => {
-    const saved = loadNumber(RES_KEY, 1)
-    return RES_OPTIONS.includes(saved) ? saved : 1
-  })
   const [stats, setStats] = useState<GameStats | null>(null)
+  const [debug, setDebugState] = useState<DebugState>({
+    panel: settings.debugPanel,
+    colliders: settings.colliders,
+    paused: false,
+  })
 
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
     let cancelled = false
-    createGame(host, { onLockChange: setLocked, onStats: setStats }).then((g) => {
+    createGame(host, { onLockChange: setLocked, onStats: setStats, onDebugChange: setDebugState }, debug).then((g) => {
       if (cancelled) return g.dispose()
       gameRef.current = g
       setReady(true)
@@ -55,65 +65,46 @@ export default function App() {
       gameRef.current?.dispose()
       gameRef.current = undefined
     }
+    // O estado inicial de debug só importa na criação.
   }, [])
 
   useEffect(() => {
-    gameRef.current?.setSensitivity(sensitivity)
-    saveNumber(SENS_KEY, sensitivity)
-  }, [sensitivity, ready])
+    gameRef.current?.setSensitivity(settings.sensitivity)
+    gameRef.current?.setPixelRatio(settings.pixelRatio)
+    saveJson(SETTINGS_KEY, settings)
+  }, [settings, ready])
 
+  // O jogo é a fonte da verdade do debug (atalhos de teclado mudam lá);
+  // aqui só guardamos as preferências que devem persistir.
   useEffect(() => {
-    gameRef.current?.setPixelRatio(pixelRatio)
-    saveNumber(RES_KEY, pixelRatio)
-  }, [pixelRatio, ready])
+    setSettings((s) =>
+      s.debugPanel === debug.panel && s.colliders === debug.colliders
+        ? s
+        : { ...s, debugPanel: debug.panel, colliders: debug.colliders },
+    )
+  }, [debug.panel, debug.colliders])
+
+  const game = () => gameRef.current
 
   return (
     <>
       <div ref={hostRef} className="viewport" />
       {locked && <div className="crosshair" />}
-      {stats && (
-        <div className="stats">
-          {Math.round(stats.fps)} FPS · física {stats.physicsMs.toFixed(1)} ms · render {stats.renderMs.toFixed(1)} ms
-        </div>
-      )}
+      {locked && debug.panel && <DebugPanel stats={stats} debug={debug} />}
+      {locked && debug.paused && <div className="paused-tag">física pausada</div>}
       {!locked && (
-        <div className="pause" onClick={() => gameRef.current?.lock()}>
-          <div className="pause-card" onClick={(e) => e.stopPropagation()}>
-            <h1>Human in the Loop</h1>
-            <p className="step">Passo 3 · corpo do jogador</p>
-            <button className="play" disabled={!ready} onClick={() => gameRef.current?.lock()}>
-              {ready ? 'Clique para entrar' : 'Carregando física…'}
-            </button>
-            <label className="field">
-              <span>
-                Sensibilidade do mouse <b>{sensitivity.toFixed(2)}</b>
-              </span>
-              <input
-                type="range"
-                min={0.2}
-                max={3}
-                step={0.05}
-                value={sensitivity}
-                onChange={(e) => setSensitivity(Number(e.target.value))}
-              />
-            </label>
-            <label className="field">
-              <span>Resolução</span>
-              <select value={pixelRatio} onChange={(e) => setPixelRatio(Number(e.target.value))}>
-                {RES_OPTIONS.map((r) => (
-                  <option key={r} value={r}>
-                    {Math.round(r * 100)}%{r === 1 ? ' (padrão)' : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <ul className="hint">
-              <li>WASD: andar · Shift: correr</li>
-              <li>Espaço: pular · C: agachar</li>
-              <li>R: voltar ao início · Esc: soltar o mouse</li>
-            </ul>
-          </div>
-        </div>
+        <PauseMenu
+          ready={ready}
+          sensitivity={settings.sensitivity}
+          pixelRatio={settings.pixelRatio}
+          debug={debug}
+          onPlay={() => game()?.lock()}
+          onSensitivity={(sensitivity) => setSettings((s) => ({ ...s, sensitivity }))}
+          onPixelRatio={(pixelRatio) => setSettings((s) => ({ ...s, pixelRatio }))}
+          onDebug={(patch) => game()?.setDebug(patch)}
+          onStep={() => game()?.stepOnce()}
+          onReset={() => game()?.resetScene()}
+        />
       )}
     </>
   )

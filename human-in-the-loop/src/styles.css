@@ -117,14 +117,122 @@ body,
   opacity: 0.6;
 }
 
-.stats {
+.debug {
   position: fixed;
   top: 10px;
   left: 12px;
-  padding: 3px 8px;
-  border-radius: 3px;
-  background: rgba(30, 30, 30, 0.55);
-  color: #fff;
-  font: 11px/1.4 ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: rgba(25, 25, 25, 0.62);
+  color: #f2f0eb;
+  font: 11px/1.55 ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  white-space: pre;
   pointer-events: none;
+}
+
+.debug-flags {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.debug-flags span {
+  padding: 0 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.debug-flags span.on {
+  background: #f2f0eb;
+  color: #1e1e1e;
+}
+
+.debug-flags span.warn {
+  background: var(--accent);
+  color: #fff;
+}
+
+.debug-flags span.off {
+  opacity: 0.35;
+}
+
+.paused-tag {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.debug-box {
+  margin: 20px 0 0;
+  padding: 10px 12px 12px;
+  border: 1px solid #d4d0c7;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.debug-box legend {
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+}
+
+.check input {
+  accent-color: var(--accent);
+}
+
+.buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.buttons button {
+  flex: 1;
+  padding: 7px;
+  border: 1px solid #c9c5bc;
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.buttons button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+kbd {
+  margin-left: auto;
+  padding: 0 5px;
+  border: 1px solid #c9c5bc;
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  background: #fff;
+  font: 11px ui-monospace, Consolas, monospace;
+}
+
+.buttons kbd {
+  margin-left: 4px;
 }

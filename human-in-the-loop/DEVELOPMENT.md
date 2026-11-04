@@ -16,7 +16,7 @@ simulação, o NPC nunca usa armas, o jogador não cria NPCs.
 | 1 ✅ | **Laboratório e loop**: sala minimalista (piso, paredes, pilares), luz e sombras, loop com passo fixo de física. O hello world é reorganizado em módulos (`world`, `render`, `loop`). | A sala aparece, sem travamentos, e redimensiona com a janela. |
 | 2 ✅ | **Câmera FPS**: pointer lock, olhar com o mouse, ajuste de sensibilidade. | Clicar captura o mouse, Esc solta, o olhar é suave. |
 | 3 ✅ | **Corpo do jogador**: cápsula com character controller do Rapier. Andar, correr, pular, agachar, subir degraus e rampas. | Não atravessa paredes, sobe a rampa, agacha embaixo de um obstáculo. |
-| 4 | **HUD e debug**: mira central, painel de debug (FPS, mostrar colliders, pausar e avançar a física quadro a quadro, reset). | Cada botão de debug funciona. |
+| 4 ✅ | **HUD e debug**: mira central, painel de debug (FPS, mostrar colliders, pausar e avançar a física quadro a quadro, reset). | Cada botão de debug funciona. |
 | 5 | **Obstáculos**: modo construção (B) com prévia fantasma, encaixe na grade, rotação, colocar e remover caixa, parede, rampa e mesa. Objetos dinâmicos podem ser empurrados. | Montar uma barricada e empurrar caixas com o corpo. |
 
 ## Fase B: Ragdoll ativo (o coração do jogo)
