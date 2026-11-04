@@ -177,6 +177,15 @@ export class Ragdoll {
     for (const part of this.parts.values()) part.body.wakeUp()
   }
 
+  /**
+   * Cinemático: as partes ignoram a física e seguem posições definidas
+   * (animação de levantar). Ao voltar, viram corpos dinâmicos de novo.
+   */
+  setKinematic(on: boolean) {
+    const type = on ? RAPIER.RigidBodyType.KinematicPositionBased : RAPIER.RigidBodyType.Dynamic
+    for (const p of this.parts.values()) p.body.setBodyType(type, true)
+  }
+
   /** Inércia média (kg·m²) de uma parte. */
   private inertiaOf(name: PartName) {
     const i = this.parts.get(name)!.body.principalInertia()

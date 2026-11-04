@@ -1,5 +1,19 @@
 import type { DebugState, GameStats } from '../game/Game'
+import type { NpcDebug } from '../game/npc/Npc'
 import { POSES } from '../game/npc/poses'
+
+function npcStateLabel(n: NpcDebug) {
+  switch (n.state) {
+    case 'standing':
+      return n.stepping ? 'dando passo' : 'em pé'
+    case 'falling':
+      return 'caindo'
+    case 'down':
+      return 'no chão'
+    case 'gettingUp':
+      return `levantando (${n.getUpStage})`
+  }
+}
 
 const fmt = (n: number) => n.toFixed(2).padStart(6)
 
@@ -30,7 +44,7 @@ export function DebugPanel({ stats, debug }: { stats: GameStats | null; debug: D
       </div>
       {stats && (
         <div className="debug-row">
-          NPC {stats.npc.state === 'standing' ? (stats.npc.stepping ? 'dando passo' : 'em pé') : 'caído'} ·{' '}
+          NPC {npcStateLabel(stats.npc)} ·{' '}
           {stats.npc.steps} passos · inclinação {stats.npc.tilt.toFixed(2)} rad · captura{' '}
           {fmt(stats.npc.captureForward)} frente {fmt(stats.npc.captureSide)} lado
         </div>
@@ -44,6 +58,8 @@ export function DebugPanel({ stats, debug }: { stats: GameStats | null; debug: D
         <span>[ ] força</span>
         <span>N pose</span>
         <span className={debug.npcBalance ? 'on' : ''}>K equilíbrio</span>
+        <span className={debug.npcAutoGetUp ? 'on' : ''}>L levantar</span>
+        <span className={debug.npcLook ? 'on' : ''}>O olhar</span>
         <span>F/G empurrar</span>
         <span>` fechar</span>
       </div>

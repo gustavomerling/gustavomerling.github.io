@@ -28,8 +28,8 @@ simulação, o NPC nunca usa armas, o jogador não cria NPCs.
 | 8 ✅ | **Motores PD**: as juntas seguem uma pose-alvo, com força global ajustável no debug (de mole a rígido). | Variar a força pelo slider: de pano a estátua. |
 | 9 ✅ | **Equilíbrio em pé**: o controle mantém o centro de massa sobre os pés e o tronco ereto. | O NPC fica em pé sozinho e aguenta um empurrão leve. |
 | 10 ✅ | **Passo de recuperação**: quando o centro de massa sai da base, o NPC dá passos na direção certa para não cair. | Empurrão médio: ele cambaleia e se recupera. |
-| 11 | **Queda controlada**: se não recupera, estende os braços para amortecer e protege a cabeça. | Empurrão forte: cai apoiando as mãos, não como um saco. |
-| 12 | **Levantar**: sequência deitado, sentado, ajoelhado, em pé, guiada por poses, adaptada a quem caiu de bruços ou de costas. | Depois de cair, ele se levanta sozinho dos dois jeitos. |
+| 11 ✅ | **Queda controlada**: se não recupera, estende os braços para amortecer e protege a cabeça. *Feito junto: braços ajudando no equilíbrio, volta à postura confortável (arruma os pés) depois de se estabilizar.* | Empurrão forte: cai apoiando as mãos, não como um saco. |
+| 12 ✅ | **Levantar**: sequência deitado, sentado, ajoelhado, em pé, guiada por poses, adaptada a quem caiu de bruços ou de costas. *Feito no passo 11: animação scriptada cinemática, apoiada no chão, partindo da pose da queda.* | Depois de cair, ele se levanta sozinho dos dois jeitos. |
 
 ## Fase C: Armas do jogador
 
@@ -53,7 +53,7 @@ simulação, o NPC nunca usa armas, o jogador não cria NPCs.
 |---|-------|-------------|
 | 19 | **Caminhar procedural**: ciclo de passos gerado por poses-alvo, ainda sob equilíbrio físico; o NPC anda até um ponto. | Clicar num ponto do chão (debug) faz o NPC andar até lá. |
 | 20 | **Virar, recuar e correr**: virar no lugar, andar de costas, correr. Empurrões no meio do caminho continuam funcionando. | Mandar o NPC fugir em zigue-zague e empurrar no meio. |
-| 21 | **Visão**: cone de visão com teste de linha de visão (raycast), cabeça e olhar seguem o jogador. Cone visível no debug. | Esconder-se atrás de uma parede faz o NPC perder o jogador. |
+| 21 | **Visão**: cone de visão com teste de linha de visão (raycast). Cone visível no debug. *(A cabeça e o peito já seguem o jogador desde o passo 11.)* | Esconder-se atrás de uma parede faz o NPC perder o jogador. |
 | 22 | **Detecção de mira e estados da IA**: percebe a arma apontada para ele (mais forte em iron sight). Estados: ocioso, alerta, ameaçado, esquivando, fugindo, caído, levantando. | O estado atual aparece no debug e muda conforme a mira. |
 | 23 | **Esquiva e fuga**: passo lateral ou abaixar ao ser mirado de perto, correr para longe quando ameaçado à distância. | Mirar faz o NPC sair da linha de tiro de forma física. |
 | 24 | **Cobertura**: procura um obstáculo (inclusive os colocados pelo jogador) que bloqueie a visão do jogador e se agacha atrás dele. | Colocar uma parede: o NPC corre para trás dela. |

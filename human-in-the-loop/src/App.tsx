@@ -55,6 +55,8 @@ export default function App() {
     npcStrength: 0.6,
     npcPose: 'stand',
     npcBalance: true,
+    npcAutoGetUp: true,
+    npcLook: true,
   })
 
   useEffect(() => {

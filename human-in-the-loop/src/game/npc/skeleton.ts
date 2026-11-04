@@ -131,7 +131,7 @@ export const JOINTS: JointDef[] = [
       { parent: 'pelvis', child: `thigh${s}`, anchor: [hx, HIP_Y, 0], type: 'ball', limits: { x: [-0.5, 2.0], y: [-0.6, 0.6], z: side(0.3, 0.9) } },
       // Joelho: só dobra para trás (pé vai para +Z).
       { parent: `thigh${s}`, child: `shin${s}`, anchor: [hx, KNEE_Y, 0], type: 'hinge', limits: { x: [-2.4, 0] } },
-      { parent: `shin${s}`, child: `foot${s}`, anchor: [hx, ANKLE_Y, 0], type: 'ball', limits: { x: [-0.8, 0.4], y: [-0.25, 0.25], z: [-0.3, 0.3] } },
+      { parent: `shin${s}`, child: `foot${s}`, anchor: [hx, ANKLE_Y, 0], type: 'ball', limits: { x: [-0.8, 0.55], y: [-0.25, 0.25], z: [-0.3, 0.3] } },
     ]
   }),
 ]

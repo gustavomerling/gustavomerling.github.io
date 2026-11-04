@@ -42,6 +42,10 @@ export interface DebugState {
   npcPose: PoseId
   /** Controle de equilíbrio do NPC ligado. */
   npcBalance: boolean
+  /** NPC levanta sozinho depois de cair. */
+  npcAutoGetUp: boolean
+  /** NPC olha para o jogador. */
+  npcLook: boolean
 }
 
 export interface GameEvents {
@@ -104,6 +108,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const NPC_YAW = Math.PI
   npc.spawn(NPC_SPAWN, NPC_YAW)
 
+  const npcLookTarget = new THREE.Vector3()
   const lookForward = () => new THREE.Vector3(-Math.sin(look.yaw), 0, -Math.cos(look.yaw))
   /** Debug (F/G): empurrão horizontal no peito do NPC, na direção do olhar. */
   const pushNpc = (impulse: number) => npc.push(lookForward().multiplyScalar(impulse))
@@ -136,6 +141,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
     if (debug.npcStrength !== npc.strength) npc.setStrength(debug.npcStrength)
     if (debug.npcPose !== npc.poseId) npc.setPose(debug.npcPose)
     if (debug.npcBalance !== npc.balanceEnabled) npc.setBalance(debug.npcBalance)
+    npc.autoGetUp = debug.npcAutoGetUp
     events.onDebugChange({ ...debug })
   }
   setDebug({})
@@ -162,6 +168,8 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
     if (input.consume('BracketLeft')) setDebug({ npcStrength: debug.npcStrength - 0.1 })
     if (input.consume('BracketRight')) setDebug({ npcStrength: debug.npcStrength + 0.1 })
     if (input.consume('KeyK')) setDebug({ npcBalance: !debug.npcBalance })
+    if (input.consume('KeyL')) setDebug({ npcAutoGetUp: !debug.npcAutoGetUp })
+    if (input.consume('KeyO')) setDebug({ npcLook: !debug.npcLook })
     if (input.consume('KeyN')) {
       setDebug({ npcPose: POSE_IDS[(POSE_IDS.indexOf(debug.npcPose) + 1) % POSE_IDS.length] })
     }
@@ -198,6 +206,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
       stepRequested = false
 
       const t0 = performance.now()
+      npc.lookTarget = debug.npcLook ? player.eyePosition(1, npcLookTarget) : null
       npc.update(dt)
       player.update(
         dt,

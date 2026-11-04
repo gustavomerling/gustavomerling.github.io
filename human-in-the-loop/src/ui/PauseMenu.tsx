@@ -25,7 +25,7 @@ export function PauseMenu(p: Props) {
     <div className="pause" onClick={p.onPlay}>
       <div className="pause-card" onClick={(e) => e.stopPropagation()}>
         <h1>Human in the Loop</h1>
-        <p className="step">Passo 10 · passo de recuperação</p>
+        <p className="step">Passo 11 · queda, levantar e olhar</p>
         <button className="play" disabled={!p.ready} onClick={p.onPlay}>
           {p.ready ? 'Clique para entrar' : 'Carregando física…'}
         </button>
@@ -99,6 +99,18 @@ export function PauseMenu(p: Props) {
               onChange={(e) => p.onDebug({ npcBalance: e.target.checked })}
             />
             Equilíbrio do NPC <kbd>K</kbd>
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={p.debug.npcAutoGetUp}
+              onChange={(e) => p.onDebug({ npcAutoGetUp: e.target.checked })}
+            />
+            Levantar sozinho <kbd>L</kbd>
+          </label>
+          <label className="check">
+            <input type="checkbox" checked={p.debug.npcLook} onChange={(e) => p.onDebug({ npcLook: e.target.checked })} />
+            Olhar para o jogador <kbd>O</kbd>
           </label>
           <label className="field">
             <span>
