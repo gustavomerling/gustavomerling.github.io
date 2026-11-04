@@ -45,6 +45,9 @@ body,
 
 .pause-card {
   width: min(360px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  box-sizing: border-box;
   padding: 28px;
   background: var(--paper);
   border-radius: 6px;
@@ -300,4 +303,20 @@ kbd {
 .build-hint {
   margin-top: 8px;
   opacity: 0.7;
+}
+
+.range-ends {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.range-ends kbd {
+  margin: 0;
+}
+
+.debug-box .field:first-of-type {
+  margin-top: 12px;
 }

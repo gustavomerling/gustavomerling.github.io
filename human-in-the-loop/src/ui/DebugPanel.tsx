@@ -1,4 +1,5 @@
 import type { DebugState, GameStats } from '../game/Game'
+import { POSES } from '../game/npc/poses'
 
 const fmt = (n: number) => n.toFixed(2).padStart(6)
 
@@ -23,12 +24,17 @@ export function DebugPanel({ stats, debug }: { stats: GameStats | null; debug: D
       ) : (
         <div className="debug-row">medindo…</div>
       )}
+      <div className="debug-row">
+        NPC força {Math.round(debug.npcStrength * 100)}% · pose {POSES[debug.npcPose].label}
+      </div>
       <div className="debug-flags">
         <span className={debug.paused ? 'on warn' : ''}>P pausar física</span>
         <span className={debug.paused ? '' : 'off'}>. avançar 1 passo</span>
         <span className={debug.colliders ? 'on' : ''}>V colisores</span>
         <span>R resetar</span>
         <span>T soltar NPC</span>
+        <span>[ ] força</span>
+        <span>N pose</span>
         <span>` fechar</span>
       </div>
     </div>

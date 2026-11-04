@@ -1,4 +1,5 @@
 import type { DebugState } from '../game/Game'
+import { POSE_IDS, POSES, type PoseId } from '../game/npc/poses'
 
 /** Opções de resolução (pixels por pixel CSS), até o máximo da tela. */
 const maxRatio = Math.min(Math.max(window.devicePixelRatio, 1), 2)
@@ -24,7 +25,7 @@ export function PauseMenu(p: Props) {
     <div className="pause" onClick={p.onPlay}>
       <div className="pause-card" onClick={(e) => e.stopPropagation()}>
         <h1>Human in the Loop</h1>
-        <p className="step">Passo 7 · visual do NPC</p>
+        <p className="step">Passo 8 · motores do NPC</p>
         <button className="play" disabled={!p.ready} onClick={p.onPlay}>
           {p.ready ? 'Clique para entrar' : 'Carregando física…'}
         </button>
@@ -70,6 +71,38 @@ export function PauseMenu(p: Props) {
           <label className="check">
             <input type="checkbox" checked={p.debug.paused} onChange={(e) => p.onDebug({ paused: e.target.checked })} />
             Pausar física <kbd>P</kbd>
+          </label>
+          <label className="field">
+            <span>
+              Força do NPC <b>{Math.round(p.debug.npcStrength * 100)}%</b>
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={p.debug.npcStrength}
+              onChange={(e) => p.onDebug({ npcStrength: Number(e.target.value) })}
+            />
+            <small className="range-ends">
+              <span>mole</span>
+              <span>
+                <kbd>[</kbd> <kbd>]</kbd>
+              </span>
+              <span>estátua</span>
+            </small>
+          </label>
+          <label className="field">
+            <span>
+              Pose-alvo <kbd>N</kbd>
+            </span>
+            <select value={p.debug.npcPose} onChange={(e) => p.onDebug({ npcPose: e.target.value as PoseId })}>
+              {POSE_IDS.map((id) => (
+                <option key={id} value={id}>
+                  {POSES[id].label}
+                </option>
+              ))}
+            </select>
           </label>
           <div className="buttons">
             <button disabled={!p.debug.paused} onClick={p.onStep}>

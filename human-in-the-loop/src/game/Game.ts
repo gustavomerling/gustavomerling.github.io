@@ -3,6 +3,7 @@ import { BuildMode, type BuildState } from './build/BuildMode'
 import { ColliderDebug } from './debug/ColliderDebug'
 import { createLoop } from './engine/loop'
 import { initPhysics, Physics } from './engine/physics'
+import { POSE_IDS, POSES, type PoseId } from './npc/poses'
 import { Ragdoll } from './npc/Ragdoll'
 import { createRenderContext } from './engine/render'
 import { FpsLook } from './player/FpsLook'
@@ -34,6 +35,10 @@ export interface DebugState {
   panel: boolean
   colliders: boolean
   paused: boolean
+  /** Força dos motores do NPC: 0 = mole, 1 = estátua. */
+  npcStrength: number
+  /** Pose-alvo dos motores do NPC. */
+  npcPose: PoseId
 }
 
 export interface GameEvents {
@@ -119,11 +124,17 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const debug: DebugState = { ...initialDebug }
   let stepRequested = false
   const setDebug = (patch: Partial<DebugState>) => {
+    const motorsChanged =
+      (patch.npcStrength !== undefined && patch.npcStrength !== debug.npcStrength) ||
+      (patch.npcPose !== undefined && patch.npcPose !== debug.npcPose)
     Object.assign(debug, patch)
+    debug.npcStrength = Math.round(Math.min(1, Math.max(0, debug.npcStrength)) * 100) / 100
     colliderDebug.visible = debug.colliders
+    if (motorsChanged) ragdoll.setMotors(POSES[debug.npcPose].pose, debug.npcStrength)
     events.onDebugChange({ ...debug })
   }
   setDebug({})
+  ragdoll.setMotors(POSES[debug.npcPose].pose, debug.npcStrength)
 
   const resetScene = () => {
     props.reset()
@@ -142,6 +153,11 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
     if (input.consume('KeyP')) setDebug({ paused: !debug.paused })
     if (input.consume('KeyV')) setDebug({ colliders: !debug.colliders })
     if (input.consume('Period')) stepRequested = true
+    if (input.consume('BracketLeft')) setDebug({ npcStrength: debug.npcStrength - 0.1 })
+    if (input.consume('BracketRight')) setDebug({ npcStrength: debug.npcStrength + 0.1 })
+    if (input.consume('KeyN')) {
+      setDebug({ npcPose: POSE_IDS[(POSE_IDS.indexOf(debug.npcPose) + 1) % POSE_IDS.length] })
+    }
   }
 
   // --- Medição de desempenho, enviada ao HUD 2× por segundo -----------------

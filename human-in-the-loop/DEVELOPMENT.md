@@ -25,7 +25,7 @@ simulação, o NPC nunca usa armas, o jogador não cria NPCs.
 |---|-------|-------------|
 | 6 ✅ | **Ragdoll passivo**: manequim de ~13 partes (cabeça, tronco, pelve, braços e pernas em 2 segmentos, mãos, pés), juntas com limites anatômicos. | O manequim cai mole de forma crível, sem explodir nem dobrar ao contrário. |
 | 7 ✅ | **Visual do manequim e reset**: malhas por parte (cápsulas e caixas, sem rosto), tecla R reseta a simulação. | Visual limpo, e o reset recoloca o NPC em pé. |
-| 8 | **Motores PD**: as juntas seguem uma pose-alvo, com força global ajustável no debug (de mole a rígido). | Variar a força pelo slider: de pano a estátua. |
+| 8 ✅ | **Motores PD**: as juntas seguem uma pose-alvo, com força global ajustável no debug (de mole a rígido). | Variar a força pelo slider: de pano a estátua. |
 | 9 | **Equilíbrio em pé**: o controle mantém o centro de massa sobre os pés e o tronco ereto. | O NPC fica em pé sozinho e aguenta um empurrão leve. |
 | 10 | **Passo de recuperação**: quando o centro de massa sai da base, o NPC dá passos na direção certa para não cair. | Empurrão médio: ele cambaleia e se recupera. |
 | 11 | **Queda controlada**: se não recupera, estende os braços para amortecer e protege a cabeça. | Empurrão forte: cai apoiando as mãos, não como um saco. |

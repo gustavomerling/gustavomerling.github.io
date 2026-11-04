@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { Physics, RAPIER } from '../engine/physics'
 import { buildPartVisual, createDummyMaterials, disposeVisual, type DummyMaterials } from './dummyVisual'
+import type { Pose } from './poses'
 import { JOINTS, PARTS, type JointDef, type PartDef, type PartName } from './skeleton'
 
 export interface RagdollPart {
@@ -12,10 +13,27 @@ export interface RagdollPart {
 export interface RagdollJoint {
   def: JointDef
   joint: RAPIER.ImpulseJoint
+  /** Amortecimento base (atrito da junta), somado ao dos motores. */
+  friction: number
+  /** Rigidez extra pela carga de gravidade (ver BASE_STIFFNESS). */
+  loadStiffness: number
 }
 
 /** Atrito interno das juntas (por kg da parte filha): o corpo não balança como pêndulo sem fim. */
 const JOINT_FRICTION_PER_KG = 0.04
+/**
+ * Rigidez dos motores (modelo "baseado em aceleração" do Rapier: a rigidez
+ * é multiplicada pela inércia da parte, em 1/s²).
+ *
+ * k = força² × (BASE + carga / ERRO_ALVO), onde carga = torque máximo que a
+ * gravidade faz nesta junta ÷ inércia da parte filha. Assim uma junta que
+ * sustenta muito peso longe (ombro com braço esticado, coluna) recebe mais
+ * rigidez, e na força 1 nenhuma junta cede mais que ~ERRO_ALVO rad.
+ */
+const BASE_STIFFNESS = 400
+const TARGET_SAG = 0.06
+/** Fração do amortecimento crítico (1 = chega no alvo sem passar). */
+const DAMPING_RATIO = 0.9
 /** Iterações extras do solver para os corpos do ragdoll: cadeias de juntas ficam mais firmes. */
 const EXTRA_SOLVER_ITERATIONS = 8
 
@@ -71,6 +89,7 @@ export class Ragdoll {
           true,
         ) as RAPIER.RevoluteImpulseJoint
         hinge.setLimits(def.limits.x[0], def.limits.x[1])
+        hinge.configureMotorModel(RAPIER.MotorModel.AccelerationBased)
         hinge.configureMotorVelocity(0, friction)
         joint = hinge
       } else {
@@ -84,13 +103,14 @@ export class Ragdoll {
         AXES.forEach((axis, i) => {
           const r = ranges[i]
           if (r) raw(ball).jointSetLimits(ball.handle, axis, r[0], r[1])
+          raw(ball).jointConfigureMotorModel(ball.handle, axis, RAPIER.MotorModel.AccelerationBased)
           raw(ball).jointConfigureMotorVelocity(ball.handle, axis, 0, friction)
         })
         joint = ball
       }
       // Partes vizinhas não colidem entre si (elas se sobrepõem na junta).
       joint.setContactsEnabled(false)
-      this.joints.push({ def, joint })
+      this.joints.push({ def, joint, friction, loadStiffness: gravityLoad(def, child.body) / TARGET_SAG })
     }
   }
 
@@ -113,6 +133,33 @@ export class Ragdoll {
       part.body.setAngvel(spin, true)
       this.physics.teleport(part.body)
     }
+  }
+
+  /**
+   * Motores PD em todas as juntas: cada eixo puxa para o ângulo da `pose`.
+   * `strength` 0 = mole (só atrito), 1 = rígido como uma estátua.
+   * A rigidez cresce com o quadrado da força: o meio do controle fica
+   * "humano" e o topo fica realmente duro.
+   */
+  setMotors(pose: Pose, strength: number) {
+    const s2 = strength * strength
+    for (const { def, joint, friction, loadStiffness } of this.joints) {
+      const k = s2 * (BASE_STIFFNESS + loadStiffness)
+      const target = pose[def.child] ?? [0, 0, 0]
+      const damping = friction + DAMPING_RATIO * 2 * Math.sqrt(k)
+      if (def.type === 'hinge') {
+        const t = clamp(target[0], def.limits.x)
+        ;(joint as RAPIER.RevoluteImpulseJoint).configureMotor(t, 0, k, damping)
+      } else {
+        const ranges = [def.limits.x, def.limits.y, def.limits.z]
+        AXES.forEach((axis, i) => {
+          const t = ranges[i] ? clamp(target[i], ranges[i]!) : target[i]
+          raw(joint).jointConfigureMotor(joint.handle, axis, t, 0, k, damping)
+        })
+      }
+    }
+    // Motores só agem em corpos acordados.
+    for (const part of this.parts.values()) part.body.wakeUp()
   }
 
   /** Corpo rígido a partir de um colisor (para saber se algo acertou o NPC). */
@@ -138,7 +185,34 @@ interface RawJointSet {
   jointConfigureMotorVelocity: (handle: number, axis: number, targetVel: number, factor: number) => void
   jointConfigureMotorPosition: (handle: number, axis: number, target: number, stiffness: number, damping: number) => void
   jointSetMotorMaxForce: (handle: number, axis: number, maxForce: number) => void
+  jointConfigureMotorModel: (handle: number, axis: number, model: number) => void
+  jointConfigureMotor: (handle: number, axis: number, target: number, targetVel: number, stiffness: number, damping: number) => void
 }
+
+/** Partes que dependem de `name` na árvore de juntas (incluindo ela). */
+function subtree(name: PartName): PartDef[] {
+  const own = PARTS.find((p) => p.name === name)!
+  return [own, ...JOINTS.filter((j) => j.parent === name).flatMap((j) => subtree(j.child))]
+}
+
+/**
+ * Pior torque da gravidade na junta (tudo o que pende dela, com o braço de
+ * alavanca na horizontal) dividido pela inércia da parte filha: a
+ * "aceleração angular" que o motor precisa vencer.
+ */
+function gravityLoad(def: JointDef, childBody: RAPIER.RigidBody) {
+  const parts = subtree(def.child)
+  const mass = parts.reduce((m, p) => m + p.mass, 0)
+  const com = new THREE.Vector3()
+  for (const p of parts) com.addScaledVector(new THREE.Vector3(...p.center), p.mass / mass)
+  const lever = com.distanceTo(new THREE.Vector3(...def.anchor))
+  const torque = mass * 9.81 * lever
+  const inertia = childBody.principalInertia()
+  const meanInertia = (inertia.x + inertia.y + inertia.z) / 3
+  return torque / meanInertia
+}
+
+const clamp = (v: number, [min, max]: [number, number]) => Math.min(max, Math.max(min, v))
 
 /**
  * A API JS do Rapier só expõe limites/motores de juntas de 1 eixo, mas o

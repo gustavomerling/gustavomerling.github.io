@@ -52,6 +52,8 @@ export default function App() {
     panel: settings.debugPanel,
     colliders: settings.colliders,
     paused: false,
+    npcStrength: 0.5,
+    npcPose: 'stand',
   })
 
   useEffect(() => {
