@@ -101,6 +101,17 @@ export class PlayerBody {
     return Math.hypot(this.velocity.x, this.velocity.z)
   }
 
+  /** Velocidade atual no mundo (m/s), só leitura (inércia da arma). */
+  get velocityWorld(): Readonly<THREE.Vector3> {
+    return this.velocity
+  }
+
+  /**
+   * Colisores que o movimento ignora (ex.: o objeto segurado pelas mãos,
+   * para não "subir" nele nem ser empurrado por ele). Devolve true para ignorar.
+   */
+  ignore: ((collider: RAPIER.Collider) => boolean) | null = null
+
   /** Um passo fixo de física. `yaw` é a direção para onde a câmera olha. */
   update(dt: number, input: MoveInput, yaw: number) {
     this.prevCenter.copy(this.currCenter)
@@ -153,7 +164,14 @@ export class PlayerBody {
     }
 
     const desired = { x: this.velocity.x * dt, y: this.velocity.y * dt, z: this.velocity.z * dt }
-    this.controller.computeColliderMovement(this.collider, desired)
+    const ignore = this.ignore
+    this.controller.computeColliderMovement(
+      this.collider,
+      desired,
+      undefined,
+      undefined,
+      ignore ? (c) => !ignore(c) : undefined,
+    )
     const moved = this.controller.computedMovement()
     const wasGrounded = this.grounded
     this.grounded = this.controller.computedGrounded()

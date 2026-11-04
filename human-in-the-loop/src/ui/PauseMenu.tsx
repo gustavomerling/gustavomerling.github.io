@@ -1,9 +1,10 @@
+import { useState } from 'react'
 import type { DebugState } from '../game/Game'
 import { POSE_IDS, POSES, type PoseId } from '../game/npc/poses'
+import { ControlsSheet, SettingsForm } from './MenuPanels'
+import { MenuLayout, type NavItem } from './MenuLayout'
 
-/** Opções de resolução (pixels por pixel CSS), até o máximo da tela. */
-const maxRatio = Math.min(Math.max(window.devicePixelRatio, 1), 2)
-export const RES_OPTIONS = [0.5, 0.75, 1, 1.5, 2].filter((r) => r <= maxRatio)
+export { RES_OPTIONS } from './MenuPanels'
 
 interface Props {
   ready: boolean
@@ -18,63 +19,85 @@ interface Props {
   onReset: () => void
   built: number
   onClearBuilt: () => void
+  fov?: number
+  onFov?: (v: number) => void
+  /** Volta para a tela inicial. */
+  onMainMenu?: () => void
 }
 
+type Tab = 'lab' | 'controls' | 'settings'
+
+const TITLES: Record<Tab, string> = { lab: 'Laboratório', controls: 'Controles', settings: 'Ajustes' }
+
+/** Pausa (mouse solto depois de já ter entrado). Clicar fora do quadro volta ao jogo. */
 export function PauseMenu(p: Props) {
+  const [tab, setTab] = useState<Tab>('lab')
+  const nav: NavItem[] = [
+    { id: 'play', label: p.ready ? 'Continuar' : 'Carregando física…', primary: true, disabled: !p.ready, onClick: p.onPlay },
+    { id: 'lab', label: 'Laboratório' },
+    { id: 'controls', label: 'Controles' },
+    { id: 'settings', label: 'Ajustes' },
+  ]
+  if (p.onMainMenu) nav.push({ id: 'menu', label: 'Menu inicial', onClick: p.onMainMenu })
+
   return (
-    <div className="pause" onClick={p.onPlay}>
-      <div className="pause-card" onClick={(e) => e.stopPropagation()}>
-        <h1>Human in the Loop</h1>
-        <p className="step">Passo 16 · golpes</p>
-        <button className="play" disabled={!p.ready} onClick={p.onPlay}>
-          {p.ready ? 'Clique para entrar' : 'Carregando física…'}
+    <MenuLayout
+      variant="pause"
+      nav={nav}
+      tab={tab}
+      onTab={(id) => setTab(id as Tab)}
+      title={TITLES[tab]}
+      tag={tab === 'lab' && p.debug.paused ? 'física pausada' : undefined}
+      onBackdrop={p.onPlay}
+      footer="clique fora do quadro para voltar"
+    >
+      {tab === 'lab' && <Lab {...p} />}
+      {tab === 'controls' && <ControlsSheet />}
+      {tab === 'settings' && <SettingsForm {...p} />}
+    </MenuLayout>
+  )
+}
+
+function Check({ on, label, k, onChange }: { on: boolean; label: string; k: string; onChange: (v: boolean) => void }) {
+  return (
+    <label className="check">
+      <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} />
+      <span>{label}</span>
+      <kbd>{k}</kbd>
+    </label>
+  )
+}
+
+function Lab(p: Props) {
+  return (
+    <div className="lab">
+      <div className="lab-actions">
+        <button onClick={p.onReset}>
+          Resetar cena <kbd>R</kbd>
         </button>
+        <button disabled={p.built === 0} onClick={p.onClearBuilt}>
+          Remover construções <span className="count">{p.built}</span>
+        </button>
+      </div>
 
-        <label className="field">
-          <span>
-            Sensibilidade do mouse <b>{p.sensitivity.toFixed(2)}</b>
-          </span>
-          <input
-            type="range"
-            min={0.2}
-            max={3}
-            step={0.05}
-            value={p.sensitivity}
-            onChange={(e) => p.onSensitivity(Number(e.target.value))}
-          />
-        </label>
-        <label className="field">
-          <span>Resolução</span>
-          <select value={p.pixelRatio} onChange={(e) => p.onPixelRatio(Number(e.target.value))}>
-            {RES_OPTIONS.map((r) => (
-              <option key={r} value={r}>
-                {Math.round(r * 100)}%{r === 1 ? ' (padrão)' : ''}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="lab-columns">
+        <fieldset className="lab-box">
+          <legend>Física e visualização</legend>
+          <Check on={p.debug.panel} label="Painel durante o jogo" k="`" onChange={(panel) => p.onDebug({ panel })} />
+          <Check on={p.debug.colliders} label="Mostrar colisores" k="V" onChange={(colliders) => p.onDebug({ colliders })} />
+          <Check on={p.debug.paused} label="Pausar física" k="P" onChange={(paused) => p.onDebug({ paused })} />
+          <div className="buttons">
+            <button disabled={!p.debug.paused} onClick={p.onStep}>
+              Avançar 1 passo <kbd>.</kbd>
+            </button>
+          </div>
+        </fieldset>
 
-        <fieldset className="debug-box">
-          <legend>Debug</legend>
-          <label className="check">
-            <input type="checkbox" checked={p.debug.panel} onChange={(e) => p.onDebug({ panel: e.target.checked })} />
-            Painel durante o jogo <kbd>`</kbd>
-          </label>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={p.debug.colliders}
-              onChange={(e) => p.onDebug({ colliders: e.target.checked })}
-            />
-            Mostrar colisores <kbd>V</kbd>
-          </label>
-          <label className="check">
-            <input type="checkbox" checked={p.debug.paused} onChange={(e) => p.onDebug({ paused: e.target.checked })} />
-            Pausar física <kbd>P</kbd>
-          </label>
+        <fieldset className="lab-box">
+          <legend>Manequim (NPC)</legend>
           <label className="field">
             <span>
-              Força do NPC <b>{Math.round(p.debug.npcStrength * 100)}%</b>
+              Força dos motores <b>{Math.round(p.debug.npcStrength * 100)}%</b>
             </span>
             <input
               type="range"
@@ -92,26 +115,15 @@ export function PauseMenu(p: Props) {
               <span>estátua</span>
             </small>
           </label>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={p.debug.npcBalance}
-              onChange={(e) => p.onDebug({ npcBalance: e.target.checked })}
-            />
-            Equilíbrio do NPC <kbd>K</kbd>
-          </label>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={p.debug.npcAutoGetUp}
-              onChange={(e) => p.onDebug({ npcAutoGetUp: e.target.checked })}
-            />
-            Levantar sozinho <kbd>L</kbd>
-          </label>
-          <label className="check">
-            <input type="checkbox" checked={p.debug.npcLook} onChange={(e) => p.onDebug({ npcLook: e.target.checked })} />
-            Olhar para o jogador <kbd>O</kbd>
-          </label>
+          <Check on={p.debug.npcBalance} label="Equilíbrio" k="K" onChange={(npcBalance) => p.onDebug({ npcBalance })} />
+          <Check
+            on={p.debug.npcAutoGetUp}
+            label="Levantar sozinho"
+            k="L"
+            onChange={(npcAutoGetUp) => p.onDebug({ npcAutoGetUp })}
+          />
+          <Check on={p.debug.npcLook} label="Olhar para o jogador" k="O" onChange={(npcLook) => p.onDebug({ npcLook })} />
+          <Check on={p.debug.npcAi} label="IA (ver, esquivar, fugir, cobertura)" k="I" onChange={(npcAi) => p.onDebug({ npcAi })} />
           <label className="field">
             <span>
               Pose-alvo <kbd>N</kbd>
@@ -124,32 +136,7 @@ export function PauseMenu(p: Props) {
               ))}
             </select>
           </label>
-          <div className="buttons">
-            <button disabled={!p.debug.paused} onClick={p.onStep}>
-              Avançar 1 passo <kbd>.</kbd>
-            </button>
-            <button onClick={p.onReset}>
-              Resetar cena <kbd>R</kbd>
-            </button>
-          </div>
         </fieldset>
-
-        <div className="buttons">
-          <button disabled={p.built === 0} onClick={p.onClearBuilt}>
-            Remover construções ({p.built})
-          </button>
-        </div>
-
-        <ul className="hint">
-          <li>WASD: andar · Shift: correr · Espaço: pular · C: agachar</li>
-          <li>1–4 ou roda: trocar de arma (mãos, pistola, rifle, taco)</li>
-          <li>Clique: atirar (pistola: um por clique · rifle: segurar)</li>
-          <li>Botão direito (segurar): mirar pela alça</li>
-          <li>Taco e mãos: clique golpeia · segure para carregar um golpe forte</li>
-          <li>B: modo construção · T: soltar o NPC à sua frente</li>
-          <li>F: empurrão médio · G: empurrão forte (na direção do olhar)</li>
-          <li>Esc: soltar o mouse · P, V e . funcionam com o painel aberto</li>
-        </ul>
       </div>
     </div>
   )

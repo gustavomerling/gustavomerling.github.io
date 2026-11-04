@@ -117,6 +117,44 @@ function bat(m: ViewmodelMaterials) {
   return g
 }
 
+function shotgun(m: ViewmodelMaterials) {
+  const g = new THREE.Group()
+  // Caixa da culatra, cano duplo (cano + tubo do carregador), coronha, telha.
+  g.add(at(box(0.045, 0.06, 0.2, m.metal, 0.008), 0, 0.045, -0.05))
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.5, 12), m.metal)
+  g.add(at(barrel, 0, 0.062, -0.4, Math.PI / 2))
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.42, 12), m.polymer)
+  g.add(at(tube, 0, 0.035, -0.36, Math.PI / 2))
+  g.add(at(box(0.05, 0.045, 0.14, m.wood, 0.01), 0, 0.03, -0.3))
+  g.add(at(box(0.04, 0.085, 0.22, m.wood, 0.012), 0, 0.01, 0.16, -0.08))
+  g.add(at(box(0.03, 0.08, 0.04, m.polymer, 0.008), 0, -0.015, 0.02, 0.3))
+  g.add(at(box(0.047, 0.008, 0.04, m.accent, 0.002), 0, 0.077, -0.06))
+  // Mira de conta na ponta e entalhe na culatra.
+  g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.005, 8, 6), m.sight), 0, 0.078, -0.64))
+  for (const x of [-0.008, 0.008]) g.add(at(box(0.006, 0.01, 0.008, m.polymer, 0.001), x, 0.08, 0.03))
+  g.userData.sight = new THREE.Vector3(0, 0.083, 0.03)
+  g.userData.muzzle = new THREE.Vector3(0, 0.062, -0.66)
+  g.add(gloveHand(m))
+  const support = gloveHand(m, -1)
+  g.add(at(support, -0.01, 0.0, -0.3, 0, 0, 0.6))
+  return g
+}
+
+/** "Arma de ferramentas": corpo compacto com um emissor laranja na ponta. */
+function toolGun(m: ViewmodelMaterials) {
+  const g = new THREE.Group()
+  g.add(at(box(0.05, 0.06, 0.2, m.polymer, 0.012), 0, 0.05, -0.06))
+  g.add(at(box(0.034, 0.1, 0.045, m.polymer, 0.008), 0, -0.02, 0.0, 0.25))
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.024, 0.007, 8, 20), m.metal)
+  g.add(at(ring, 0, 0.05, -0.17))
+  const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.018, 0.05, 12), m.accent)
+  g.add(at(tip, 0, 0.05, -0.18, Math.PI / 2))
+  g.add(at(box(0.052, 0.012, 0.06, m.accent, 0.003), 0, 0.083, -0.04))
+  g.userData.muzzle = new THREE.Vector3(0, 0.05, -0.21)
+  g.add(gloveHand(m))
+  return g
+}
+
 function hands(m: ViewmodelMaterials) {
   const g = new THREE.Group()
   g.add(at(gloveHand(m, 1), 0.17, 0, 0, 0.2, 0, 0))
@@ -132,7 +170,21 @@ export function buildViewmodel(id: string, m: ViewmodelMaterials): THREE.Group {
       return rifle(m)
     case 'bat':
       return bat(m)
+    case 'shotgun':
+      return shotgun(m)
+    case 'tool':
+      return toolGun(m)
     default:
       return hands(m)
   }
+}
+
+/** Modelo da arma sem as mãos (arma solta no chão, menu de spawn). */
+export function worldWeaponModel(id: string, m: ViewmodelMaterials): THREE.Group {
+  const g = buildViewmodel(id, m)
+  for (const c of [...g.children]) if (c instanceof THREE.Group) c.removeFromParent()
+  g.traverse((o) => {
+    if (o instanceof THREE.Mesh) o.castShadow = o.receiveShadow = true
+  })
+  return g
 }

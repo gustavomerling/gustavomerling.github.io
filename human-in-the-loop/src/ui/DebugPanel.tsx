@@ -2,6 +2,17 @@ import type { DebugState, GameStats } from '../game/Game'
 import type { NpcDebug } from '../game/npc/Npc'
 import { POSES } from '../game/npc/poses'
 
+const AI_LABEL: Record<string, string> = {
+  idle: 'ocioso',
+  alert: 'alerta',
+  threatened: 'ameaçado',
+  dodging: 'esquivando',
+  fleeing: 'fugindo',
+  cover: 'na cobertura',
+  walkTo: 'indo ao ponto',
+  body: 'corpo no controle',
+}
+
 function npcStateLabel(n: NpcDebug) {
   switch (n.state) {
     case 'standing':
@@ -58,6 +69,10 @@ const fmt = (n: number) => n.toFixed(2).padStart(6)
 export function DebugPanel({ stats, debug }: { stats: GameStats | null; debug: DebugState }) {
   return (
     <div className="debug">
+      <div className="debug-head">
+        <span>telemetria</span>
+        <span>` fecha</span>
+      </div>
       {stats ? (
         <>
           <div className="debug-row">
@@ -86,6 +101,14 @@ export function DebugPanel({ stats, debug }: { stats: GameStats | null; debug: D
           {fmt(stats.npc.captureForward)} frente {fmt(stats.npc.captureSide)} lado
         </div>
       )}
+      {stats && (
+        <div className="debug-row">
+          IA <b>{AI_LABEL[stats.brain.ai]}</b> · {stats.brain.sees ? 'vê o jogador' : 'não vê'}
+          {stats.brain.aimed ? ' · mirado' : ''} · ameaça {stats.brain.threat.toFixed(2)}
+          {stats.brain.reflex ? ` · reflexo: ${stats.brain.reflex}` : ''}
+          {stats.npc.grip ? ` · ${stats.npc.grip}` : ''}
+        </div>
+      )}
       {stats && <Health n={stats.npc} />}
       <div className="debug-flags">
         <span className={debug.paused ? 'on warn' : ''}>P pausar física</span>
@@ -98,8 +121,9 @@ export function DebugPanel({ stats, debug }: { stats: GameStats | null; debug: D
         <span className={debug.npcBalance ? 'on' : ''}>K equilíbrio</span>
         <span className={debug.npcAutoGetUp ? 'on' : ''}>L levantar</span>
         <span className={debug.npcLook ? 'on' : ''}>O olhar</span>
+        <span className={debug.npcAi ? 'on' : ''}>I IA</span>
+        <span>M ir ao ponto</span>
         <span>F/G empurrar</span>
-        <span>` fechar</span>
       </div>
     </div>
   )

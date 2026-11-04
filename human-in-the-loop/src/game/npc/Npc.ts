@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import type { Physics, RAPIER } from '../engine/physics'
 import { Damage, OUT_COLD, REGIONS, REGION_OF, type HitKind, type Region } from './Damage'
+import { Grip } from './Grip'
 import { PhysicalGetUp } from './PhysicalGetUp'
 import { POSES, type Pose, type PoseId } from './poses'
 import { Ragdoll, type PhysicalMotor } from './Ragdoll'
@@ -129,6 +130,12 @@ export const STAGGER = {
   balanceScale: 0.35,
 }
 
+/** Esquiva: impulso lateral no tronco (N·s) e duração da agachada (s). */
+export const DODGE = {
+  impulse: 48,
+  dip: 0.45,
+}
+
 /** Olhar: limites e suavidade. */
 export const GAZE = {
   /** Fora deste ângulo (rad, para o lado) ele não tenta olhar (está atrás dele). */
@@ -136,6 +143,58 @@ export const GAZE = {
   /** Quanto do giro vai para o peito; o resto vai para o pescoço. */
   chestShare: 0.3,
   smoothing: 6,
+}
+
+/**
+ * Locomoção (passos 19–20): o caminhar é uma sequência de passos gerados
+ * por tempo (alternando os pés), com o pé posto à frente do centro de massa
+ * na medida da velocidade (como um pêndulo invertido "caindo para a
+ * frente"). A força de equilíbrio no tronco passa a seguir uma velocidade
+ * desejada em vez de um ponto fixo. Tudo continua físico: empurrões no meio
+ * do caminho entram na colocação do próximo pé.
+ */
+export const GAIT = {
+  walkSpeed: 1.3,
+  runSpeed: 2.3,
+  strafeSpeed: 0.6,
+  backSpeed: 0.9,
+  /** Aceleração máxima da velocidade desejada (m/s²). */
+  accel: 2.2,
+  runAccel: 3.5,
+  /** Duração do passo (s) e altura do pé. */
+  walkDuration: 0.34,
+  runDuration: 0.25,
+  walkHeight: 0.08,
+  runHeight: 0.13,
+  /** Correção da colocação do pé pelo erro de velocidade (s). */
+  velGain: 0.25,
+  /** Freando: o pé vai mais para a frente (perto do ponto de captura). */
+  brakeGain: 0.5,
+  /** Meia-largura da passada (m). */
+  halfWidth: 0.1,
+  /** Passada máxima (m). */
+  maxStepWalk: 0.85,
+  maxStepRun: 1.25,
+  /** Força que segue a velocidade desejada (1/s) e seu teto (fração do peso). */
+  forceKv: 5,
+  maxForce: 0.3,
+  runMaxForce: 0.45,
+  /** Giro máximo da direção (rad/s) e quanto a pélvis pode girar à frente dos pés (rad). */
+  turnRate: 3.0,
+  maxFootLead: 0.55,
+  /** Giro do tronco que pede um passo de virar no lugar (rad). */
+  turnStep: 0.3,
+  armSwing: 0.35,
+  runArmSwing: 0.75,
+  /** Inclinação do tronco para a frente por m/s (rad). */
+  lean: 0.05,
+  /** Joelho de apoio andando e correndo (rad, negativo dobra). */
+  /** Sustentação andando: mola (1/s²), amortecimento (1/s) e teto (fração do peso). */
+  supportKp: 100,
+  supportKd: 8,
+  supportMax: 0.6,
+  walkKnee: -0.12,
+  runKnee: -0.3,
 }
 
 type Side = 'L' | 'R'
@@ -172,11 +231,16 @@ export interface NpcDebug {
   pain: number
   /** Desmaio permanente (até o reset). */
   outCold: boolean
+  /** Agarrar ao tropeçar: '', 'alcançando' ou 'segurando'. */
+  grip: string
 }
 
 type FallDir = 'forward' | 'back' | 'left' | 'right'
 
 const UP = new THREE.Vector3(0, 1, 0)
+const LEG_LINE_STANDING = true
+/** Erro do ponto de captura (m) a partir do qual ele procura onde se agarrar. */
+const GRIP_TRIGGER = 0.28
 /** Duração da transição de pouso de um passo (s). */
 const LANDING = 0.1
 const TORSO: PartName[] = ['pelvis', 'abdomen', 'chest']
@@ -270,6 +334,7 @@ export class Npc {
     overall: 100,
     pain: 0,
     outCold: false,
+    grip: '',
   }
   readonly damage = new Damage()
   /** Tempo restante desmaiado (Infinity = até o reset). */
@@ -300,19 +365,48 @@ export class Npc {
   private gazeYaw = 0
   private gazePitch = 0
 
+  // --- Locomoção ---
+  /** Velocidade pedida pela IA (m/s, mundo, no plano). */
+  private readonly cmdVel = new THREE.Vector3()
+  /** Direção que a IA quer encarar (yaw) ou null (encara para onde anda). */
+  private cmdFace: number | null = null
+  private running = false
+  /** Agachamento pedido (0 = em pé, 1 = agachado atrás de cobertura). */
+  crouch = 0
+  private crouchNow = 0
+  /** Tempo restante da agachada da esquiva (s). */
+  private dodgeDip = 0
+  /** Velocidade desejada suavizada (rampa de aceleração). */
+  readonly walkVel = new THREE.Vector3()
+  /** Último pé de um passo do caminhar e "fase" das pernas (-1 = esquerda atrás, 1 = à frente). */
+  private lastGait: Side = 'R'
+  private wasMoving = false
+  /** Passos do caminhar seguidos (0 = parado). */
+  private gaitStreak = 0
+  private legPhase = 0
+  /** Poses extras somadas por cima da pose em pé (reflexos, guarda). */
+  overlay: Pose | null = null
+  overlayWeight = 0
+
   private readonly com = new THREE.Vector3()
   private readonly comVel = new THREE.Vector3()
   private readonly tmpQ = new THREE.Quaternion()
   private readonly tmpV = new THREE.Vector3()
 
+  readonly grip: Grip
+
   constructor(physics: Physics, scene: THREE.Scene) {
     this.physics = physics
     this.ragdoll = new Ragdoll(physics, scene)
+    this.grip = new Grip(this.ragdoll, physics)
   }
 
   /** Coloca de pé em `feet`, virado para `yaw`, e volta a se equilibrar. */
   spawn(feet: THREE.Vector3, yaw: number) {
     this.getUp = null
+    this.grip.release()
+    this.move(null)
+    this.crouch = 0
     this.ragdoll.placeAt(feet, yaw)
     this.heading = yaw
     this.heal()
@@ -324,6 +418,7 @@ export class Npc {
   /** Solta o corpo (debug): já entra caindo. */
   drop(feet: THREE.Vector3, yaw: number, opts: Parameters<Ragdoll['placeAt']>[2]) {
     this.getUp = null
+    this.grip.release()
     this.ragdoll.placeAt(feet, yaw, opts)
     this.heading = yaw
     this.enterFalling('forward')
@@ -362,6 +457,7 @@ export class Npc {
     const part = this.ragdoll.partOf(body)
     if (!part) return
     const ev = this.damage.apply(part, impulse, kind)
+    if (impulse > 6) this.onWound?.(REGION_OF[part])
     this.ragdoll.setDamageTint(part, 1 - this.damage.health.get(part)! / 100)
     if (this.damage.overall < OUT_COLD) {
       this.knockOut(Infinity)
@@ -381,11 +477,29 @@ export class Npc {
   /** Desmaia: corpo mole por um tempo (ou até o reset). */
   private knockOut(seconds: number) {
     this.getUp = null
+    this.grip.release()
     this.knockout = Math.max(this.knockout, seconds)
     this.swing = null
     this.setState('unconscious')
     this.ragdoll.setMotors(POSES.stand.pose, 0.02)
   }
+
+  /**
+   * Esquiva: um impulso lateral no tronco e uma agachada rápida. Os passos
+   * de recuperação seguram o corpo, então a esquiva é física (e pode falhar
+   * se ele estiver ferido ou encostado em algo).
+   */
+  dodge(dir: THREE.Vector3) {
+    if (this.state !== 'standing') return
+    const legs = Math.min(1, (this.damage.region('legL') + this.damage.region('legR')) / 160)
+    const impulse = dir.clone().setY(0).normalize().multiplyScalar(DODGE.impulse * legs * Math.min(1, this.muscle / 0.6))
+    this.ragdoll.part('pelvis').body.applyImpulse(impulse.clone().multiplyScalar(0.55), true)
+    this.ragdoll.part('chest').body.applyImpulse(impulse.clone().multiplyScalar(0.45), true)
+    this.dodgeDip = DODGE.dip
+  }
+
+  /** Chamado quando uma região é ferida (a IA reage). */
+  onWound: ((region: Region) => void) | null = null
 
   /** O corpo rígido pertence ao NPC? */
   owns(body: RAPIER.RigidBody) {
@@ -407,12 +521,48 @@ export class Npc {
     if (this.state === 'standing') this.applyStandingMotors(POSES[this.poseId].pose)
   }
 
+  /**
+   * Comando de locomoção: velocidade no plano (m/s, mundo; null/zero =
+   * parar) e, opcionalmente, a direção a encarar (andar de costas ou de
+   * lado = encarar uma direção e andar para outra).
+   */
+  move(vel: THREE.Vector3 | null, face: number | null = null, run = false) {
+    if (vel) this.cmdVel.set(vel.x, 0, vel.z)
+    else this.cmdVel.set(0, 0, 0)
+    this.cmdFace = face
+    this.running = run
+  }
+
+  /** Está andando (ou ainda freando)? */
+  get isMoving() {
+    return this.state === 'standing' && (this.walkVel.lengthSq() > 0.0025 || this.cmdVel.lengthSq() > 0.0025)
+  }
+
+  get facing() {
+    return this.heading
+  }
+
+  /** Posição da pélvis no chão (x, z) e velocidade do centro de massa. */
+  position(out: THREE.Vector3) {
+    const p = this.ragdoll.part('pelvis').body.translation()
+    return out.set(p.x, p.y, p.z)
+  }
+
+  get velocity() {
+    return this.comVel
+  }
+
   update(dt: number) {
     this.stateTime += dt
     this.debug.state = this.state
     this.damage.update(dt)
     this.updateDamageDebug()
     this.updateGaze(dt)
+    const limp = this.state === 'unconscious' || this.state === 'down' || this.state === 'crawling' || this.state === 'gettingUp'
+    const calm =
+      this.state === 'standing' && !this.swing && Math.hypot(this.debug.captureForward, this.debug.captureSide) < 0.08
+    this.grip.update(dt, calm, limp)
+    this.debug.grip = this.grip.state
     switch (this.state) {
       case 'unconscious':
         return this.updateUnconscious(dt)
@@ -430,6 +580,7 @@ export class Npc {
   }
 
   dispose() {
+    this.grip.dispose()
     this.ragdoll.dispose()
   }
 
@@ -445,6 +596,7 @@ export class Npc {
 
   private enterStanding() {
     this.setState('standing')
+    this.walkVel.set(0, 0, 0)
     this.stagger = 0
     this.swing = null
     this.stableTime = 0
@@ -455,6 +607,11 @@ export class Npc {
     this.setState('falling')
     this.swing = null
     this.fallPose = FALL_POSES[dir]
+    // Procura onde se segurar na direção da queda.
+    this.ragdoll.centerOfMass(this.com, this.comVel)
+    const fallDir = new THREE.Vector3(this.comVel.x, 0, this.comVel.z)
+    if (fallDir.lengthSq() < 0.04) fallDir.copy(this.fromLocal(dir === 'forward' ? 1 : dir === 'back' ? -1 : 0, dir === 'right' ? 1 : dir === 'left' ? -1 : 0))
+    this.grip.tryGrab(fallDir, this.armsOk())
     this.ragdoll.setMotors(this.fallPose, FALL.strength * (1 - 0.35 * this.damage.pain), {}, this.limbScale())
   }
 
@@ -478,7 +635,7 @@ export class Npc {
 
     const feetY = Math.min(this.ragdoll.part('footL').body.translation().y, this.ragdoll.part('footR').body.translation().y)
     const pelvisHeight = pelvis.translation().y - feetY
-    if (tilt > BALANCE.fallTilt || pelvisHeight < BALANCE.fallPelvisHeight) {
+    if (tilt > BALANCE.fallTilt || pelvisHeight < BALANCE.fallPelvisHeight - 0.25 * this.crouchNow) {
       this.enterFalling(this.fallDirection(pelvisUp))
       return
     }
@@ -495,10 +652,65 @@ export class Npc {
     const err = this.toLocal(capture.clone().sub(mid))
     this.debug.captureForward = err.forward
     this.debug.captureSide = err.side
+    // Muito desequilibrado (tropeçando): tenta se apoiar em algo por perto.
+    if (Math.hypot(err.forward, err.side) > GRIP_TRIGGER && !this.grip.holding) {
+      this.grip.tryGrab(this.fromLocal(err.forward, err.side), this.armsOk())
+    }
+
+    // --- Locomoção: rampa da velocidade e direção ---------------------------
+    this.dodgeDip = Math.max(0, this.dodgeDip - dt)
+    const crouchGoal = Math.max(this.crouch, this.dodgeDip > 0 ? 0.45 : 0)
+    this.crouchNow += (crouchGoal - this.crouchNow) * (1 - Math.exp(-(this.dodgeDip > 0 ? 10 : 4) * dt))
+    const legsOk = Math.min(1, (this.damage.region('legL') + this.damage.region('legR')) / 160)
+    // Só dispara a correr já virado para onde vai.
+    const aligned = this.cmdVel.lengthSq() < 0.01 || Math.abs(Npc.angleDiff(Npc.yawOf(this.cmdVel), this.heading)) < 0.5
+    const runNow = this.running && (aligned || this.walkVel.length() > GAIT.walkSpeed)
+    const maxSpeed = (runNow ? GAIT.runSpeed : GAIT.walkSpeed) * (0.35 + 0.65 * legsOk) * (1 - 0.5 * this.crouchNow)
+    const want = this.cmdVel.clone()
+    if (want.length() > maxSpeed) want.setLength(maxSpeed)
+    if (this.stagger > 0) want.multiplyScalar(0.3)
+    // De lado e de costas é mais lento (as pernas não cruzam).
+    {
+      const loc = this.toLocal(want)
+      const side = THREE.MathUtils.clamp(loc.side, -GAIT.strafeSpeed, GAIT.strafeSpeed)
+      const fwd = Math.max(loc.forward, -GAIT.backSpeed)
+      want.copy(this.fromLocal(fwd, side))
+    }
+    // Sem direção pedida, vira primeiro e acelera conforme fica de frente.
+    if (this.cmdFace === null && want.lengthSq() > 1e-4) {
+      const off = Math.abs(Npc.angleDiff(Npc.yawOf(want), this.heading))
+      want.multiplyScalar(Math.max(0.15, Math.cos(Math.min(off, Math.PI / 2))) ** 2)
+    }
+    // Rápido: a direção da velocidade gira aos poucos (curva), o módulo
+    // segue a rampa. Devagar: muda direto (passos curtos viram fácil).
+    const curSpeed = this.walkVel.length()
+    if (curSpeed > 1 && want.lengthSq() > 0.01) {
+      const turnMax = (GAIT.turnRate / (1 + 0.4 * curSpeed)) * dt
+      const d = Npc.angleDiff(Npc.yawOf(want), Npc.yawOf(this.walkVel))
+      const yaw = Npc.yawOf(this.walkVel) + THREE.MathUtils.clamp(d, -turnMax, turnMax)
+      const maxDs = (this.running ? GAIT.runAccel : GAIT.accel) * dt
+      const speed = curSpeed + THREE.MathUtils.clamp(want.length() * Math.max(0, Math.cos(d)) - curSpeed, -maxDs, maxDs)
+      this.walkVel.set(-Math.sin(yaw) * speed, 0, -Math.cos(yaw) * speed)
+    } else {
+      const dv = want.sub(this.walkVel)
+      const maxDv = (this.running ? GAIT.runAccel : GAIT.accel) * dt
+      if (dv.length() > maxDv) dv.setLength(maxDv)
+      this.walkVel.add(dv)
+    }
+    // Continua no modo "andando" até frear de verdade.
+    const comSpeed = Math.hypot(this.comVel.x, this.comVel.z)
+    const moving = this.walkVel.lengthSq() > 0.0025 || this.cmdVel.lengthSq() > 0.0025 || (this.wasMoving && comSpeed > 0.25)
+    this.wasMoving = moving
+    if (!moving) this.gaitStreak = 0
+    this.updateHeading(dt, moving)
 
     // --- Passo de recuperação ou de conforto -------------------------------
     this.stepCooldown -= dt
-    if (!this.swing && this.stepCooldown <= 0) {
+    if (moving) {
+      if (!this.swing && this.stepCooldown <= 0) this.startGaitStep(fl, fr)
+    } else if (!this.swing && this.stepCooldown <= 0 && this.turnNeeded()) {
+      this.tryComfortStep(true)
+    } else if (!this.swing && this.stepCooldown <= 0) {
       const out =
         err.forward > STEP.triggerForward || err.forward < -STEP.triggerBack || Math.abs(err.side) > STEP.triggerSide
       if (out) {
@@ -526,16 +738,43 @@ export class Npc {
     const k = 1 - Math.exp(-BALANCE.reactionSmoothing * dt)
     this.smoothErr.forward += (err.forward - this.smoothErr.forward) * k
     this.smoothErr.side += (err.side - this.smoothErr.side) * k
-    const pose = this.standingPose(this.smoothErr, swing)
+    if (swing) {
+      const u = Math.min(1, swing.t / swing.duration)
+      this.legPhase = swing.side === 'L' ? -1 + 2 * u : 1 - 2 * u
+    }
+    const pose = this.standingPose(moving ? { forward: 0, side: this.smoothErr.side * 0.3 } : this.smoothErr, swing, moving)
     this.applyStandingMotors(pose)
     if (swing) this.driveSwing(swing, dt)
 
     // --- Força de equilíbrio no tronco -------------------------------------
     const mass = this.ragdoll.totalMass
-    const force = new THREE.Vector3(-ex, 0, -ez).multiplyScalar(mass * BALANCE.comKp)
     const staggerScale = this.stagger > 0 ? STAGGER.balanceScale : 1
-    const legs = Math.min(1, (this.damage.region('legL') + this.damage.region('legR')) / 160)
-    const maxF = BALANCE.comMaxForce * mass * 9.81 * Math.min(1, this.muscle / 0.6) * staggerScale * legs
+    const legs = legsOk
+    let force: THREE.Vector3
+    let maxF: number
+    if (moving) {
+      // Andando: segue a velocidade desejada e, de lado, mantém o ponto de
+      // captura entre os pés (não deriva para fora da passada).
+      force = this.walkVel.clone().sub(new THREE.Vector3(this.comVel.x, 0, this.comVel.z)).multiplyScalar(mass * GAIT.forceKv)
+      const dir = this.walkVel.lengthSq() > 1e-4 ? this.walkVel.clone().normalize() : this.fromLocal(1, 0)
+      const perp = new THREE.Vector3(-dir.z, 0, dir.x)
+      const lat = perp.dot(new THREE.Vector3(capture.x - mid.x, 0, capture.z - mid.z))
+      force.addScaledVector(perp, -lat * mass * BALANCE.comKp * 0.5)
+      maxF = (this.running ? GAIT.runMaxForce : GAIT.maxForce) * mass * 9.81
+    } else {
+      force = new THREE.Vector3(-ex, 0, -ez).multiplyScalar(mass * BALANCE.comKp)
+      maxF = BALANCE.comMaxForce * mass * 9.81
+    }
+    maxF *= Math.min(1, this.muscle / 0.6) * staggerScale * legs
+    if (moving || this.crouchNow > 0.05) {
+      // Sustentação: andando (ou agachado), a perna de apoio é ajudada a
+      // não ceder (o joelho físico sozinho afunda quando o pé fica atrás).
+      const want = 0.95 - 0.25 * this.crouchNow
+      const h = pelvis.translation().y - feetY
+      const vy = pelvis.linvel().y
+      const up = THREE.MathUtils.clamp(mass * (GAIT.supportKp * (want - h) - GAIT.supportKd * vy), 0, GAIT.supportMax * mass * 9.81 * legs)
+      pelvis.applyImpulse({ x: 0, y: up * dt, z: 0 }, true)
+    }
     if (force.length() > maxF) force.setLength(maxF)
     force.multiplyScalar(dt / 2)
     this.ragdoll.part('pelvis').body.applyImpulse(force, true)
@@ -546,6 +785,17 @@ export class Npc {
   }
 
   private updateFalling() {
+    // Segurando em algo e ainda quase em pé: volta a se equilibrar.
+    if (this.grip.holding && this.damage.canStand && this.stateTime > 0.15) {
+      const pelvis = this.ragdoll.part('pelvis').body
+      const r = pelvis.rotation()
+      const tilt = this.tmpV.copy(UP).applyQuaternion(this.tmpQ.set(r.x, r.y, r.z, r.w)).angleTo(UP)
+      const feetY = Math.min(this.ragdoll.part('footL').body.translation().y, this.ragdoll.part('footR').body.translation().y)
+      if (tilt < 0.55 && pelvis.translation().y - feetY > 0.72) {
+        this.enterStanding()
+        return
+      }
+    }
     // Espera o corpo parar no chão.
     const speed = this.pelvisSpeed()
     const settled = this.stateTime > FALL.minFallTime && speed < FALL.restSpeed
@@ -706,13 +956,67 @@ export class Npc {
    * equilíbrio, braços compensam, cabeça e peito olham para o alvo e a
    * perna do passo dobra o joelho.
    */
-  private standingPose(err: { forward: number; side: number }, swing: Swing | null): Pose {
+  private standingPose(err: { forward: number; side: number }, swing: Swing | null, moving = false): Pose {
     const base: Pose = POSES[this.poseId].pose
     const pose: Pose = { ...base }
     const add = (name: PartName, dx: number, dy: number, dz: number) => {
       const b = pose[name] ?? [0, 0, 0]
       pose[name] = [b[0] + dx, b[1] + dy, b[2] + dz]
     }
+
+    // Agachado (cobertura): joelhos e quadril dobram, pé fica plano.
+    const c = this.crouchNow
+    if (c > 0.01) {
+      for (const side of ['L', 'R'] as const) {
+        add(`thigh${side}`, 0.75 * c, 0, 0)
+        add(`shin${side}`, -1.3 * c, 0, 0)
+        add(`foot${side}`, 0.55 * c, 0, 0)
+      }
+      add('abdomen', -0.25 * c, 0, 0)
+      add('chest', -0.15 * c, 0, 0)
+      add('head', 0.3 * c, 0, 0)
+    }
+
+    if (!moving && LEG_LINE_STANDING) {
+      // Parado: a perna de apoio também aponta para onde o pé está (pés
+      // abertos depois de andar não "torcem" a pélvis).
+      for (const side of ['L', 'R'] as const) {
+        if (swing?.side === side) continue
+        const [pitch, roll] = this.legLine(side, this.footPos(side))
+        const b = pose[`thigh${side}`] ?? [0, 0, 0]
+        pose[`thigh${side}`] = [b[0] + pitch, b[1], b[2] + roll]
+      }
+    }
+    if (moving) {
+      // Pernas: o quadril aponta a coxa para onde o pé está (apoio) ou deve
+      // ir (passo), em vez de lutar contra a passada.
+      const knee = (this.running ? GAIT.runKnee : GAIT.walkKnee) - 1.1 * c
+      for (const side of ['L', 'R'] as const) {
+        const swingThis = swing?.side === side
+        const footAt = swingThis ? this.swingDesired(swing!) : this.footPos(side)
+        const [pitch, roll] = this.legLine(side, footAt)
+        const lift = swingThis ? Math.sin(Math.PI * Math.min(1, swing!.t / swing!.duration)) : 0
+        const k = swingThis
+          ? (pose[`shin${side}`]?.[0] ?? 0) - STEP.kneeLift * lift * (swing!.height / STEP.height)
+          : knee
+        pose[`thigh${side}`] = [pitch + Math.abs(k) / 2, 0, roll]
+        if (!swingThis) {
+          pose[`shin${side}`] = [k, 0, 0]
+          pose[`foot${side}`] = [-(pitch + Math.abs(k) / 2) - k, 0, 0]
+        }
+      }
+      // Braços balançam contra as pernas; correndo, cotovelos dobrados.
+      const amp = this.running ? GAIT.runArmSwing : GAIT.armSwing
+      const speedK = Math.min(1, this.walkVel.length() / GAIT.walkSpeed)
+      const g = this.legPhase * amp * speedK
+      add('upperArmL', -g, 0, -0.08)
+      add('upperArmR', g, 0, 0.08)
+      if (this.running) {
+        add('forearmL', 1.2, 0, 0)
+        add('forearmR', 1.2, 0, 0)
+      }
+    }
+
 
     // Tornozelos: centro de massa à frente, aponta os pés para baixo.
     const ankleX = THREE.MathUtils.clamp(-BALANCE.ankleGain * err.forward, -BALANCE.maxAnkle, BALANCE.maxAnkle)
@@ -750,6 +1054,13 @@ export class Npc {
     if (swing) {
       const lift = Math.sin(Math.PI * Math.min(1, swing.t / swing.duration))
       add(`shin${swing.side}`, -STEP.kneeLift * lift * (swing.height / STEP.height), 0, 0)
+    }
+    if (this.overlay && this.overlayWeight > 0.01) {
+      const w = this.overlayWeight
+      for (const [name, v] of Object.entries(this.overlay) as [PartName, [number, number, number]][]) {
+        const b = pose[name] ?? [0, 0, 0]
+        pose[name] = [b[0] + (v[0] - b[0]) * w, b[1] + (v[1] - b[1]) * w, b[2] + (v[2] - b[2]) * w]
+      }
     }
     return pose
   }
@@ -843,7 +1154,7 @@ export class Npc {
    * move o pé mais longe do centro de massa para o lado do outro, na
    * largura natural.
    */
-  private tryComfortStep() {
+  private tryComfortStep(force = false) {
     const fl = this.ragdoll.part('footL').body
     const fr = this.ragdoll.part('footR').body
     const pl = fl.translation()
@@ -857,6 +1168,7 @@ export class Npc {
     const twisted = Math.max(yawL, yawR) > COMFORT.yawTolerance
     const off = Math.max(widthErr, alignErr) > COMFORT.tolerance || twisted
     if (!off) return
+    if (force) this.comfortAttempts = 0
 
     // Pé girado: move esse pé. Senão, o mais longe do centro de massa.
     let side: Side
@@ -883,6 +1195,156 @@ export class Npc {
     this.debug.comfortSteps++
     this.comfortAttempts++
     this.stableTime = 0
+  }
+
+  // --- Locomoção: direção, passos do caminhar e geometria das pernas ----------
+
+  /** Yaw (0 = -Z) de um vetor no plano. */
+  private static yawOf(v: { x: number; z: number }) {
+    return Math.atan2(-v.x, -v.z)
+  }
+
+  private static angleDiff(a: number, b: number) {
+    return Math.atan2(Math.sin(a - b), Math.cos(a - b))
+  }
+
+  /** Direção média dos dois pés (yaw). */
+  private feetYaw() {
+    let sx = 0
+    let sz = 0
+    for (const side of ['L', 'R'] as const) {
+      const r = this.ragdoll.part(`foot${side}`).body.rotation()
+      const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(this.tmpQ.set(r.x, r.y, r.z, r.w))
+      const yaw = Math.atan2(-fwd.x, -fwd.z)
+      sx += Math.sin(yaw)
+      sz += Math.cos(yaw)
+    }
+    return Math.atan2(sx, sz)
+  }
+
+  /**
+   * Gira a direção desejada para encarar o alvo (ou para onde anda), com
+   * velocidade limitada e sem deixar a pélvis girar demais à frente dos pés
+   * (os pés precisam dar passos para virar).
+   */
+  private updateHeading(dt: number, moving: boolean) {
+    let target = this.heading
+    if (this.cmdFace !== null) target = this.cmdFace
+    else if (this.walkVel.length() > 0.6) target = Npc.yawOf(this.walkVel)
+    else if (this.cmdVel.length() > 0.1) target = Npc.yawOf(this.cmdVel)
+    else if (this.walkVel.length() > 0.3) target = Npc.yawOf(this.walkVel)
+    const d = Npc.angleDiff(target, this.heading)
+    // Correndo, curva mais aberta (giro mais lento).
+    const maxTurn = (GAIT.turnRate / (1 + 0.4 * this.walkVel.length())) * dt
+    let h = this.heading + THREE.MathUtils.clamp(d, -maxTurn, maxTurn)
+    // Parado, vira no máximo um pouco além dos pés (os passos de virar
+    // alcançam). Andando, os pés seguem a direção a cada passo.
+    if (!moving) {
+      const feet = this.feetYaw()
+      const before = Npc.angleDiff(this.heading, feet)
+      const lead = Npc.angleDiff(h, feet)
+      if (Math.abs(lead) > GAIT.maxFootLead && Math.abs(lead) > Math.abs(before)) h = this.heading
+    }
+    this.heading = Math.atan2(Math.sin(h), Math.cos(h))
+  }
+
+  /** Parado mas girado em relação aos pés: precisa de um passo para virar. */
+  private turnNeeded() {
+    return Math.abs(Npc.angleDiff(this.heading, this.feetYaw())) > GAIT.turnStep
+  }
+
+  private footPos(side: Side) {
+    const p = this.ragdoll.part(`foot${side}`).body.translation()
+    return new THREE.Vector3(p.x, p.y, p.z)
+  }
+
+  /** Onde a mola está levando o pé do passo agora. */
+  private swingDesired(swing: Swing) {
+    const u = Math.min(1, swing.t / swing.duration)
+    const s = u * u * (3 - 2 * u)
+    const d = swing.start.clone().lerp(swing.target, s)
+    d.y += Math.sin(Math.PI * u) * swing.height
+    return d
+  }
+
+  /**
+   * Ângulos do quadril (frente/trás e lado, na convenção das juntas) que
+   * apontam a perna do quadril até `foot` (centro do pé), relativos à pose
+   * de referência.
+   */
+  private legLine(side: Side, foot: THREE.Vector3): [number, number] {
+    // Referencial "pélvis em pé" (só o giro dela): se a pélvis tomba, o
+    // quadril empurra de volta em vez de acompanhar.
+    const pelvis = this.ragdoll.part('pelvis').body
+    const r = pelvis.rotation()
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(new THREE.Quaternion(r.x, r.y, r.z, r.w))
+    const q = new THREE.Quaternion().setFromAxisAngle(UP, Math.atan2(-fwd.x, -fwd.z))
+    const t = pelvis.translation()
+    const hipLocal = new THREE.Vector3(side === 'R' ? 0.1 : -0.1, 0.92 - 0.98, 0)
+    const hip = hipLocal.clone().applyQuaternion(q).add(new THREE.Vector3(t.x, t.y, t.z))
+    const d = foot.clone().sub(hip).applyQuaternion(q.invert())
+    // Referência: pé 0,88 m abaixo do quadril e 5 cm à frente.
+    const pitch = Math.atan2(-d.z, -d.y) - Math.atan2(0.05, 0.88)
+    const roll = Math.atan2(d.x, -d.y) - 0
+    return [THREE.MathUtils.clamp(pitch, -0.5, 1.6), THREE.MathUtils.clamp(roll, -0.4, 0.4)]
+  }
+
+  /**
+   * Um passo do caminhar: pé que está mais atrás (no sentido do movimento)
+   * vai para à frente do centro de massa previsto, na meia-passada, ao lado
+   * do corpo. O erro de velocidade (empurrões) desloca o pé para segurar.
+   */
+  private startGaitStep(fl: RAPIER.Vector, fr: RAPIER.Vector) {
+    const v = new THREE.Vector3(this.comVel.x, 0, this.comVel.z)
+    const vd = this.walkVel
+    const dir = vd.lengthSq() > 1e-3 ? vd.clone().normalize() : v.lengthSq() > 1e-3 ? v.clone().normalize() : this.fromLocal(1, 0)
+    const com = new THREE.Vector3(this.com.x, 0, this.com.z)
+    const bl = new THREE.Vector3(fl.x, 0, fl.z).sub(com).dot(dir)
+    const br = new THREE.Vector3(fr.x, 0, fr.z).sub(com).dot(dir)
+    // Já andando: alterna os pés (também ao andar de lado: o pé da frente
+    // abre e o outro fecha). Começando: sai com o pé que está mais atrás.
+    let side: Side
+    if (this.gaitStreak > 0 || Math.abs(bl - br) < 0.06) side = this.lastGait === 'L' ? 'R' : 'L'
+    else side = bl < br ? 'L' : 'R'
+    // Não repete o mesmo pé duas vezes seguidas se o outro ficou para trás.
+    const swingFoot = side === 'L' ? fl : fr
+    const stance = side === 'L' ? fr : fl
+    const run = this.running && vd.length() > GAIT.walkSpeed + 0.2
+    const duration = run ? GAIT.runDuration : GAIT.walkDuration
+    const period = duration + STEP.cooldown
+    // Velocidade prevista no pouso: a desejada continua subindo na rampa.
+    const want = this.cmdVel.clone()
+    const ahead = want.sub(vd)
+    const maxDv = (run ? GAIT.runAccel : GAIT.accel) * duration
+    if (ahead.length() > maxDv) ahead.setLength(maxDv)
+    const vPred = vd.clone().add(ahead)
+    const braking = vPred.length() < v.length() - 0.1
+    const land = com.clone().addScaledVector(v.clone().add(vPred).multiplyScalar(0.5), duration)
+    const target = land
+      .addScaledVector(vPred, period / 2)
+      // Diferença entre a velocidade real e a pretendida: o pé vai para o
+      // ponto de captura (freia ou segura um empurrão).
+      .addScaledVector(v.clone().sub(vd), braking ? GAIT.brakeGain : GAIT.velGain)
+      .add(this.fromLocal(0, side === 'R' ? GAIT.halfWidth : -GAIT.halfWidth))
+    // De lado: o pé do lado do movimento abre o dobro e o outro só fecha
+    // (as pernas não cruzam, então cada ciclo anda o que o pé da frente abriu).
+    const vSide = this.toLocal(vPred).side
+    const lead = (side === 'R') === vSide > 0
+    target.add(this.fromLocal(0, vSide * period * 0.5 * (lead ? 1 : -1)))
+    // Largura mínima em relação ao pé de apoio (não cruza as pernas).
+    const rel = this.toLocal(new THREE.Vector3(target.x - stance.x, 0, target.z - stance.z))
+    rel.side = side === 'R' ? Math.max(rel.side, STEP.minWidth) : Math.min(rel.side, -STEP.minWidth)
+    target.copy(this.fromLocal(rel.forward, rel.side)).add(new THREE.Vector3(stance.x, 0, stance.z))
+    // Passada máxima, medida a partir do pé de apoio.
+    const fromStance = target.clone().sub(new THREE.Vector3(stance.x, 0, stance.z))
+    const maxLen = run ? GAIT.maxStepRun : GAIT.maxStepWalk
+    if (fromStance.length() > maxLen) target.copy(fromStance.setLength(maxLen)).add(new THREE.Vector3(stance.x, 0, stance.z))
+    const start = new THREE.Vector3(swingFoot.x, swingFoot.y, swingFoot.z)
+    target.y = start.y
+    this.swing = { side, start, target, t: 0, duration, height: run ? GAIT.runHeight : GAIT.walkHeight }
+    this.lastGait = side
+    this.gaitStreak++
+    this.debug.steps++
   }
 
   /** Quanto o pé está girado em relação à direção do corpo (rad). */
@@ -947,6 +1409,11 @@ export class Npc {
    * Multiplicador de força por parte, pelos ferimentos: braço muito ferido
    * fica mole (pendurado); perna ferida perde força aos poucos.
    */
+  /** Braços em condição de agarrar algo. */
+  private armsOk() {
+    return { L: this.damage.region('armL') >= 40, R: this.damage.region('armR') >= 40 }
+  }
+
   private limbScale(): Partial<Record<PartName, number>> {
     const out: Partial<Record<PartName, number>> = {}
     for (const side of ['L', 'R'] as const) {
@@ -955,6 +1422,12 @@ export class Npc {
       out[`upperArm${side}`] = a
       out[`forearm${side}`] = a
       out[`hand${side}`] = a
+      // Braço que está alcançando/segurando: motores cedem para a mão ir.
+      if (this.grip.side === side && !this.grip.holding) {
+        out[`upperArm${side}`] = a * 0.12
+        out[`forearm${side}`] = a * 0.12
+        out[`hand${side}`] = a * 0.12
+      }
       const leg = this.damage.region(side === 'L' ? 'legL' : 'legR')
       const l = Math.max(0.15, leg / 100) ** 1.5
       out[`thigh${side}`] = l
@@ -1012,8 +1485,10 @@ export class Npc {
     const r = body.rotation()
     const q = this.tmpQ.set(r.x, r.y, r.z, r.w)
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q)
+    // Vertical desejado: inclina um pouco na direção do caminhar.
+    const goal = UP.clone().addScaledVector(this.walkVel, GAIT.lean).normalize()
     // Eixo (e seno do ângulo) para levar `up` ao vertical: up × Y.
-    const accel = new THREE.Vector3().crossVectors(up, UP).multiplyScalar(BALANCE.uprightKp)
+    const accel = new THREE.Vector3().crossVectors(up, goal).multiplyScalar(BALANCE.uprightKp)
     const w = body.angvel()
     accel.x -= BALANCE.uprightKd * w.x
     accel.z -= BALANCE.uprightKd * w.z

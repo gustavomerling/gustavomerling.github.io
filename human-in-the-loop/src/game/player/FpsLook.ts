@@ -20,6 +20,8 @@ export class FpsLook {
   sensitivity = 1
   /** Multiplicador extra (ex.: menor ao mirar, junto com o zoom). */
   zoomScale = 1
+  /** Olhar travado (ex.: menu de spawn aberto usa o mouse como cursor). */
+  frozen = false
   private rawInput = false
   private readonly euler = new THREE.Euler(0, 0, 0, 'YXZ')
   private readonly element: HTMLElement
@@ -80,7 +82,7 @@ export class FpsLook {
   private handleLockChange = () => this.onLockChange(this.locked)
 
   private handleMove = (e: MouseEvent) => {
-    if (!this.locked) return
+    if (!this.locked || this.frozen) return
     const { movementX: dx, movementY: dy } = e
     if (!this.rawInput && (Math.abs(dx) > SPIKE_PX || Math.abs(dy) > SPIKE_PX)) return
     const k = BASE_RAD_PER_PIXEL * this.sensitivity * this.zoomScale

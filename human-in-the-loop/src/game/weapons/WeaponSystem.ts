@@ -14,6 +14,8 @@ const LOWER_DROP = 0.28
 export interface WeaponState {
   index: number
   name: string
+  /** Armas disponíveis (por índice de WEAPONS); as "só do chão" começam fora. */
+  owned: boolean[]
   /** Mostra o nome por um instante depois de trocar. */
   changedAt: number
 }
@@ -40,7 +42,23 @@ export class WeaponSystem {
 
   private prevYaw = 0
   private prevPitch = 0
-  private readonly sway = new THREE.Vector2()
+  /**
+   * Inércia (passo 28): a arma é uma massa presa à mão por uma mola. Ao
+   * virar, ela fica para trás (rotação) e, ao acelerar, pular ou pousar, ela
+   * se desloca (posição). Armas pesadas têm mola mais mole e ficam mais para trás.
+   */
+  private readonly swayRot = new THREE.Vector2()
+  private readonly swayRotVel = new THREE.Vector2()
+  private readonly swayPos = new THREE.Vector3()
+  private readonly swayPosVel = new THREE.Vector3()
+  private readonly prevLocalVel = new THREE.Vector3()
+  /** Velocidade do jogador no mundo (definida pelo jogo a cada frame). */
+  readonly playerVelocity = new THREE.Vector3()
+  /** Mãos: 0..1 de "estender para agarrar" e pulso do arremesso. */
+  private grabT = 0
+  private grabbing = false
+  private throwT = 0
+  readonly owned: boolean[] = WEAPONS.map((w) => !w.pickupOnly)
   private bobPhase = 0
   private bobAmount = 0
 
@@ -174,11 +192,48 @@ export class WeaponSystem {
   }
 
   get state(): WeaponState {
-    return { index: this.index, name: this.current.name, changedAt: performance.now() }
+    return { index: this.index, name: this.current.name, owned: [...this.owned], changedAt: performance.now() }
+  }
+
+  /** Arma pega do chão: passa a estar disponível e já é empunhada. */
+  give(i: number) {
+    if (i < 0 || i >= WEAPONS.length) return
+    const isNew = !this.owned[i]
+    this.owned[i] = true
+    if (isNew) this.onChange(this.state)
+    this.select(i)
+  }
+
+  /** Mãos agarrando algo (estendidas para a frente). */
+  setGrab(on: boolean) {
+    this.grabbing = on
+  }
+
+  /** Empurrão das mãos ao arremessar. */
+  pulseThrow() {
+    this.throwT = 1
+  }
+
+  /**
+   * Fator extra de sensibilidade ao mirar pela alça: arma pesada vira mais
+   * devagar (rifle ~0,8, pistola ~0,94).
+   */
+  get aimSensitivityScale() {
+    return 1 / (1 + this.ads * this.current.mass * 0.07)
+  }
+
+  /** Próxima arma disponível a partir de `from`, no sentido `dir` (±1). */
+  private cycle(from: number, dir: number) {
+    const n = WEAPONS.length
+    for (let k = 1; k <= n; k++) {
+      const i = (((from + dir * k) % n) + n) % n
+      if (this.owned[i]) return i
+    }
+    return from
   }
 
   select(i: number) {
-    if (i < 0 || i >= WEAPONS.length || i === this.next) return
+    if (i < 0 || i >= WEAPONS.length || i === this.next || !this.owned[i]) return
     this.next = i
     if (this.phase !== 'lower') {
       this.phase = 'lower'
@@ -198,7 +253,7 @@ export class WeaponSystem {
     if (input) {
       for (let i = 0; i < WEAPONS.length; i++) if (input.consume(`Digit${i + 1}`)) this.select(i)
       const wheel = input.consumeWheel()
-      if (wheel) this.select((this.next + wheel + WEAPONS.length) % WEAPONS.length)
+      if (wheel) this.select(this.cycle(this.next, Math.sign(wheel)))
     }
 
     // Troca: abaixa a atual, troca o modelo, levanta a nova.
@@ -224,19 +279,8 @@ export class WeaponSystem {
     drop = Math.max(drop, this.holsterT)
     const eased = drop * drop * (3 - 2 * drop)
 
-    // Balanço: a arma "fica para trás" quando a câmera gira. Armas pesadas
-    // reagem mais devagar.
-    const dYaw = Math.atan2(Math.sin(yaw - this.prevYaw), Math.cos(yaw - this.prevYaw))
-    const dPitch = pitch - this.prevPitch
-    this.prevYaw = yaw
-    this.prevPitch = pitch
     const w = this.current
-    const target = new THREE.Vector2(
-      THREE.MathUtils.clamp(dYaw * 1.6, -0.05, 0.05),
-      THREE.MathUtils.clamp(-dPitch * 1.6, -0.05, 0.05),
-    )
-    const rate = 14 / (1 + w.mass * 0.25)
-    this.sway.lerp(target, 1 - Math.exp(-rate * dt))
+    this.updateInertia(dt, yaw, pitch, w)
 
     // Passada ao andar.
     const moving = grounded ? Math.min(1.5, speed / 4.2) : 0
@@ -262,12 +306,15 @@ export class WeaponSystem {
     if (this.flashTime <= 0) this.flash.visible = false
 
     const model = this.models[this.index]
-    // Mirando, balanço e passada quase somem.
+    // Mirando, balanço e passada diminuem (a inércia de arma pesada ainda aparece).
     const loose = 1 - ads * 0.85
+    const heavy = 1 - ads * 0.65
+    const sp = this.swayPos
+    const sr = this.swayRot
     const hipPos = new THREE.Vector3(
-      w.hip.x + (this.sway.x + bobX) * loose - this.tuck * 0.04,
-      w.hip.y + (this.sway.y + bobY + breathe) * loose - eased * LOWER_DROP - this.tuck * 0.05,
-      w.hip.z + kick * 0.035 + this.tuck * w.length * 0.45,
+      w.hip.x + bobX * loose + (sp.x - sr.x * 0.12) * heavy - this.tuck * 0.04,
+      w.hip.y + (bobY + breathe) * loose + (sp.y + sr.y * 0.12) * heavy - eased * LOWER_DROP - this.tuck * 0.05,
+      w.hip.z + sp.z * heavy + kick * 0.035 + this.tuck * w.length * 0.45,
     )
     // Posição de mira: a linha alça-massa no eixo da câmera.
     const sight = model.userData.sight as THREE.Vector3 | undefined
@@ -277,9 +324,9 @@ export class WeaponSystem {
     }
     model.position.copy(hipPos)
     model.rotation.set(
-      (w.hipRotation.x + this.sway.y * 2) * (1 - ads) - eased * 0.6 + kick * 0.09 * (1 - ads * 0.6) + this.tuck * 0.7,
-      (w.hipRotation.y + this.sway.x * 2) * (1 - ads) + this.tuck * 0.3,
-      (w.hipRotation.z + this.sway.x * 1.5) * (1 - ads),
+      w.hipRotation.x * (1 - ads) + sr.y * heavy - eased * 0.6 + kick * 0.09 * (1 - ads * 0.6) + this.tuck * 0.7,
+      w.hipRotation.y * (1 - ads) + sr.x * heavy + this.tuck * 0.3,
+      w.hipRotation.z * (1 - ads) + sr.x * 0.8 * heavy,
     )
     this.applyMelee(model, dt)
 
@@ -288,6 +335,53 @@ export class WeaponSystem {
     if (Math.abs(this.camera.fov - vmFov) > 0.01) {
       this.camera.fov = vmFov
       this.camera.updateProjectionMatrix()
+    }
+  }
+
+  /**
+   * Mola da arma (passo 28). Giro: a arma fica no mundo numa fração
+   * `inertia` do giro da câmera e a mola a traz de volta (com um leve
+   * balanço). Movimento: mudanças de velocidade (arrancar, frear, pular,
+   * pousar) deslocam a arma no sentido contrário, mais nas pesadas.
+   */
+  private updateInertia(dt: number, yaw: number, pitch: number, w: WeaponDef) {
+    const dYaw = Math.atan2(Math.sin(yaw - this.prevYaw), Math.cos(yaw - this.prevYaw))
+    const dPitch = pitch - this.prevPitch
+    this.prevYaw = yaw
+    this.prevPitch = pitch
+
+    const inertia = w.inertia ?? w.mass / (w.mass + 2)
+    const maxRot = 0.06 + inertia * 0.16
+    this.swayRot.x = THREE.MathUtils.clamp(this.swayRot.x - dYaw * inertia, -maxRot, maxRot)
+    this.swayRot.y = THREE.MathUtils.clamp(this.swayRot.y - dPitch * inertia, -maxRot, maxRot)
+
+    // Velocidade no espaço da câmera (direita, cima, frente).
+    const v = this.playerVelocity
+    const sin = Math.sin(yaw)
+    const cos = Math.cos(yaw)
+    const lx = v.x * cos - v.z * sin
+    const lz = -v.x * sin - v.z * cos
+    const k = 0.0015 + w.mass * 0.0016
+    const maxPos = 0.012 + w.mass * 0.009
+    const p = this.swayPos
+    p.x = THREE.MathUtils.clamp(p.x - (lx - this.prevLocalVel.x) * k, -maxPos, maxPos)
+    p.y = THREE.MathUtils.clamp(p.y - (v.y - this.prevLocalVel.y) * k * 0.6, -maxPos, maxPos)
+    p.z = THREE.MathUtils.clamp(p.z + (lz - this.prevLocalVel.z) * k, -maxPos, maxPos)
+    this.prevLocalVel.set(lx, v.y, lz)
+
+    // Mola-amortecedor com subpassos (estável mesmo com mola dura e frame longo).
+    const omega = 2 * Math.PI * (w.swayFreq ?? 6)
+    const damp = 2 * 0.55 * omega
+    const n = Math.max(1, Math.ceil(dt / (1 / 240)))
+    const h = dt / n
+    for (let i = 0; i < n; i++) {
+      this.swayRotVel.x += (-omega * omega * this.swayRot.x - damp * this.swayRotVel.x) * h
+      this.swayRotVel.y += (-omega * omega * this.swayRot.y - damp * this.swayRotVel.y) * h
+      this.swayRot.addScaledVector(this.swayRotVel, h)
+      this.swayPosVel.x += (-omega * omega * p.x - damp * this.swayPosVel.x) * h
+      this.swayPosVel.y += (-omega * omega * p.y - damp * this.swayPosVel.y) * h
+      this.swayPosVel.z += (-omega * omega * p.z - damp * this.swayPosVel.z) * h
+      p.addScaledVector(this.swayPosVel, h)
     }
   }
 
@@ -301,7 +395,17 @@ export class WeaponSystem {
     const m = this.melee
     const w = this.current
     const right = model.children[0]
-    if (w.kind === 'hands' && right) right.position.set(0.17, 0, 0)
+    const left = model.children[1]
+    if (w.kind === 'hands' && right && left) {
+      // Agarrando: as duas mãos vão à frente e se aproximam do centro.
+      this.grabT = THREE.MathUtils.clamp(this.grabT + (this.grabbing ? dt : -dt) / 0.12, 0, 1)
+      this.throwT = Math.max(0, this.throwT - dt / 0.25)
+      const g = this.grabT * this.grabT * (3 - 2 * this.grabT)
+      const t = Math.sin(this.throwT * Math.PI)
+      right.position.set(0.17 - 0.07 * g, 0.07 * g + 0.03 * t, -0.24 * g - 0.18 * t)
+      left.position.set(-0.17 + 0.07 * g, 0.07 * g + 0.03 * t, -0.24 * g - 0.18 * t)
+      right.rotation.x = left.rotation.x = 0.2 + 0.35 * g
+    }
     if (!m || m.phase === 'idle') return
     if (m.blocked && m.phase === 'recovering' && this.shake <= 0) this.shake = 0.12
     this.shake = Math.max(0, this.shake - dt)

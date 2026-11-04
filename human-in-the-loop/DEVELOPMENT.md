@@ -51,28 +51,57 @@ simulação, o NPC nunca usa armas, o jogador não cria NPCs.
 
 | # | Passo | Como testar |
 |---|-------|-------------|
-| 19 | **Caminhar procedural**: ciclo de passos gerado por poses-alvo, ainda sob equilíbrio físico; o NPC anda até um ponto. | Clicar num ponto do chão (debug) faz o NPC andar até lá. |
-| 20 | **Virar, recuar e correr**: virar no lugar, andar de costas, correr. Empurrões no meio do caminho continuam funcionando. | Mandar o NPC fugir em zigue-zague e empurrar no meio. |
-| 21 | **Visão**: cone de visão com teste de linha de visão (raycast). Cone visível no debug. *(A cabeça e o peito já seguem o jogador desde o passo 11.)* | Esconder-se atrás de uma parede faz o NPC perder o jogador. |
-| 22 | **Detecção de mira e estados da IA**: percebe a arma apontada para ele (mais forte em iron sight). Estados: ocioso, alerta, ameaçado, esquivando, fugindo, caído, levantando. | O estado atual aparece no debug e muda conforme a mira. |
-| 23 | **Esquiva e fuga**: passo lateral ou abaixar ao ser mirado de perto, correr para longe quando ameaçado à distância. | Mirar faz o NPC sair da linha de tiro de forma física. |
-| 24 | **Cobertura**: procura um obstáculo (inclusive os colocados pelo jogador) que bloqueie a visão do jogador e se agacha atrás dele. | Colocar uma parede: o NPC corre para trás dela. |
+| 19 ✅ | **Caminhar procedural**: ciclo de passos gerado por poses-alvo, ainda sob equilíbrio físico; o NPC anda até um ponto. | Clicar num ponto do chão (debug) faz o NPC andar até lá. |
+| 20 ✅ | **Virar, recuar e correr**: virar no lugar, andar de costas, correr. Empurrões no meio do caminho continuam funcionando. | Mandar o NPC fugir em zigue-zague e empurrar no meio. |
+| 21 ✅ | **Visão**: cone de visão com teste de linha de visão (raycast). Cone visível no debug. *(A cabeça e o peito já seguem o jogador desde o passo 11.)* | Esconder-se atrás de uma parede faz o NPC perder o jogador. |
+| 22 ✅ | **Detecção de mira e estados da IA**: percebe a arma apontada para ele (mais forte em iron sight). Estados: ocioso, alerta, ameaçado, esquivando, fugindo, caído, levantando. | O estado atual aparece no debug e muda conforme a mira. |
+| 23 ✅ | **Esquiva e fuga**: passo lateral ou abaixar ao ser mirado de perto, correr para longe quando ameaçado à distância. | Mirar faz o NPC sair da linha de tiro de forma física. |
+| 24 ✅ | **Cobertura**: procura um obstáculo (inclusive os colocados pelo jogador) que bloqueie a visão do jogador e se agacha atrás dele. | Colocar uma parede: o NPC corre para trás dela. |
 
 ## Fase F: Reflexos e interação física
 
 | # | Passo | Como testar |
 |---|-------|-------------|
-| 25 | **Reflexos de proteção**: braços na frente do rosto ao ver um golpe ou objeto vindo, vira o corpo para proteger o ponto ferido, segura a região atingida. | Arremessar uma caixa nele: ele se protege. |
-| 26 | **Agarrar ao tropeçar**: ao perder o equilíbrio, procura uma parede, mesa ou o jogador por perto e se segura (junta temporária mão-objeto). | Empurrar perto de uma mesa: ele se apoia nela. |
-| 27 | **Mãos físicas do jogador**: agarrar objetos e o NPC (braço, gola) com uma junta-mola, arrastar, empurrar, arremessar. | Arrastar o NPC caído pelo braço e arremessar uma caixa. |
-| 28 | **Peso e inércia das armas**: arma ligada à mão por mola; armas pesadas atrasam a mira e balançam ao virar. | Rifle pesa mais e é mais lento que a pistola. |
+| 25 ✅ | **Reflexos de proteção**: braços na frente do rosto ao ver um golpe ou objeto vindo, vira o corpo para proteger o ponto ferido, segura a região atingida. | Arremessar uma caixa nele: ele se protege. |
+| 26 ✅ | **Agarrar ao tropeçar**: ao perder o equilíbrio, procura uma parede, mesa ou o jogador por perto e se segura (junta temporária mão-objeto). | Empurrar perto de uma mesa: ele se apoia nela. |
+| 27 ✅ | **Mãos físicas do jogador**: agarrar objetos e o NPC (braço, gola) com uma junta-mola, arrastar, empurrar, arremessar. | Arrastar o NPC caído pelo braço e arremessar uma caixa. |
+| 28 ✅ | **Peso e inércia das armas**: arma ligada à mão por mola; armas pesadas atrasam a mira e balançam ao virar. | Rifle pesa mais e é mais lento que a pistola. |
 
 ## Fase G: Sandbox e acabamento
 
 | # | Passo | Como testar |
 |---|-------|-------------|
-| 29 | **Menu de spawn**: catálogo de objetos e armas (sem NPCs), posiciona pela mira, apaga itens. | Criar uma pilha de barris e pegar uma arma do chão. |
-| 30 | **Ferramentas sandbox e acabamento**: congelar, corda, mola, ímã. Menu inicial, reset da simulação, ajustes (sensibilidade, qualidade), passada de performance e build final. | Amarrar o NPC numa corda presa no teto; o jogo roda a 60 FPS num notebook comum. |
+| 29 ✅ | **Menu de spawn**: catálogo de objetos e armas (sem NPCs), posiciona pela mira, apaga itens. | Criar uma pilha de barris e pegar uma arma do chão. |
+| 30 ✅ | **Ferramentas sandbox e acabamento**: congelar, corda, mola, ímã. Menu inicial, reset da simulação, ajustes (sensibilidade, qualidade), passada de performance e build final. | Amarrar o NPC numa corda presa no teto; o jogo roda a 60 FPS num notebook comum. |
+
+### Notas da reta final (passos 19–30, feitos de uma vez a pedido)
+
+- **Caminhar** (`npc/Npc.ts`, `GAIT`): passos gerados por tempo, pé posto à
+  frente do centro de massa pela velocidade prevista (mais o erro de
+  velocidade, que freia e segura empurrões); a força no tronco segue uma
+  velocidade desejada; o quadril aponta a coxa para o pé (referencial só com
+  o giro da pélvis); uma sustentação vertical limitada impede o joelho de
+  ceder. De lado, o pé da frente abre e o outro fecha. Correr só começa já
+  virado; curvas em velocidade são abertas. Ainda pode tropeçar em curvas
+  fechadas correndo (e levanta).
+- **IA** (`npc/Brain.ts`): cone de visão + raio de linha de visão; ameaça
+  sobe com a mira (dobro em iron sight) e com tiros ouvidos. Perto (< 7 m)
+  esquiva com um impulso lateral físico; longe procura cobertura (anéis de
+  pontos atrás de algo que bloqueia a linha até o peito, inclusive objetos
+  construídos) e agacha atrás de muretas; sem cobertura foge em zigue-zague
+  até sair da linha de tiro. **M** manda andar até o ponto na mira.
+- **Reflexos**: objetos arremessados que vão passar perto da cabeça/peito
+  disparam braços na frente do rosto (e esquiva, se der tempo); golpe
+  corpo a corpo visto de perto, guarda; ferido, segura a região e vira o lado
+  ferido para longe.
+- **Agarrar ao tropeçar** (`npc/Grip.ts`): desequilíbrio grande ou queda →
+  raios do ombro na direção da queda; a mão vai até a superfície com uma
+  mola e, ao encostar, prende com uma junta temporária. Segurando, ele volta
+  a se equilibrar. Não agarra o jogador (o corpo do jogador é cinemático).
+- **Passos 27–30** (`sandbox/`): mãos (botão direito segura, esquerdo
+  arremessa), inércia das armas por mola, menu de spawn (Q), ferramentas
+  (Tab): corda, mola, congelar, ímã. Menu inicial, abertura, logo e ajustes
+  (sensibilidade, FOV, qualidade) na UI.
 
 ---
 

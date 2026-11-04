@@ -5,14 +5,21 @@ import { BuildBar } from './ui/BuildBar'
 import { WeaponHud } from './ui/WeaponHud'
 import type { WeaponState } from './game/weapons/WeaponSystem'
 import { DebugPanel } from './ui/DebugPanel'
-import { PauseMenu, RES_OPTIONS } from './ui/PauseMenu'
+import { PauseMenu } from './ui/PauseMenu'
+import { Intro } from './ui/Intro'
+import { MainMenu } from './ui/MainMenu'
+import { FOV_RANGE, RES_OPTIONS } from './ui/MenuPanels'
 import { loadJson, saveJson } from './ui/storage'
+import type { SandboxState } from './game/sandbox/Sandbox'
+import { SpawnMenu } from './ui/SpawnMenu'
+import { ToolHud } from './ui/ToolHud'
 
 const SETTINGS_KEY = 'hitl.settings'
 
 interface Settings {
   sensitivity: number
   pixelRatio: number
+  fov: number
   debugPanel: boolean
   colliders: boolean
 }
@@ -31,10 +38,12 @@ function loadSettings(): Settings {
   const s = loadJson<Settings>(SETTINGS_KEY, {
     sensitivity: legacy('hitl.sensitivity', 1),
     pixelRatio: legacy('hitl.pixelRatio', 1),
+    fov: FOV_RANGE.default,
     debugPanel: true,
     colliders: false,
   })
   if (!RES_OPTIONS.includes(s.pixelRatio)) s.pixelRatio = 1
+  if (!(s.fov >= FOV_RANGE.min && s.fov <= FOV_RANGE.max)) s.fov = FOV_RANGE.default
   return s
 }
 
@@ -48,11 +57,15 @@ export default function App() {
   const [settings, setSettings] = useState(loadSettings)
   const [ready, setReady] = useState(false)
   const [locked, setLocked] = useState(false)
+  /** Abertura (uma vez por carregamento) e menu inicial (até entrar no jogo). */
+  const [intro, setIntro] = useState(true)
+  const [started, setStarted] = useState(false)
   const [stats, setStats] = useState<GameStats | null>(null)
   const [build, setBuild] = useState<BuildState>({ active: false, selected: 0, placed: 0 })
   const [weapon, setWeapon] = useState<WeaponState | null>(null)
   const [hitAt, setHitAt] = useState(0)
   const [aiming, setAiming] = useState(false)
+  const [sandbox, setSandbox] = useState<SandboxState | null>(null)
   const [debug, setDebugState] = useState<DebugState>({
     panel: settings.debugPanel,
     colliders: settings.colliders,
@@ -62,13 +75,14 @@ export default function App() {
     npcBalance: true,
     npcAutoGetUp: true,
     npcLook: true,
+    npcAi: true,
   })
 
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
     let cancelled = false
-    createGame(host, { onLockChange: setLocked, onStats: setStats, onDebugChange: setDebugState, onBuildChange: setBuild, onWeaponChange: setWeapon, onHitMarker: () => setHitAt(performance.now()), onAimChange: setAiming }, debug).then((g) => {
+    createGame(host, { onLockChange: setLocked, onStats: setStats, onDebugChange: setDebugState, onBuildChange: setBuild, onWeaponChange: setWeapon, onHitMarker: () => setHitAt(performance.now()), onAimChange: setAiming, onSandboxChange: setSandbox }, debug).then((g) => {
       if (cancelled) return g.dispose()
       gameRef.current = g
       setReady(true)
@@ -84,6 +98,7 @@ export default function App() {
   useEffect(() => {
     gameRef.current?.setSensitivity(settings.sensitivity)
     gameRef.current?.setPixelRatio(settings.pixelRatio)
+    gameRef.current?.setFov(settings.fov)
     saveJson(SETTINGS_KEY, settings)
   }, [settings, ready])
 
@@ -97,6 +112,10 @@ export default function App() {
     )
   }, [debug.panel, debug.colliders])
 
+  useEffect(() => {
+    if (locked) setStarted(true)
+  }, [locked])
+
   const game = () => gameRef.current
 
   return (
@@ -107,7 +126,28 @@ export default function App() {
       {locked && debug.paused && <div className="paused-tag">física pausada</div>}
       {locked && build.active && <BuildBar build={build} />}
       {locked && !build.active && weapon && <WeaponHud weapon={weapon} />}
-      {!locked && (
+      {locked && !build.active && sandbox && !sandbox.menuOpen && <ToolHud sandbox={sandbox} />}
+      {locked && sandbox?.menuOpen && (
+        <SpawnMenu
+          sandbox={sandbox}
+          onSpawn={(id) => game()?.spawnItem(id)}
+          onTool={(id) => game()?.selectTool(id)}
+          onClose={() => game()?.setSpawnMenu(false)}
+        />
+      )}
+      {!locked && !started && (
+        <MainMenu
+          ready={ready}
+          sensitivity={settings.sensitivity}
+          pixelRatio={settings.pixelRatio}
+          fov={settings.fov}
+          onPlay={() => game()?.lock()}
+          onSensitivity={(sensitivity) => setSettings((s) => ({ ...s, sensitivity }))}
+          onPixelRatio={(pixelRatio) => setSettings((s) => ({ ...s, pixelRatio }))}
+          onFov={(fov) => setSettings((s) => ({ ...s, fov }))}
+        />
+      )}
+      {!locked && started && (
         <PauseMenu
           ready={ready}
           sensitivity={settings.sensitivity}
@@ -121,8 +161,12 @@ export default function App() {
           onReset={() => game()?.resetScene()}
           built={build.placed}
           onClearBuilt={() => game()?.clearBuilt()}
+          fov={settings.fov}
+          onFov={(fov) => setSettings((s) => ({ ...s, fov }))}
+          onMainMenu={() => setStarted(false)}
         />
       )}
+      {intro && <Intro onDone={() => setIntro(false)} />}
     </>
   )
 }

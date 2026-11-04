@@ -1,0 +1,111 @@
+import { useState } from 'react'
+import { AboutPanel, ControlsSheet, SettingsForm, type SettingsProps } from './MenuPanels'
+import { MenuLayout, type NavItem } from './MenuLayout'
+
+type Tab = 'home' | 'controls' | 'settings' | 'about'
+
+const TITLES: Record<Tab, string> = {
+  home: 'Simulação',
+  controls: 'Controles',
+  settings: 'Ajustes',
+  about: 'Sobre',
+}
+
+interface Props extends SettingsProps {
+  ready: boolean
+  onPlay: () => void
+}
+
+/** Tela inicial, antes de capturar o mouse pela primeira vez. A cena roda atrás. */
+export function MainMenu(p: Props) {
+  const [tab, setTab] = useState<Tab>('home')
+  const nav: NavItem[] = [
+    {
+      id: 'play',
+      label: p.ready ? 'Iniciar simulação' : 'Carregando física…',
+      primary: true,
+      disabled: !p.ready,
+      onClick: p.onPlay,
+    },
+    { id: 'controls', label: 'Controles' },
+    { id: 'settings', label: 'Ajustes' },
+    { id: 'about', label: 'Sobre' },
+  ]
+
+  return (
+    <MenuLayout
+      variant="main"
+      nav={nav}
+      tab={tab}
+      onTab={(id) => setTab(id as Tab)}
+      title={TITLES[tab]}
+      tag={tab === 'home' ? 'sandbox' : undefined}
+      footer={
+        <>
+          <span className={p.ready ? 'status-dot ok' : 'status-dot'} />
+          {p.ready ? 'física pronta · 60 Hz' : 'inicializando física…'}
+        </>
+      }
+    >
+      {tab === 'home' && <Home ready={p.ready} onControls={() => setTab('controls')} />}
+      {tab === 'controls' && <ControlsSheet />}
+      {tab === 'settings' && <SettingsForm {...p} />}
+      {tab === 'about' && <AboutPanel />}
+    </MenuLayout>
+  )
+}
+
+function Home({ ready, onControls }: { ready: boolean; onControls: () => void }) {
+  return (
+    <div className="home">
+      <p className="about-lead">
+        Um manequim de crash test com ragdoll ativo, uma sala de testes e você. Ele anda, corre, se esquiva da
+        mira, procura cobertura e se protege. Empurre, atire, arremesse caixas, amarre e construa: tudo é física.
+      </p>
+      <ul className="home-quick">
+        <li>
+          <span className="keys">
+            <kbd>W</kbd>
+            <kbd>A</kbd>
+            <kbd>S</kbd>
+            <kbd>D</kbd>
+          </span>
+          andar
+        </li>
+        <li>
+          <span className="keys">
+            <kbd className="wide">Botão esq.</kbd>
+          </span>
+          atirar / golpear
+        </li>
+        <li>
+          <span className="keys">
+            <kbd>F</kbd>
+            <kbd>G</kbd>
+          </span>
+          empurrar o NPC
+        </li>
+        <li>
+          <span className="keys">
+            <kbd className="wide">Botão dir.</kbd>
+          </span>
+          agarrar (mãos) / mirar
+        </li>
+        <li>
+          <span className="keys">
+            <kbd>Q</kbd>
+          </span>
+          menu de spawn
+        </li>
+      </ul>
+      <button className="link-button" onClick={onControls}>
+        Ver todos os controles →
+      </button>
+      <p className="home-note">
+        {ready
+          ? 'Ao iniciar, o navegador captura o mouse. Esc solta e abre a pausa.'
+          : 'Preparando a física (WASM). Leva só um instante.'}
+      </p>
+    </div>
+  )
+}

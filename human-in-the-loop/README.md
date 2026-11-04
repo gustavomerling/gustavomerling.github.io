@@ -7,8 +7,8 @@ manter em pé, se proteger e reagir ao que veem, em vez de tocar animações pro
 Stack: **Vite + React + TypeScript + Three.js + Rapier** (física em WASM).
 Publicado no GitHub Pages em `/human-in-the-loop/dist/`.
 
-> Status: **etapa 3**, desenvolvimento passo a passo (ver [DEVELOPMENT.md](DEVELOPMENT.md)).
-> Concluído: passos 1–18.
+> Status: **primeira versão completa da engine** (passos 1–30 do [DEVELOPMENT.md](DEVELOPMENT.md)).
+> Próximo: testes de uso e ajustes finos; depois, expansões (som, conteúdo) ou um jogo em cima.
 
 ---
 
@@ -51,16 +51,23 @@ Observação: a versão `-compat` do Rapier embute o WASM em base64 (bundle
 ~5 MB, ~1,9 MB gzip). Funciona sem configuração; se o tamanho incomodar,
 dá para trocar pela versão WASM separada mais à frente.
 
-## 3. Controles (rascunho)
+## 3. Controles
+
+A tabela completa fica no jogo (menu **Controles**, gerada de `src/ui/controls.ts`).
 
 | Ação | Tecla |
 |------|-------|
 | Mover / correr / pular / agachar | WASD / Shift / Espaço / C (Ctrl não: Ctrl+W fecha a aba) |
-| Voltar ao início | R |
 | Atirar / golpear | Botão esquerdo |
-| Mirar (iron sight) | Botão direito |
+| Mirar (iron sight), com arma de fogo | Botão direito |
+| Agarrar (segurar) e arremessar (botão esquerdo), com as mãos | Botão direito |
 | Trocar arma | 1–9 / roda do mouse |
-| Modo construção (colocar obstáculo) | B |
+| Menu de spawn · apagar item · pegar arma do chão | Q · X · E |
+| Ferramentas (corda, mola, congelar, ímã) | Tab |
+| Modo construção | B |
+| Resetar a cena · soltar o NPC · empurrar o NPC | R · T · F/G |
+| Mandar o NPC até o ponto na mira (Shift: correndo) | M |
+| Painel de debug (P pausa, . avança, V colisores e cone de visão, I liga/desliga a IA) | ` |
 
 ## 4. Escopo da primeira versão
 
@@ -110,4 +117,4 @@ npm run build    # gera dist/ (commitado para o GitHub Pages)
 
 1. ✅ Documentação da ideia + hello world (Three.js + Rapier: caixas caindo, clique solta mais).
 2. ✅ Plano de desenvolvimento em 30 passos: [DEVELOPMENT.md](DEVELOPMENT.md).
-3. 🔄 Desenvolvimento passo a passo, com teste e aprovação a cada passo.
+3. ✅ Desenvolvimento passo a passo (passos 1–30).

@@ -6,6 +6,7 @@ import { WeaponSystem, type WeaponState } from './weapons/WeaponSystem'
 import { ColliderDebug } from './debug/ColliderDebug'
 import { createLoop } from './engine/loop'
 import { initPhysics, Physics, RAPIER } from './engine/physics'
+import { Brain, type BrainDebug, type PlayerInfo } from './npc/Brain'
 import { Npc, type NpcDebug } from './npc/Npc'
 import { POSE_IDS, type PoseId } from './npc/poses'
 import { createRenderContext } from './engine/render'
@@ -15,6 +16,8 @@ import { PlayerBody } from './player/PlayerBody'
 import { buildLab, buildLights, LAB } from './world/lab'
 import { createMaterials } from './world/materials'
 import { createProps } from './world/props'
+import { Sandbox, type SandboxState } from './sandbox/Sandbox'
+import type { ToolId } from './sandbox/Tools'
 
 /** Campo de visão normal (graus). */
 const BASE_FOV = 70
@@ -27,6 +30,8 @@ export interface GameStats {
   renderMs: number
   bodies: number
   npc: NpcDebug
+  /** IA do NPC: estado, percepção, reflexo. */
+  brain: BrainDebug
   player: {
     x: number
     y: number
@@ -52,6 +57,8 @@ export interface DebugState {
   npcAutoGetUp: boolean
   /** NPC olha para o jogador. */
   npcLook: boolean
+  /** IA do NPC ligada (ver, esquivar, fugir, cobertura). */
+  npcAi: boolean
 }
 
 export interface GameEvents {
@@ -64,6 +71,8 @@ export interface GameEvents {
   onHitMarker: () => void
   /** Entrou/saiu da mira pela alça (esconde a mira do centro). */
   onAimChange: (aiming: boolean) => void
+  /** Mãos, ferramentas e menu de spawn (passos 27–30). */
+  onSandboxChange?: (state: SandboxState) => void
 }
 
 export interface Game {
@@ -71,6 +80,8 @@ export interface Game {
   lock: () => void
   setSensitivity: (value: number) => void
   setPixelRatio: (value: number) => void
+  /** Campo de visão normal em graus (a mira pela alça continua relativa a ele). */
+  setFov: (value: number) => void
   setDebug: (patch: Partial<DebugState>) => void
   /** Avança a física um único passo (com a física pausada). */
   stepOnce: () => void
@@ -78,6 +89,11 @@ export interface Game {
   resetScene: () => void
   /** Remove tudo o que o jogador construiu. */
   clearBuilt: () => void
+  /** Menu de spawn: cria o item `id` (SPAWN_ITEMS) na mira e fecha o menu. */
+  spawnItem: (id: string) => void
+  /** Escolhe uma ferramenta (empunha a arma de ferramentas) e fecha o menu. */
+  selectTool: (id: ToolId) => void
+  setSpawnMenu: (open: boolean) => void
   dispose: () => void
 }
 
@@ -87,6 +103,7 @@ export interface Game {
  */
 export async function createGame(host: HTMLElement, events: GameEvents, initialDebug: DebugState): Promise<Game> {
   await initPhysics()
+  let baseFov = BASE_FOV
 
   const ctx = createRenderContext(host)
   const physics = new Physics()
@@ -118,8 +135,31 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const NPC_SPAWN = new THREE.Vector3(0, 0, 9)
   const NPC_YAW = Math.PI
   npc.spawn(NPC_SPAWN, NPC_YAW)
+  const brain = new Brain(npc, physics, ctx.scene)
+  disposers.push(() => brain.dispose())
+  npc.onWound = (region) => brain.wounded(region)
+  npc.grip.ignore = player.collider
+  const playerInfo: PlayerInfo = {
+    eye: new THREE.Vector3(),
+    aimDir: new THREE.Vector3(0, 0, -1),
+    ads: 0,
+    weapon: 'hands',
+    swinging: false,
+    collider: player.collider,
+  }
 
-  const npcLookTarget = new THREE.Vector3()
+  /** Debug (M / Shift+M): o NPC anda (corre) até o ponto do chão na mira. */
+  const orderWalk = (run: boolean) => {
+    ctx.camera.getWorldPosition(camPos)
+    ctx.camera.getWorldDirection(camDir)
+    const hit = physics.world.castRay(new RAPIER.Ray(camPos, camDir), 60, true, undefined, undefined, player.collider, undefined, (c) => {
+      const b = c.parent()
+      return !(b && npc.owns(b))
+    })
+    if (!hit) return
+    const p = camPos.clone().addScaledVector(camDir, hit.timeOfImpact)
+    brain.walkTo(p, run)
+  }
   const lookForward = () => new THREE.Vector3(-Math.sin(look.yaw), 0, -Math.cos(look.yaw))
   /** Debug (F/G): empurrão horizontal no peito do NPC, na direção do olhar. */
   const pushNpc = (impulse: number) => npc.push(lookForward().multiplyScalar(impulse))
@@ -146,6 +186,17 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   weapons.melee = melee
   const gunfire = new Gunfire(ctx.scene, physics, player.collider)
   disposers.push(() => gunfire.dispose())
+  const sandbox = new Sandbox({
+    scene: ctx.scene,
+    physics,
+    materials,
+    weapons,
+    player,
+    look,
+    isNpc: (b) => npc.owns(b),
+    onChange: events.onSandboxChange,
+  })
+  disposers.push(() => sandbox.dispose())
   let wasAiming = false
   const camPos = new THREE.Vector3()
   const camDir = new THREE.Vector3()
@@ -156,18 +207,24 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
     const w = weapons.current
     ctx.camera.updateMatrixWorld()
     ctx.camera.getWorldPosition(camPos)
-    ctx.camera.getWorldDirection(camDir)
-    const spread = w.automatic ? 0.006 : 0.002
-    camDir.x += (Math.random() - 0.5) * spread
-    camDir.y += (Math.random() - 0.5) * spread
-    camDir.z += (Math.random() - 0.5) * spread
-    camDir.normalize()
+    const spread = w.spread ?? (w.automatic ? 0.006 : 0.002)
     const impulse = w.impulse ?? 10
-    const hit = gunfire.fire(camPos, camDir, weapons.muzzleWorld(ctx.camera, muzzle), impulse)
-    if (hit?.body && npc.owns(hit.body)) {
-      npc.hit(hit.body, camDir.clone().multiplyScalar(impulse), hit.point, 'shot')
-      events.onHitMarker()
+    weapons.muzzleWorld(ctx.camera, muzzle)
+    // Espingarda: vários chumbos por disparo, cada um com a sua dispersão.
+    for (let i = 0; i < (w.pellets ?? 1); i++) {
+      ctx.camera.getWorldDirection(camDir)
+      camDir.x += (Math.random() - 0.5) * spread
+      camDir.y += (Math.random() - 0.5) * spread
+      camDir.z += (Math.random() - 0.5) * spread
+      camDir.normalize()
+      const hit = gunfire.fire(camPos, camDir, muzzle, impulse)
+      if (hit?.body && npc.owns(hit.body)) {
+        npc.hit(hit.body, camDir.clone().multiplyScalar(impulse), hit.point, 'shot')
+        events.onHitMarker()
+      }
     }
+    // O NPC ouve o tiro (e se assusta, mesmo sem ver).
+    brain.notice(camPos, 0.35)
     // Recuo: a mira sobe e desvia um pouco para o lado.
     const recoil = w.recoil ?? 0.01
     look.pitch = Math.min(look.pitch + recoil, Math.PI / 2 - 0.01)
@@ -211,15 +268,20 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
     if (debug.npcPose !== npc.poseId) npc.setPose(debug.npcPose)
     if (debug.npcBalance !== npc.balanceEnabled) npc.setBalance(debug.npcBalance)
     npc.autoGetUp = debug.npcAutoGetUp
+    brain.enabled = debug.npcAi !== false
+    brain.cone.visible = debug.colliders
     events.onDebugChange({ ...debug })
   }
   setDebug({})
 
   const resetScene = () => {
+    // Primeiro o sandbox: descongela e desfaz cordas antes de recolocar tudo.
+    sandbox.reset()
     props.reset()
     build.resetPlaced()
     gunfire.clearMarks()
     npc.spawn(NPC_SPAWN, NPC_YAW)
+    brain.reset()
     player.respawn()
     lookAtCenter()
   }
@@ -230,6 +292,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
     if (input.consume('KeyT')) dropRagdoll()
     if (input.consume('KeyF')) pushNpc(40)
     if (input.consume('KeyG')) pushNpc(110)
+    if (input.consume('KeyM')) orderWalk(input.isDown('ShiftLeft') || input.isDown('ShiftRight'))
     if (input.consume('Backquote')) setDebug({ panel: !debug.panel })
     if (!debug.panel) return
     if (input.consume('KeyP')) setDebug({ paused: !debug.paused })
@@ -240,6 +303,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
     if (input.consume('KeyK')) setDebug({ npcBalance: !debug.npcBalance })
     if (input.consume('KeyL')) setDebug({ npcAutoGetUp: !debug.npcAutoGetUp })
     if (input.consume('KeyO')) setDebug({ npcLook: !debug.npcLook })
+    if (input.consume('KeyI')) setDebug({ npcAi: !debug.npcAi })
     if (input.consume('KeyN')) {
       setDebug({ npcPose: POSE_IDS[(POSE_IDS.indexOf(debug.npcPose) + 1) % POSE_IDS.length] })
     }
@@ -258,6 +322,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
       renderMs: renderAcc / frames,
       bodies: physics.world.bodies.len(),
       npc: { ...npc.debug },
+      brain: { ...brain.debug },
       player: {
         x: t.x,
         y: t.y,
@@ -276,7 +341,18 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
       stepRequested = false
 
       const t0 = performance.now()
-      npc.lookTarget = debug.npcLook ? player.eyePosition(1, npcLookTarget) : null
+      // Percepção da IA: onde o jogador está, para onde mira e com o quê.
+      player.eyePosition(1, playerInfo.eye)
+      playerInfo.aimDir.set(
+        -Math.sin(look.yaw) * Math.cos(look.pitch),
+        Math.sin(look.pitch),
+        -Math.cos(look.yaw) * Math.cos(look.pitch),
+      )
+      playerInfo.ads = weapons.ads
+      playerInfo.weapon = weapons.current.kind
+      playerInfo.swinging = melee.phase === 'charging' || melee.phase === 'swinging'
+      brain.update(dt, playerInfo)
+      if (!debug.npcLook) npc.lookTarget = null
       npc.update(dt)
       player.update(
         dt,
@@ -291,6 +367,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
         },
         look.yaw,
       )
+      sandbox.fixedUpdate(dt)
       physics.step()
       physicsAcc += performance.now() - t0
     },
@@ -301,13 +378,16 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
       physics.interpolate(a)
       ctx.camera.position.copy(player.eyePosition(a, eye))
       // Mira pela alça: FOV fecha e a sensibilidade cai na mesma proporção.
-      weapons.setAiming(!build.active && input.isDown('Mouse2'))
-      const fov = THREE.MathUtils.lerp(BASE_FOV, weapons.current.adsFov ?? BASE_FOV, weapons.ads)
+      weapons.setAiming(!build.active && !sandbox.menuOpen && input.isDown('Mouse2'))
+      const fov = THREE.MathUtils.lerp(baseFov, Math.min(baseFov, weapons.current.adsFov ?? baseFov), weapons.ads)
       if (Math.abs(ctx.camera.fov - fov) > 0.01) {
         ctx.camera.fov = fov
         ctx.camera.updateProjectionMatrix()
       }
-      look.zoomScale = Math.tan(THREE.MathUtils.degToRad(fov / 2)) / Math.tan(THREE.MathUtils.degToRad(BASE_FOV / 2))
+      // Arma pesada também vira mais devagar na mira (passo 28).
+      look.zoomScale =
+        (Math.tan(THREE.MathUtils.degToRad(fov / 2)) / Math.tan(THREE.MathUtils.degToRad(baseFov / 2))) *
+        weapons.aimSensitivityScale
       const [breathPitch, breathYaw] = weapons.breathOffset()
       look.apply(ctx.camera, breathPitch, breathYaw)
       const aimingNow = weapons.ads > 0.6
@@ -318,11 +398,14 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
       build.frame(ctx.camera, input)
       weapons.setHolstered(build.active)
       ctx.camera.updateMatrixWorld()
+      // Mãos, ferramentas, menu de spawn (lê os cliques antes das armas).
+      sandbox.frame(build.active ? null : input, ctx.camera)
+      const weaponInput = build.active || sandbox.blocksWeapons ? null : input
       if (weapons.current.kind === 'gun') {
         melee.reset()
-        if (weapons.trigger(build.active ? null : input, frameDt)) shoot()
+        if (weapons.trigger(weaponInput, frameDt)) shoot()
       } else {
-        const ready = !build.active && weapons.ready
+        const ready = !!weaponInput && weapons.ready
         for (const hit of melee.update(frameDt, ready ? input : null, weapons.current, ctx.camera)) {
           if (npc.owns(hit.body)) {
             npc.hit(hit.body, hit.impulse, hit.point, 'melee')
@@ -331,7 +414,8 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
         }
       }
       weaponContact(frameDt)
-      weapons.frame(frameDt, build.active ? null : input, look.yaw, look.pitch, player.speed, player.isGrounded)
+      weapons.playerVelocity.copy(player.velocityWorld)
+      weapons.frame(frameDt, build.active || sandbox.menuOpen ? null : input, look.yaw, look.pitch, player.speed, player.isGrounded)
       gunfire.update(frameDt)
       colliderDebug.update()
       ctx.renderer.render(ctx.scene, ctx.camera)
@@ -357,12 +441,18 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
       look.sensitivity = value
     },
     setPixelRatio: (value) => ctx.setPixelRatio(value),
+    setFov: (value) => {
+      baseFov = THREE.MathUtils.clamp(value, 50, 110)
+    },
     setDebug,
     stepOnce: () => {
       stepRequested = true
     },
     resetScene,
     clearBuilt: () => build.clear(),
+    spawnItem: (id) => sandbox.spawn(id),
+    selectTool: (id) => sandbox.selectTool(id),
+    setSpawnMenu: (open) => sandbox.setMenu(open),
     dispose() {
       loop.stop()
       for (const d of disposers.reverse()) d()

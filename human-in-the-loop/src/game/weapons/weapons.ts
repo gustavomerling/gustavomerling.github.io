@@ -4,7 +4,7 @@ import * as THREE from 'three'
  * Dados das armas do jogador. Neste passo só o visual e a troca usam estes
  * valores; tiro (passo 14), mira (15) e golpe (16) usam o resto.
  */
-export type WeaponKind = 'hands' | 'gun' | 'melee'
+export type WeaponKind = 'hands' | 'gun' | 'melee' | 'tool'
 
 export interface WeaponDef {
   id: string
@@ -13,8 +13,21 @@ export interface WeaponDef {
   /** Posição do modelo na tela (espaço da câmera) com a arma "na cintura". */
   hip: THREE.Vector3
   hipRotation: THREE.Euler
-  /** Peso (kg): influencia balanço e, no passo 28, a inércia. */
+  /** Peso (kg): quanto mais pesada, mais a arma "fica para trás" e mais lenta a mira. */
   mass: number
+  /**
+   * Inércia (passo 28), 0..1: fração do giro da câmera que a arma não
+   * acompanha na hora (ela fica no lugar e a mola a traz de volta).
+   * Deriva do peso se omitido.
+   */
+  inertia?: number
+  /** Frequência da mola que segura a arma na mão (Hz): menor = mais mole. */
+  swayFreq?: number
+  /** Só fica disponível depois de pegar do chão (menu de spawn). */
+  pickupOnly?: boolean
+  /** Tiro de chumbo: projéteis por disparo e dispersão (rad). */
+  pellets?: number
+  spread?: number
   /** Comprimento à frente da câmera (m): perto disso de algo, a arma recolhe e encosta. */
   length: number
   /** Tiro: disparos por segundo, automática, impulso no alvo (N·s), pente. */
@@ -44,6 +57,8 @@ export const WEAPONS: WeaponDef[] = [
     hip: new THREE.Vector3(0, -0.2, -0.38),
     hipRotation: new THREE.Euler(0, 0, 0),
     mass: 0,
+    inertia: 0,
+    swayFreq: 9,
     length: 0.35,
     reach: 2,
   },
@@ -54,6 +69,8 @@ export const WEAPONS: WeaponDef[] = [
     hip: new THREE.Vector3(0.15, -0.15, -0.34),
     hipRotation: new THREE.Euler(0, 0.04, 0),
     mass: 0.9,
+    inertia: 0.3,
+    swayFreq: 7,
     length: 0.5,
     recoil: 0.014,
     fireRate: 6,
@@ -72,6 +89,8 @@ export const WEAPONS: WeaponDef[] = [
     hip: new THREE.Vector3(0.15, -0.165, -0.5),
     hipRotation: new THREE.Euler(0, 0.04, 0),
     mass: 3.5,
+    inertia: 0.65,
+    swayFreq: 3.8,
     length: 0.8,
     recoil: 0.009,
     fireRate: 10,
@@ -90,8 +109,48 @@ export const WEAPONS: WeaponDef[] = [
     hip: new THREE.Vector3(0.2, -0.22, -0.4),
     hipRotation: new THREE.Euler(0.5, 0.15, -0.35),
     mass: 1.0,
+    inertia: 0.45,
+    swayFreq: 5,
     length: 0.85,
     meleeImpulse: 90,
     reach: 1.9,
   },
+  {
+    // Arma de ferramentas do sandbox (congelar, corda, mola, ímã).
+    id: 'tool',
+    name: 'Ferramentas',
+    kind: 'tool',
+    hip: new THREE.Vector3(0.15, -0.16, -0.36),
+    hipRotation: new THREE.Euler(0, 0.04, 0),
+    mass: 1.2,
+    inertia: 0.35,
+    swayFreq: 6,
+    length: 0.5,
+  },
+  {
+    // Só aparece pegando do chão (menu de spawn).
+    id: 'shotgun',
+    name: 'Espingarda',
+    kind: 'gun',
+    hip: new THREE.Vector3(0.15, -0.17, -0.46),
+    hipRotation: new THREE.Euler(0, 0.04, 0),
+    mass: 3.2,
+    inertia: 0.6,
+    swayFreq: 4,
+    length: 0.8,
+    pickupOnly: true,
+    recoil: 0.045,
+    fireRate: 1.4,
+    automatic: false,
+    impulse: 5,
+    pellets: 8,
+    spread: 0.06,
+    magazine: 6,
+    adsFov: 55,
+    adsEye: 0.2,
+    adsTime: 0.26,
+    breath: 0.0012,
+  },
 ]
+
+export const weaponIndex = (id: string) => WEAPONS.findIndex((w) => w.id === id)

@@ -14,12 +14,14 @@ export function WeaponHud({ weapon }: { weapon: WeaponState }) {
   return (
     <div className="weapon-hud">
       {showList ? (
-        WEAPONS.map((w, i) => (
+        WEAPONS.map((w, i) =>
+          weapon.owned && !weapon.owned[i] ? null : (
           <div key={w.id} className={i === weapon.index ? 'weapon-slot current' : 'weapon-slot'}>
             <kbd>{i + 1}</kbd>
             {w.name}
           </div>
-        ))
+          ),
+        )
       ) : (
         <div className="weapon-slot current">{weapon.name}</div>
       )}
