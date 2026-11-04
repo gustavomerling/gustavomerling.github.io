@@ -596,6 +596,10 @@ export class Npc {
     const sever = this.damage.severTarget(part, ev.amount, was)
     if (sever && this.detachLimb(sever)) return
     if (this.dead) return
+    if (this.headshotKills && kind === 'shot' && part === 'head') {
+      this.kill('critical')
+      return
+    }
     const t = this.traits
     if (t) {
       // Zumbi: dor e desmaio não contam; só um tiro que destrói a cabeça mata.
@@ -691,6 +695,8 @@ export class Npc {
 
   /** Tipo especial de NPC (zumbi, ver ZombieBrain.ts); null = humano comum. */
   traits: NpcTraits | null = null
+  /** Masmorra: qualquer tiro na cabeça mata na hora. */
+  headshotKills = false
 
   /** O corpo rígido pertence ao NPC? */
   owns(body: RAPIER.RigidBody) {

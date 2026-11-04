@@ -126,7 +126,15 @@ interface Actor {
   kind: NpcKind
   home?: Room
   counted?: boolean
+  /** Barra de vida em cima da cabeça. */
+  bar: THREE.Group
 }
+
+const BAR_W = 0.6
+const barGeo = new THREE.PlaneGeometry(1, 1)
+const barBack = new THREE.MeshBasicMaterial({ color: '#1b1c18', transparent: true, opacity: 0.7, depthWrite: false })
+const barFill = new THREE.MeshBasicMaterial({ color: '#6cc25a', depthWrite: false })
+const barLow = new THREE.MeshBasicMaterial({ color: '#e0402f', depthWrite: false })
 
 export async function createGame(
   host: HTMLElement,
@@ -212,8 +220,10 @@ export async function createGame(
   const makeBrain = (npc: Npc, kind: NpcKind): NpcBrain => {
     const config = NPC_CONFIGS[kind]
     npc.applyConfig(config)
-    npc.ragdoll.setLook(kind === 'zombie' ? 'zombie' : 'dummy')
+    npc.ragdoll.setLook(kind === 'zombie' ? 'zombie' : arena ? 'swat' : 'dummy')
     const b = createBrain(kind, { npc, physics, scene: ctx.scene, config, playerCollider: player.collider })
+    npc.headshotKills = !!arena
+    if (arena && b instanceof ArmedNpcBrain) b.base.fearless = true
     if (b instanceof ArmedNpcBrain) {
       // Tiro que acerta o jogador: empurrão e, na masmorra, dano.
       b.weapon.onHit = (e) => {
@@ -236,10 +246,41 @@ export async function createGame(
     return b
   }
 
+  function makeBar() {
+    const g = new THREE.Group()
+    const back = new THREE.Mesh(barGeo, barBack)
+    back.scale.set(BAR_W + 0.04, 0.1, 1)
+    const fill = new THREE.Mesh(barGeo, barFill)
+    fill.scale.set(BAR_W, 0.06, 1)
+    fill.position.z = 0.001
+    fill.name = 'fill'
+    g.add(back, fill)
+    for (const m of [back, fill]) m.renderOrder = 10
+    ctx.scene.add(g)
+    return g
+  }
+  const headPos = new THREE.Vector3()
+  /** Barras: acima da cabeça, de frente para a câmera; somem com o NPC morto. */
+  const updateBars = () => {
+    for (const a of actors) {
+      const head = a.npc.ragdoll.parts.get('head')
+      a.bar.visible = !a.npc.isDead && !!head && !head.detached
+      if (!a.bar.visible || !head) continue
+      const t = head.body.translation()
+      a.bar.position.copy(headPos.set(t.x, t.y + 0.38, t.z))
+      a.bar.quaternion.copy(ctx.camera.quaternion)
+      const f = THREE.MathUtils.clamp(a.npc.health / 100, 0, 1)
+      const fill = a.bar.getObjectByName('fill') as THREE.Mesh
+      fill.scale.x = Math.max(0.001, BAR_W * f)
+      fill.position.x = (-BAR_W * (1 - f)) / 2
+      fill.material = f < 0.3 ? barLow : barFill
+    }
+  }
+
   function addActor(kind: NpcKind, pos: THREE.Vector3, yaw: number): Actor {
     const npc = new Npc(physics, ctx.scene)
     npc.spawn(pos, yaw)
-    const a: Actor = { npc, kind, brain: makeBrain(npc, kind) }
+    const a: Actor = { npc, kind, brain: makeBrain(npc, kind), bar: makeBar() }
     npc.onWound = (region) => a.brain.wounded(region)
     npc.grip.ignore = player.collider
     // Membro que vai se soltar: as mãos do jogador soltam antes (senão restauram o grupo de colisão antigo).
@@ -261,6 +302,7 @@ export async function createGame(
     if (i < 0) return
     if (sandbox?.hands.holdingNpc) sandbox.hands.release()
     actors.splice(i, 1)
+    a.bar.removeFromParent()
     a.brain.dispose()
     a.npc.dispose()
   }
@@ -363,6 +405,11 @@ export async function createGame(
   let wasAiming = false
   const camPos = new THREE.Vector3()
   const feet = new THREE.Vector3()
+  /** C alterna agachado (Ctrl segura). */
+  let crouchToggle = false
+  /** Inclinação (Q/E mirando): -1 esquerda .. 1 direita, suavizada. */
+  let lean = 0
+  const leanRight = new THREE.Vector3()
   const camDir = new THREE.Vector3()
   const muzzle = new THREE.Vector3()
 
@@ -541,6 +588,7 @@ export async function createGame(
   const loop = createLoop({
     fixedUpdate: (dt) => {
       handleDebugKeys()
+      if (input.consume('KeyC')) crouchToggle = !crouchToggle
       if (debug.paused && !stepRequested) return
       stepRequested = false
 
@@ -570,7 +618,7 @@ export async function createGame(
           right: input.axis('KeyA', 'KeyD'),
           sprint: input.isDown('ShiftLeft') || input.isDown('ShiftRight'),
           // C ou Ctrl. Atenção: Ctrl+W ainda fecha a aba (o navegador não deixa bloquear fora de tela cheia).
-          crouch: input.isDown('KeyC') || input.isDown('ControlLeft') || input.isDown('ControlRight'),
+          crouch: crouchToggle || input.isDown('ControlLeft') || input.isDown('ControlRight'),
           jump: input.consume('Space'),
           aiming: weapons.ads > 0.5,
         },
@@ -590,6 +638,24 @@ export async function createGame(
       const a = debug.paused ? 1 : alpha
       physics.interpolate(a)
       ctx.camera.position.copy(player.eyePosition(a, eye))
+      // Inclinar: Q/E só valem mirando (aí não abrem o menu nem pegam itens).
+      const aimingHeld = input.isDown('Mouse2') && weapons.current.kind === 'gun'
+      let leanTarget = 0
+      if (aimingHeld) {
+        leanTarget = (input.isDown('KeyE') ? 1 : 0) - (input.isDown('KeyQ') ? 1 : 0)
+        input.consume('KeyQ')
+        input.consume('KeyE')
+      }
+      lean += (leanTarget - lean) * (1 - Math.exp(-10 * frameDt))
+      if (Math.abs(lean) > 0.001) {
+        leanRight.set(Math.cos(look.yaw), 0, -Math.sin(look.yaw)).multiplyScalar(Math.sign(lean))
+        // Não atravessa parede: limita pelo que estiver ao lado da cabeça.
+        const want = Math.abs(lean) * 0.45
+        const hit = physics.world.castRay(new RAPIER.Ray(ctx.camera.position, leanRight), want + 0.2, true, undefined, undefined, player.collider)
+        const reach = hit ? Math.max(0, Math.min(want, hit.timeOfImpact - 0.2)) : want
+        ctx.camera.position.addScaledVector(leanRight, reach)
+        ctx.camera.position.y -= Math.abs(lean) * 0.06
+      }
       // Mira pela alça: FOV fecha e a sensibilidade cai na mesma proporção.
       weapons.setAiming(!build.active && !sb.menuOpen && input.isDown('Mouse2'))
       const fov = THREE.MathUtils.lerp(baseFov, Math.min(baseFov, weapons.current.adsFov ?? baseFov), weapons.ads)
@@ -603,6 +669,7 @@ export async function createGame(
         weapons.aimSensitivityScale
       const [breathPitch, breathYaw] = weapons.breathOffset()
       look.apply(ctx.camera, breathPitch, breathYaw)
+      if (Math.abs(lean) > 0.001) ctx.camera.rotateZ(-lean * 0.2)
       const aimingNow = weapons.ads > 0.6
       if (aimingNow !== wasAiming) {
         wasAiming = aimingNow
@@ -640,6 +707,7 @@ export async function createGame(
       const near = primary()
       if (!debug.paused && near) blood.update(frameDt, near.npc)
       colliderDebug.update()
+      updateBars()
       ctx.renderer.render(ctx.scene, ctx.camera)
       weapons.render(ctx.renderer, ctx.camera.aspect)
 

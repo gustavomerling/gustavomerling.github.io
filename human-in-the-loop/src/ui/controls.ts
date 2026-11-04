@@ -37,7 +37,8 @@ export const CONTROL_GROUPS: BindingGroup[] = [
     bindings: [
       { keys: ['W', 'A', 'S', 'D'], action: 'Andar' },
       { keys: ['Shift'], action: 'Correr', note: 'segurar' },
-      { keys: ['C', 'Ctrl'], action: 'Agachar', note: 'cuidado: Ctrl+W fecha a aba' },
+      { keys: ['C'], action: 'Agachar (alterna)', note: 'Ctrl: segurar (cuidado: Ctrl+W fecha a aba)' },
+      { keys: ['Q', 'E'], action: 'Inclinar (mirando)' },
       { keys: ['Space'], action: 'Pular' },
       { keys: ['Mouse'], action: 'Olhar' },
     ],

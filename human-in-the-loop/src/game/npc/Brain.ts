@@ -797,7 +797,11 @@ export class Brain implements NpcBrain {
     return !this.clearLine(eye, c.pos.clone().setY(y), collider)
   }
 
+  /** Inimigo (masmorra): não foge; no lugar de fugir, fica em alerta/combate. */
+  fearless = false
+
   private setState(s: AiState) {
+    if (this.fearless && s === 'fleeing') s = 'alert'
     this.state = s
     this.stateTime = 0
     this.debug.ai = s

@@ -24,11 +24,13 @@ const INK = '#1b1b1d'
  * boneco, ou podridão/feridas do zumbi). Decalques marcados com
  * `userData.look` só aparecem no visual daquele tipo.
  */
-export type Look = 'dummy' | 'zombie'
+export type Look = 'dummy' | 'zombie' | 'swat'
 
 export const LOOKS: Record<Look, { skin: string; metal: string; eye: string; eyeGlow: string; glow: number; damage: string; mottle: number }> = {
   dummy: { skin: SKIN, metal: METAL, eye: INK, eyeGlow: '#000000', glow: 0, damage: '#6e3f45', mottle: 0 },
   // Verde doente, juntas encardidas, olhos amarelo-esverdeados que brilham.
+  // SWAT: uniforme azul-marinho, juntas pretas, visor escuro.
+  swat: { skin: '#2c3a52', metal: '#16181b', eye: '#0d0f12', eyeGlow: '#3a6a8a', glow: 0.6, damage: '#5a2228', mottle: 0.03 },
   zombie: { skin: '#7e9a5b', metal: '#2c3127', eye: '#d9ff4a', eyeGlow: '#c6f03a', glow: 1.6, damage: '#3a2c1c', mottle: 0.09 },
 }
 

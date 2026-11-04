@@ -110,7 +110,7 @@ export function decorate(type: RoomType, rng: Rng): Obstacle[] {
         o.push({ x: sx * c, z: sz * c, w: 1.4, h: 0.3, d: 1.4, mat: 'dark' })
       }
       o.push(floorDecal(6.2, 6.2, 'dark'))
-      o.push(floorDecal(5.6, 5.6, 'wall'))
+      o.push({ ...floorDecal(5.6, 5.6, 'wall'), h: 0.035 })
       break
     }
     case 'lab': {
