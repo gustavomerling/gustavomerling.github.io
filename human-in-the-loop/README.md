@@ -8,7 +8,7 @@ Stack: **Vite + React + TypeScript + Three.js + Rapier** (física em WASM).
 Publicado no GitHub Pages em `/human-in-the-loop/dist/`.
 
 > Status: **etapa 3**, desenvolvimento passo a passo (ver [DEVELOPMENT.md](DEVELOPMENT.md)).
-> Concluído: passos 1–14.
+> Concluído: passos 1–15.
 
 ---
 
@@ -66,6 +66,15 @@ dá para trocar pela versão WASM separada mais à frente.
 
 Objetivo: **um núcleo básico muito bom**. Som, mais conteúdo e mais
 possibilidades ficam para expansões depois.
+
+### Decisão: engine/sandbox primeiro, jogo depois
+
+*Decidido em 2026-11-04.* Este projeto é uma **engine e sandbox**: sistemas de
+física, ragdoll ativo, IA, armas e construção, para experimentar livremente.
+Ele **não tem** objetivo, fases, pontuação nem ciclo de jogo, e isso é
+intencional. Um jogo de verdade (por exemplo, uma camada de "testes" com
+objetivos) poderá ser construído depois, **em cima** desta base. Até lá, os
+passos do plano continuam sendo sistemas.
 
 ### Regras fixas
 

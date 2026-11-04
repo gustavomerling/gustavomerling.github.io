@@ -51,6 +51,11 @@ export class WeaponSystem {
   private readonly flash: THREE.Mesh
   private flashTime = 0
 
+  /** 0..1: quanto está mirando pela alça (iron sight). */
+  ads = 0
+  private aiming = false
+  private breathT = 0
+
   private readonly onChange: (s: WeaponState) => void
 
   constructor(onChange: (s: WeaponState) => void) {
@@ -105,6 +110,26 @@ export class WeaponSystem {
     this.kickAmount = Math.min(1.5, this.kickAmount + 1)
     this.showFlash()
     return true
+  }
+
+  /** Pede para mirar pela alça (só armas de fogo, prontas e não recolhidas). */
+  setAiming(aiming: boolean) {
+    this.aiming = aiming
+  }
+
+  /** Pode mirar agora? */
+  get canAim() {
+    return this.current.kind === 'gun' && this.phase === 'idle' && !this.holstered
+  }
+
+  /**
+   * Respiração ao mirar: um "oito" lento que desloca a mira de verdade
+   * (pitch, yaw em rad). Fora da mira é zero.
+   */
+  breathOffset(): [number, number] {
+    const a = (this.current.breath ?? 0) * this.ads
+    const t = this.breathT
+    return [Math.sin(t * 1.3) * a, Math.sin(t * 0.65) * a * 1.4]
   }
 
   /** Quanto a arma deve recolher (0..1), por algo encostado à frente. */
@@ -211,6 +236,13 @@ export class WeaponSystem {
     // Respiração leve parada.
     const breathe = Math.sin(performance.now() / 1000 * 1.6) * 0.0015
 
+    // Mira pela alça: sobe/desce no tempo da arma (armas pesadas, mais lentas).
+    const wantAds = this.aiming && this.canAim && this.tuckTarget < 0.3
+    const adsSpeed = dt / (w.adsTime ?? 0.2)
+    this.ads = THREE.MathUtils.clamp(this.ads + (wantAds ? adsSpeed : -adsSpeed), 0, 1)
+    const ads = this.ads * this.ads * (3 - 2 * this.ads)
+    this.breathT += dt
+
     // Coice: volta como mola. Recolher: puxa para trás e inclina para cima.
     this.kickAmount *= Math.exp(-14 * dt)
     const kick = this.kickAmount * (w.id === 'rifle' ? 0.6 : 1)
@@ -219,16 +251,31 @@ export class WeaponSystem {
     if (this.flashTime <= 0) this.flash.visible = false
 
     const model = this.models[this.index]
-    model.position.set(
-      w.hip.x + this.sway.x + bobX - this.tuck * 0.04,
-      w.hip.y + this.sway.y + bobY + breathe - eased * LOWER_DROP - this.tuck * 0.05,
+    // Mirando, balanço e passada quase somem.
+    const loose = 1 - ads * 0.85
+    const hipPos = new THREE.Vector3(
+      w.hip.x + (this.sway.x + bobX) * loose - this.tuck * 0.04,
+      w.hip.y + (this.sway.y + bobY + breathe) * loose - eased * LOWER_DROP - this.tuck * 0.05,
       w.hip.z + kick * 0.035 + this.tuck * w.length * 0.45,
     )
+    // Posição de mira: a linha alça-massa no eixo da câmera.
+    const sight = model.userData.sight as THREE.Vector3 | undefined
+    if (sight && ads > 0) {
+      const adsPos = new THREE.Vector3(-sight.x, -sight.y, -(w.adsEye ?? 0.2) - sight.z + kick * 0.02)
+      hipPos.lerp(adsPos, ads)
+    }
+    model.position.copy(hipPos)
     model.rotation.set(
-      w.hipRotation.x - eased * 0.6 + this.sway.y * 2 + kick * 0.09 + this.tuck * 0.7,
-      w.hipRotation.y + this.sway.x * 2 + this.tuck * 0.3,
-      w.hipRotation.z + this.sway.x * 1.5,
+      (w.hipRotation.x + this.sway.y * 2) * (1 - ads) - eased * 0.6 + kick * 0.09 * (1 - ads * 0.6) + this.tuck * 0.7,
+      (w.hipRotation.y + this.sway.x * 2) * (1 - ads) + this.tuck * 0.3,
+      (w.hipRotation.z + this.sway.x * 1.5) * (1 - ads),
     )
+    // A câmera das armas também fecha um pouco (a arma não "cresce" demais).
+    const vmFov = THREE.MathUtils.lerp(58, 48, ads)
+    if (Math.abs(this.camera.fov - vmFov) > 0.01) {
+      this.camera.fov = vmFov
+      this.camera.updateProjectionMatrix()
+    }
   }
 
   /** Desenha a camada das armas por cima do que já foi renderizado. */

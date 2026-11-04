@@ -26,6 +26,11 @@ export interface WeaponDef {
   recoil?: number
   /** Mira: campo de visão ao mirar pela alça (graus). */
   adsFov?: number
+  /** Distância da alça até o olho ao mirar (m) e tempo para levantar a arma (s). */
+  adsEye?: number
+  adsTime?: number
+  /** Respiração ao mirar: amplitude (rad) do balanço da mira. */
+  breath?: number
   /** Golpe: impulso máximo (N·s) e alcance (m). */
   meleeImpulse?: number
   reach?: number
@@ -56,6 +61,9 @@ export const WEAPONS: WeaponDef[] = [
     impulse: 12,
     magazine: 12,
     adsFov: 55,
+    adsEye: 0.26,
+    adsTime: 0.14,
+    breath: 0.0016,
   },
   {
     id: 'rifle',
@@ -71,6 +79,9 @@ export const WEAPONS: WeaponDef[] = [
     impulse: 16,
     magazine: 30,
     adsFov: 45,
+    adsEye: 0.16,
+    adsTime: 0.24,
+    breath: 0.0011,
   },
   {
     id: 'bat',

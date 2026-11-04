@@ -72,7 +72,8 @@ function pistol(m: ViewmodelMaterials) {
   // Miras: massa (frente) e alça (trás, com entalhe).
   g.add(at(box(0.005, 0.012, 0.006, m.sight, 0.001), 0, 0.078, -0.158))
   for (const x of [-0.009, 0.009]) g.add(at(box(0.006, 0.012, 0.008, m.polymer, 0.001), x, 0.078, 0.012))
-  g.userData.sight = new THREE.Vector3(0, 0.08, 0.012)
+  // Linha de mira: topo da massa (y 0,084) alinhado ao entalhe da alça.
+  g.userData.sight = new THREE.Vector3(0, 0.084, 0.012)
   g.userData.muzzle = new THREE.Vector3(0, 0.055, -0.17)
   g.add(gloveHand(m))
   return g
@@ -90,10 +91,11 @@ function rifle(m: ViewmodelMaterials) {
   g.add(at(box(0.03, 0.09, 0.04, m.polymer, 0.008), 0, -0.02, 0.0, 0.3))
   // Trilho e miras: massa (frente, alta) e alça em anel (trás).
   g.add(at(box(0.02, 0.008, 0.28, m.metal, 0.002), 0, 0.081, -0.15))
-  g.add(at(box(0.004, 0.03, 0.006, m.sight, 0.001), 0, 0.1, -0.4))
+  g.add(at(box(0.004, 0.03, 0.006, m.sight, 0.001), 0, 0.097, -0.4))
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.0035, 8, 20), m.polymer)
-  g.add(at(ring, 0, 0.105, 0.03))
-  g.userData.sight = new THREE.Vector3(0, 0.105, 0.03)
+  g.add(at(ring, 0, 0.112, 0.03))
+  // Linha de mira: centro do anel (alça) até o topo da massa (y 0,112).
+  g.userData.sight = new THREE.Vector3(0, 0.112, 0.03)
   g.userData.muzzle = new THREE.Vector3(0, 0.05, -0.645)
   g.add(gloveHand(m))
   // Mão de apoio no guarda-mão.

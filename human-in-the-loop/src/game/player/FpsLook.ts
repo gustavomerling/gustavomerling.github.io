@@ -18,6 +18,8 @@ export class FpsLook {
   yaw = 0
   pitch = 0
   sensitivity = 1
+  /** Multiplicador extra (ex.: menor ao mirar, junto com o zoom). */
+  zoomScale = 1
   private rawInput = false
   private readonly euler = new THREE.Euler(0, 0, 0, 'YXZ')
   private readonly element: HTMLElement
@@ -62,8 +64,9 @@ export class FpsLook {
     this.pitch = Math.asin(THREE.MathUtils.clamp(dir.y, -1, 1))
   }
 
-  apply(camera: THREE.Camera) {
-    this.euler.set(this.pitch, this.yaw, 0)
+  /** `offsetPitch/Yaw`: deslocamento só da mira (ex.: respiração), não acumula. */
+  apply(camera: THREE.Camera, offsetPitch = 0, offsetYaw = 0) {
+    this.euler.set(this.pitch + offsetPitch, this.yaw + offsetYaw, 0)
     camera.quaternion.setFromEuler(this.euler)
   }
 
@@ -80,7 +83,7 @@ export class FpsLook {
     if (!this.locked) return
     const { movementX: dx, movementY: dy } = e
     if (!this.rawInput && (Math.abs(dx) > SPIKE_PX || Math.abs(dy) > SPIKE_PX)) return
-    const k = BASE_RAD_PER_PIXEL * this.sensitivity
+    const k = BASE_RAD_PER_PIXEL * this.sensitivity * this.zoomScale
     this.yaw -= dx * k
     this.pitch = THREE.MathUtils.clamp(this.pitch - dy * k, -PITCH_LIMIT, PITCH_LIMIT)
   }

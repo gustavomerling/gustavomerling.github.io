@@ -24,6 +24,7 @@ export const PLAYER = {
   /** Velocidade com que a câmera alcança a altura certa (agachar, degraus). */
   eyeSmoothing: 14,
   mass: 80,
+  aimSpeedScale: 0.55,
 } as const
 
 export interface MoveInput {
@@ -33,6 +34,8 @@ export interface MoveInput {
   sprint: boolean
   crouch: boolean
   jump: boolean
+  /** Mirando pela alça: anda mais devagar e não corre. */
+  aiming?: boolean
 }
 
 const capsuleHalf = (height: number) => height / 2 - PLAYER.radius
@@ -114,11 +117,12 @@ export class PlayerBody {
       -cos * input.forward - sin * input.right,
     )
     if (wish.lengthSq() > 1) wish.normalize()
-    const maxSpeed = this.isCrouching
-      ? PLAYER.crouchSpeed
-      : input.sprint && input.forward > 0
-        ? PLAYER.sprintSpeed
-        : PLAYER.walkSpeed
+    const maxSpeed =
+      (this.isCrouching
+        ? PLAYER.crouchSpeed
+        : input.sprint && input.forward > 0 && !input.aiming
+          ? PLAYER.sprintSpeed
+          : PLAYER.walkSpeed) * (input.aiming ? PLAYER.aimSpeedScale : 1)
     const target = wish.multiplyScalar(maxSpeed)
 
     // Acelera em direção à velocidade alvo (chão: firme; ar: pouco controle).

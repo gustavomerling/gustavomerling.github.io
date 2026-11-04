@@ -15,6 +15,9 @@ import { buildLab, buildLights, LAB } from './world/lab'
 import { createMaterials } from './world/materials'
 import { createProps } from './world/props'
 
+/** Campo de visão normal (graus). */
+const BASE_FOV = 70
+
 export interface GameStats {
   fps: number
   /** Tempo médio de CPU por frame gasto na física, em ms. */
@@ -58,6 +61,8 @@ export interface GameEvents {
   onWeaponChange: (weapon: WeaponState) => void
   /** Um tiro acertou o NPC (marcador na mira). */
   onHitMarker: () => void
+  /** Entrou/saiu da mira pela alça (esconde a mira do centro). */
+  onAimChange: (aiming: boolean) => void
 }
 
 export interface Game {
@@ -138,6 +143,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   events.onWeaponChange(weapons.state)
   const gunfire = new Gunfire(ctx.scene, physics, player.collider)
   disposers.push(() => gunfire.dispose())
+  let wasAiming = false
   const camPos = new THREE.Vector3()
   const camDir = new THREE.Vector3()
   const muzzle = new THREE.Vector3()
@@ -278,6 +284,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
           // Ctrl ficaria perigoso: Ctrl+W fecha a aba do navegador.
           crouch: input.isDown('KeyC'),
           jump: input.consume('Space'),
+          aiming: weapons.ads > 0.5,
         },
         look.yaw,
       )
@@ -290,7 +297,21 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
       const a = debug.paused ? 1 : alpha
       physics.interpolate(a)
       ctx.camera.position.copy(player.eyePosition(a, eye))
-      look.apply(ctx.camera)
+      // Mira pela alça: FOV fecha e a sensibilidade cai na mesma proporção.
+      weapons.setAiming(!build.active && input.isDown('Mouse2'))
+      const fov = THREE.MathUtils.lerp(BASE_FOV, weapons.current.adsFov ?? BASE_FOV, weapons.ads)
+      if (Math.abs(ctx.camera.fov - fov) > 0.01) {
+        ctx.camera.fov = fov
+        ctx.camera.updateProjectionMatrix()
+      }
+      look.zoomScale = Math.tan(THREE.MathUtils.degToRad(fov / 2)) / Math.tan(THREE.MathUtils.degToRad(BASE_FOV / 2))
+      const [breathPitch, breathYaw] = weapons.breathOffset()
+      look.apply(ctx.camera, breathPitch, breathYaw)
+      const aimingNow = weapons.ads > 0.6
+      if (aimingNow !== wasAiming) {
+        wasAiming = aimingNow
+        events.onAimChange(aimingNow)
+      }
       build.frame(ctx.camera, input)
       weapons.setHolstered(build.active)
       ctx.camera.updateMatrixWorld()
