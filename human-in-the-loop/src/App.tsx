@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import type { BuildState } from './game/build/BuildMode'
 import { createGame, type DebugState, type Game, type GameStats } from './game/Game'
+import { BuildBar } from './ui/BuildBar'
 import { DebugPanel } from './ui/DebugPanel'
 import { PauseMenu, RES_OPTIONS } from './ui/PauseMenu'
 import { loadJson, saveJson } from './ui/storage'
@@ -45,6 +47,7 @@ export default function App() {
   const [ready, setReady] = useState(false)
   const [locked, setLocked] = useState(false)
   const [stats, setStats] = useState<GameStats | null>(null)
+  const [build, setBuild] = useState<BuildState>({ active: false, selected: 0, placed: 0 })
   const [debug, setDebugState] = useState<DebugState>({
     panel: settings.debugPanel,
     colliders: settings.colliders,
@@ -55,7 +58,7 @@ export default function App() {
     const host = hostRef.current
     if (!host) return
     let cancelled = false
-    createGame(host, { onLockChange: setLocked, onStats: setStats, onDebugChange: setDebugState }, debug).then((g) => {
+    createGame(host, { onLockChange: setLocked, onStats: setStats, onDebugChange: setDebugState, onBuildChange: setBuild }, debug).then((g) => {
       if (cancelled) return g.dispose()
       gameRef.current = g
       setReady(true)
@@ -92,6 +95,7 @@ export default function App() {
       {locked && <div className="crosshair" />}
       {locked && debug.panel && <DebugPanel stats={stats} debug={debug} />}
       {locked && debug.paused && <div className="paused-tag">física pausada</div>}
+      {locked && build.active && <BuildBar build={build} />}
       {!locked && (
         <PauseMenu
           ready={ready}
@@ -104,6 +108,8 @@ export default function App() {
           onDebug={(patch) => game()?.setDebug(patch)}
           onStep={() => game()?.stepOnce()}
           onReset={() => game()?.resetScene()}
+          built={build.placed}
+          onClearBuilt={() => game()?.clearBuilt()}
         />
       )}
     </>

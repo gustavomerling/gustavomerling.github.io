@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { BuildMode, type BuildState } from './build/BuildMode'
 import { ColliderDebug } from './debug/ColliderDebug'
 import { createLoop } from './engine/loop'
 import { initPhysics, Physics } from './engine/physics'
@@ -38,6 +39,7 @@ export interface GameEvents {
   onLockChange: (locked: boolean) => void
   onStats: (stats: GameStats) => void
   onDebugChange: (debug: DebugState) => void
+  onBuildChange: (build: BuildState) => void
 }
 
 export interface Game {
@@ -50,6 +52,8 @@ export interface Game {
   stepOnce: () => void
   /** Volta jogador e objetos para o estado inicial. */
   resetScene: () => void
+  /** Remove tudo o que o jogador construiu. */
+  clearBuilt: () => void
   dispose: () => void
 }
 
@@ -84,6 +88,10 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const lookAtCenter = () => look.lookAt(player.eyePosition(1, eye), new THREE.Vector3(0, 1.2, 0))
   lookAtCenter()
 
+  const build = new BuildMode(ctx.scene, physics, materials, player.collider, events.onBuildChange)
+  disposers.push(() => build.dispose())
+  events.onBuildChange(build.state)
+
   const colliderDebug = new ColliderDebug(ctx.scene, physics.world, (c) => c.handle === player.collider.handle)
   disposers.push(() => colliderDebug.dispose())
 
@@ -99,6 +107,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
 
   const resetScene = () => {
     props.reset()
+    build.resetPlaced()
     player.respawn()
     lookAtCenter()
   }
@@ -165,6 +174,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
       physics.interpolate(a)
       ctx.camera.position.copy(player.eyePosition(a, eye))
       look.apply(ctx.camera)
+      build.frame(ctx.camera, input)
       colliderDebug.update()
       ctx.renderer.render(ctx.scene, ctx.camera)
 
@@ -193,6 +203,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
       stepRequested = true
     },
     resetScene,
+    clearBuilt: () => build.clear(),
     dispose() {
       loop.stop()
       for (const d of disposers.reverse()) d()

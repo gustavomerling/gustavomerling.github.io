@@ -15,6 +15,8 @@ interface Props {
   onDebug: (patch: Partial<DebugState>) => void
   onStep: () => void
   onReset: () => void
+  built: number
+  onClearBuilt: () => void
 }
 
 export function PauseMenu(p: Props) {
@@ -22,7 +24,7 @@ export function PauseMenu(p: Props) {
     <div className="pause" onClick={p.onPlay}>
       <div className="pause-card" onClick={(e) => e.stopPropagation()}>
         <h1>Human in the Loop</h1>
-        <p className="step">Passo 4 · HUD e debug</p>
+        <p className="step">Passo 5 · obstáculos</p>
         <button className="play" disabled={!p.ready} onClick={p.onPlay}>
           {p.ready ? 'Clique para entrar' : 'Carregando física…'}
         </button>
@@ -79,8 +81,15 @@ export function PauseMenu(p: Props) {
           </div>
         </fieldset>
 
+        <div className="buttons">
+          <button disabled={p.built === 0} onClick={p.onClearBuilt}>
+            Remover construções ({p.built})
+          </button>
+        </div>
+
         <ul className="hint">
           <li>WASD: andar · Shift: correr · Espaço: pular · C: agachar</li>
+          <li>B: modo construção</li>
           <li>Esc: soltar o mouse · P, V e . funcionam com o painel aberto</li>
         </ul>
       </div>
