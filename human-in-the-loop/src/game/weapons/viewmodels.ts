@@ -73,6 +73,7 @@ function pistol(m: ViewmodelMaterials) {
   g.add(at(box(0.005, 0.012, 0.006, m.sight, 0.001), 0, 0.078, -0.158))
   for (const x of [-0.009, 0.009]) g.add(at(box(0.006, 0.012, 0.008, m.polymer, 0.001), x, 0.078, 0.012))
   g.userData.sight = new THREE.Vector3(0, 0.08, 0.012)
+  g.userData.muzzle = new THREE.Vector3(0, 0.055, -0.17)
   g.add(gloveHand(m))
   return g
 }
@@ -93,6 +94,7 @@ function rifle(m: ViewmodelMaterials) {
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.0035, 8, 20), m.polymer)
   g.add(at(ring, 0, 0.105, 0.03))
   g.userData.sight = new THREE.Vector3(0, 0.105, 0.03)
+  g.userData.muzzle = new THREE.Vector3(0, 0.05, -0.645)
   g.add(gloveHand(m))
   // Mão de apoio no guarda-mão.
   const support = gloveHand(m, -1)

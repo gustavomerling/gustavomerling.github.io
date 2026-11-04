@@ -51,6 +51,7 @@ export default function App() {
   const [stats, setStats] = useState<GameStats | null>(null)
   const [build, setBuild] = useState<BuildState>({ active: false, selected: 0, placed: 0 })
   const [weapon, setWeapon] = useState<WeaponState | null>(null)
+  const [hitAt, setHitAt] = useState(0)
   const [debug, setDebugState] = useState<DebugState>({
     panel: settings.debugPanel,
     colliders: settings.colliders,
@@ -66,7 +67,7 @@ export default function App() {
     const host = hostRef.current
     if (!host) return
     let cancelled = false
-    createGame(host, { onLockChange: setLocked, onStats: setStats, onDebugChange: setDebugState, onBuildChange: setBuild, onWeaponChange: setWeapon }, debug).then((g) => {
+    createGame(host, { onLockChange: setLocked, onStats: setStats, onDebugChange: setDebugState, onBuildChange: setBuild, onWeaponChange: setWeapon, onHitMarker: () => setHitAt(performance.now()) }, debug).then((g) => {
       if (cancelled) return g.dispose()
       gameRef.current = g
       setReady(true)
@@ -100,7 +101,7 @@ export default function App() {
   return (
     <>
       <div ref={hostRef} className="viewport" />
-      {locked && <div className="crosshair" />}
+      {locked && <div key={hitAt} className={hitAt ? 'crosshair hit' : 'crosshair'} />}
       {locked && debug.panel && <DebugPanel stats={stats} debug={debug} />}
       {locked && debug.paused && <div className="paused-tag">física pausada</div>}
       {locked && build.active && <BuildBar build={build} />}

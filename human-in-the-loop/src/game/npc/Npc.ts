@@ -296,6 +296,24 @@ export class Npc {
     this.ragdoll.part('chest').body.applyImpulse(impulse, true)
   }
 
+  /**
+   * Impacto num ponto do corpo (tiro, golpe). Em pé ou caído, a física
+   * cuida (o impulso já foi aplicado). Levantando (corpo cinemático), um
+   * impacto relevante interrompe a animação e devolve o corpo à física.
+   */
+  hit(body: RAPIER.RigidBody, impulse: THREE.Vector3, point: THREE.Vector3) {
+    if (this.state !== 'gettingUp' || impulse.length() < 8) return
+    this.getUp?.cancel()
+    this.getUp = null
+    this.enterFalling('back')
+    body.applyImpulseAtPoint(impulse, point, true)
+  }
+
+  /** O corpo rígido pertence ao NPC? */
+  owns(body: RAPIER.RigidBody) {
+    return this.ragdoll.hasBody(body)
+  }
+
   setStrength(strength: number) {
     this.strength = strength
     if (this.state === 'standing') this.applyStandingMotors(POSES[this.poseId].pose)

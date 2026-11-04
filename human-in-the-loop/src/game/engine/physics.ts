@@ -56,6 +56,11 @@ export class Physics {
     s.prevRot.copy(s.currRot)
   }
 
+  /** Objeto 3D ligado a um corpo (para prender marcas de tiro, etc.). */
+  objectOf(body: RAPIER.RigidBody): THREE.Object3D | null {
+    return this.synced.find((s) => s.body.handle === body.handle)?.object ?? null
+  }
+
   unsync(body: RAPIER.RigidBody) {
     this.synced = this.synced.filter((s) => s.body !== body)
   }

@@ -1,9 +1,10 @@
 import * as THREE from 'three'
 import { BuildMode, type BuildState } from './build/BuildMode'
+import { Gunfire } from './weapons/Gunfire'
 import { WeaponSystem, type WeaponState } from './weapons/WeaponSystem'
 import { ColliderDebug } from './debug/ColliderDebug'
 import { createLoop } from './engine/loop'
-import { initPhysics, Physics } from './engine/physics'
+import { initPhysics, Physics, RAPIER } from './engine/physics'
 import { Npc, type NpcDebug } from './npc/Npc'
 import { POSE_IDS, type PoseId } from './npc/poses'
 import { createRenderContext } from './engine/render'
@@ -55,6 +56,8 @@ export interface GameEvents {
   onDebugChange: (debug: DebugState) => void
   onBuildChange: (build: BuildState) => void
   onWeaponChange: (weapon: WeaponState) => void
+  /** Um tiro acertou o NPC (marcador na mira). */
+  onHitMarker: () => void
 }
 
 export interface Game {
@@ -133,6 +136,57 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const weapons = new WeaponSystem(events.onWeaponChange)
   disposers.push(() => weapons.dispose())
   events.onWeaponChange(weapons.state)
+  const gunfire = new Gunfire(ctx.scene, physics, player.collider)
+  disposers.push(() => gunfire.dispose())
+  const camPos = new THREE.Vector3()
+  const camDir = new THREE.Vector3()
+  const muzzle = new THREE.Vector3()
+
+  /** Tiro a partir do centro da tela, com uma pequena dispersão. */
+  const shoot = () => {
+    const w = weapons.current
+    ctx.camera.updateMatrixWorld()
+    ctx.camera.getWorldPosition(camPos)
+    ctx.camera.getWorldDirection(camDir)
+    const spread = w.automatic ? 0.006 : 0.002
+    camDir.x += (Math.random() - 0.5) * spread
+    camDir.y += (Math.random() - 0.5) * spread
+    camDir.z += (Math.random() - 0.5) * spread
+    camDir.normalize()
+    const impulse = w.impulse ?? 10
+    const hit = gunfire.fire(camPos, camDir, weapons.muzzleWorld(ctx.camera, muzzle), impulse)
+    if (hit?.body && npc.owns(hit.body)) {
+      npc.hit(hit.body, camDir.clone().multiplyScalar(impulse), hit.point)
+      events.onHitMarker()
+    }
+    // Recuo: a mira sobe e desvia um pouco para o lado.
+    const recoil = w.recoil ?? 0.01
+    look.pitch = Math.min(look.pitch + recoil, Math.PI / 2 - 0.01)
+    look.yaw += (Math.random() - 0.5) * recoil * 0.6
+  }
+
+  /**
+   * Arma encostada: se há algo à frente mais perto que o comprimento da
+   * arma, ela recolhe (não atravessa) e, se for um corpo solto (NPC, caixa),
+   * empurra de leve conforme o quanto encosta.
+   */
+  const weaponContact = (dt: number) => {
+    const w = weapons.current
+    ctx.camera.getWorldPosition(camPos)
+    ctx.camera.getWorldDirection(camDir)
+    const hit = physics.world.castRay(new RAPIER.Ray(camPos, camDir), w.length, true, undefined, undefined, player.collider)
+    if (!hit || build.active) {
+      weapons.setTuck(0)
+      return
+    }
+    const penetration = (w.length - hit.timeOfImpact) / w.length
+    weapons.setTuck(penetration * 1.3)
+    const body = hit.collider.parent()
+    if (body?.isDynamic() && player.speed > 0.2) {
+      const point = camPos.clone().addScaledVector(camDir, hit.timeOfImpact)
+      body.applyImpulseAtPoint(camDir.clone().setY(0).multiplyScalar(220 * penetration * dt), point, true)
+    }
+  }
 
   const colliderDebug = new ColliderDebug(ctx.scene, physics.world, (c) => c.handle === player.collider.handle)
   disposers.push(() => colliderDebug.dispose())
@@ -155,6 +209,7 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
   const resetScene = () => {
     props.reset()
     build.resetPlaced()
+    gunfire.clearMarks()
     npc.spawn(NPC_SPAWN, NPC_YAW)
     player.respawn()
     lookAtCenter()
@@ -238,7 +293,11 @@ export async function createGame(host: HTMLElement, events: GameEvents, initialD
       look.apply(ctx.camera)
       build.frame(ctx.camera, input)
       weapons.setHolstered(build.active)
+      ctx.camera.updateMatrixWorld()
+      if (weapons.trigger(build.active ? null : input, frameDt)) shoot()
+      weaponContact(frameDt)
       weapons.frame(frameDt, build.active ? null : input, look.yaw, look.pitch, player.speed, player.isGrounded)
+      gunfire.update(frameDt)
       colliderDebug.update()
       ctx.renderer.render(ctx.scene, ctx.camera)
       weapons.render(ctx.renderer, ctx.camera.aspect)

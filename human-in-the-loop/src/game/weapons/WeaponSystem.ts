@@ -42,6 +42,15 @@ export class WeaponSystem {
   private bobPhase = 0
   private bobAmount = 0
 
+  /** Coice do tiro (decai como mola) e tempo até poder atirar de novo. */
+  private kickAmount = 0
+  private cooldown = 0
+  /** 0..1: quanto a arma está recolhida por haver algo encostado à frente. */
+  private tuck = 0
+  private tuckTarget = 0
+  private readonly flash: THREE.Mesh
+  private flashTime = 0
+
   private readonly onChange: (s: WeaponState) => void
 
   constructor(onChange: (s: WeaponState) => void) {
@@ -60,6 +69,68 @@ export class WeaponSystem {
     key.position.set(0.6, 1, 0.4)
     this.scene.add(key)
     this.models[this.index].visible = true
+
+    // Clarão do disparo (um "X" de planos aditivos, preso ao cano).
+    const flashMat = new THREE.MeshBasicMaterial({
+      color: '#ffd27a',
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    })
+    const plane = new THREE.PlaneGeometry(0.09, 0.09)
+    this.flash = new THREE.Mesh(plane, flashMat)
+    const cross = new THREE.Mesh(plane, flashMat)
+    cross.rotation.y = Math.PI / 2
+    this.flash.add(cross)
+    this.flash.visible = false
+  }
+
+  /**
+   * Gatilho: devolve true quando sai um tiro agora. Semiautomática exige
+   * soltar o botão; automática atira enquanto segura, na cadência.
+   */
+  trigger(input: Input | null, dt: number): boolean {
+    this.cooldown -= dt
+    const w = this.current
+    if (!input || w.kind !== 'gun' || this.phase !== 'idle' || this.holstered) {
+      input?.consume('Mouse0')
+      return false
+    }
+    const pressed = input.consume('Mouse0')
+    const wants = w.automatic ? input.isDown('Mouse0') : pressed
+    if (!wants || this.cooldown > 0) return false
+    this.cooldown = 1 / (w.fireRate ?? 5)
+    this.kickAmount = Math.min(1.5, this.kickAmount + 1)
+    this.showFlash()
+    return true
+  }
+
+  /** Quanto a arma deve recolher (0..1), por algo encostado à frente. */
+  setTuck(amount: number) {
+    this.tuckTarget = THREE.MathUtils.clamp(amount, 0, 1)
+  }
+
+  /** Ponto do cano no mundo (aproximado), para o traço da bala sair da arma. */
+  muzzleWorld(mainCamera: THREE.Camera, out: THREE.Vector3) {
+    const model = this.models[this.index]
+    const muzzle = model.userData.muzzle as THREE.Vector3 | undefined
+    if (!muzzle) return out.set(0, -0.1, -0.5).applyMatrix4(mainCamera.matrixWorld)
+    model.updateMatrix()
+    return out.copy(muzzle).applyMatrix4(model.matrix).applyMatrix4(mainCamera.matrixWorld)
+  }
+
+  private showFlash() {
+    const model = this.models[this.index]
+    const muzzle = model.userData.muzzle as THREE.Vector3 | undefined
+    if (!muzzle) return
+    model.add(this.flash)
+    this.flash.position.copy(muzzle)
+    this.flash.rotation.z = Math.random() * Math.PI
+    this.flash.scale.setScalar(0.8 + Math.random() * 0.5)
+    this.flash.visible = true
+    this.flashTime = 0.045
   }
 
   get current(): WeaponDef {
@@ -140,15 +211,22 @@ export class WeaponSystem {
     // Respiração leve parada.
     const breathe = Math.sin(performance.now() / 1000 * 1.6) * 0.0015
 
+    // Coice: volta como mola. Recolher: puxa para trás e inclina para cima.
+    this.kickAmount *= Math.exp(-14 * dt)
+    const kick = this.kickAmount * (w.id === 'rifle' ? 0.6 : 1)
+    this.tuck += (this.tuckTarget - this.tuck) * (1 - Math.exp(-12 * dt))
+    this.flashTime -= dt
+    if (this.flashTime <= 0) this.flash.visible = false
+
     const model = this.models[this.index]
     model.position.set(
-      w.hip.x + this.sway.x + bobX,
-      w.hip.y + this.sway.y + bobY + breathe - eased * LOWER_DROP,
-      w.hip.z,
+      w.hip.x + this.sway.x + bobX - this.tuck * 0.04,
+      w.hip.y + this.sway.y + bobY + breathe - eased * LOWER_DROP - this.tuck * 0.05,
+      w.hip.z + kick * 0.035 + this.tuck * w.length * 0.45,
     )
     model.rotation.set(
-      w.hipRotation.x - eased * 0.6 + this.sway.y * 2,
-      w.hipRotation.y + this.sway.x * 2,
+      w.hipRotation.x - eased * 0.6 + this.sway.y * 2 + kick * 0.09 + this.tuck * 0.7,
+      w.hipRotation.y + this.sway.x * 2 + this.tuck * 0.3,
       w.hipRotation.z + this.sway.x * 1.5,
     )
   }
@@ -169,6 +247,8 @@ export class WeaponSystem {
     this.scene.traverse((o) => {
       if (o instanceof THREE.Mesh) o.geometry.dispose()
     })
+    this.flash.geometry.dispose()
+    ;(this.flash.material as THREE.Material).dispose()
     this.materials.dispose()
   }
 }

@@ -15,11 +15,15 @@ export interface WeaponDef {
   hipRotation: THREE.Euler
   /** Peso (kg): influencia balanço e, no passo 28, a inércia. */
   mass: number
+  /** Comprimento à frente da câmera (m): perto disso de algo, a arma recolhe e encosta. */
+  length: number
   /** Tiro: disparos por segundo, automática, impulso no alvo (N·s), pente. */
   fireRate?: number
   automatic?: boolean
   impulse?: number
   magazine?: number
+  /** Recuo da câmera por tiro (rad). */
+  recoil?: number
   /** Mira: campo de visão ao mirar pela alça (graus). */
   adsFov?: number
   /** Golpe: impulso máximo (N·s) e alcance (m). */
@@ -35,6 +39,7 @@ export const WEAPONS: WeaponDef[] = [
     hip: new THREE.Vector3(0, -0.2, -0.38),
     hipRotation: new THREE.Euler(0, 0, 0),
     mass: 0,
+    length: 0.35,
     reach: 2,
   },
   {
@@ -44,9 +49,11 @@ export const WEAPONS: WeaponDef[] = [
     hip: new THREE.Vector3(0.15, -0.15, -0.34),
     hipRotation: new THREE.Euler(0, 0.04, 0),
     mass: 0.9,
+    length: 0.5,
+    recoil: 0.014,
     fireRate: 6,
     automatic: false,
-    impulse: 18,
+    impulse: 12,
     magazine: 12,
     adsFov: 55,
   },
@@ -57,9 +64,11 @@ export const WEAPONS: WeaponDef[] = [
     hip: new THREE.Vector3(0.15, -0.165, -0.5),
     hipRotation: new THREE.Euler(0, 0.04, 0),
     mass: 3.5,
+    length: 0.8,
+    recoil: 0.009,
     fireRate: 10,
     automatic: true,
-    impulse: 25,
+    impulse: 16,
     magazine: 30,
     adsFov: 45,
   },
@@ -70,6 +79,7 @@ export const WEAPONS: WeaponDef[] = [
     hip: new THREE.Vector3(0.2, -0.22, -0.4),
     hipRotation: new THREE.Euler(0.5, 0.15, -0.35),
     mass: 1.0,
+    length: 0.85,
     meleeImpulse: 90,
     reach: 1.9,
   },

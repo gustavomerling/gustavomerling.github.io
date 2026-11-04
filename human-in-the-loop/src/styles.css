@@ -353,3 +353,19 @@ kbd {
   font-weight: 600;
   box-shadow: inset 3px 0 0 var(--accent);
 }
+
+/* Marcador de acerto: a mira pisca laranja e "abre" por um instante. */
+.crosshair.hit {
+  animation: hit-marker 0.18s ease-out;
+}
+
+@keyframes hit-marker {
+  0% {
+    background: var(--accent);
+    transform: scale(2.4);
+  }
+  100% {
+    background: #fff;
+    transform: scale(1);
+  }
+}
