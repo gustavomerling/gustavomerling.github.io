@@ -59,19 +59,38 @@ export interface ArenaActor {
   counted?: boolean
 }
 
+/** Uma sala no minimapa. */
+export interface MapRoom {
+  i: number
+  j: number
+  doors: [boolean, boolean, boolean, boolean]
+  type: Room['type']
+  visited: boolean
+  current: boolean
+  /** Ainda tem inimigos. */
+  hostile: boolean
+}
+
 export interface ArenaState {
   mode: GameMode
   hp: number
   maxHp: number
   dead: boolean
+  /** Chegou à saída. */
+  won: boolean
+  /** Saída liberada (sala final limpa). */
+  exitOpen: boolean
+  /** Salas já vistas (visitadas ou com porta para uma visitada). */
+  map: MapRoom[]
   kills: number
   cleared: number
   rooms: number
   /** Aviso curto (coleta, sala limpa) e quando apareceu. */
   message: string
   messageAt: number
-  /** Último dano (pisca a tela). */
+  /** Último dano (pisca a tela) e de onde veio: ângulo na tela (rad, horário a partir do topo) ou null. */
   hurtAt: number
+  hurtAngle: number | null
 }
 
 interface ArenaDeps {
@@ -108,6 +127,9 @@ export class Arena {
   private message = ''
   private messageAt = 0
   private hurtAt = 0
+  private hurtAngle: number | null = null
+  private won = false
+  private readonly visited = new Set<Room>()
   private emittedHp = -1
   private readonly geos: THREE.BufferGeometry[] = []
   private readonly mats: Record<string, THREE.Material> = {}
@@ -130,8 +152,34 @@ export class Arena {
     return this.layout.start.center.clone()
   }
 
+  /** Morto ou já saiu: o jogador fica parado até recomeçar (R). */
   get isDead() {
-    return this.dead
+    return this.dead || this.won
+  }
+
+  private get exitOpen() {
+    return this.enemies[this.layout.end.index] === 0
+  }
+
+  private mapRooms() {
+    const L = this.layout
+    const D: [number, number][] = [
+      [1, 0],
+      [0, 1],
+      [-1, 0],
+      [0, -1],
+    ]
+    const seen = (r: Room) =>
+      this.visited.has(r) || r.doors.some((o, d) => o && this.visited.has(L.at(r.i + D[d][0], r.j + D[d][1])!))
+    return L.rooms.filter(seen).map((r) => ({
+      i: r.i,
+      j: r.j,
+      doors: r.doors,
+      type: r.type,
+      visited: this.visited.has(r),
+      current: r === this.playerRoom,
+      hostile: this.enemies[r.index] > 0 && this.visited.has(r),
+    }))
   }
 
   get state(): ArenaState {
@@ -140,12 +188,16 @@ export class Arena {
       hp: Math.max(0, Math.ceil(this.hp)),
       maxHp: ARENA.maxHp,
       dead: this.dead,
+      won: this.won,
+      exitOpen: this.exitOpen,
+      map: this.mapRooms(),
       kills: this.kills,
       cleared: this.layout.rooms.filter((r) => r !== this.layout.start && this.enemies[r.index] === 0).length,
       rooms: this.layout.rooms.length - 1,
       message: this.message,
       messageAt: this.messageAt,
       hurtAt: this.hurtAt,
+      hurtAngle: this.hurtAngle,
     }
   }
 
@@ -169,6 +221,7 @@ export class Arena {
     const enemyKind = this.d.mode
     this.enemies = this.layout.rooms.map((r) => {
       if (r === this.layout.start) return 0
+      if (r === this.layout.end) return enemyKind === 'zombie' ? 4 : 3
       const base = enemyKind === 'zombie' ? 1 + Math.floor(r.depth * 0.7) : 1 + Math.floor(r.depth / 2)
       return Math.min(enemyKind === 'zombie' ? 4 : 3, base + (rng() < 0.35 ? 1 : 0))
     })
@@ -192,8 +245,10 @@ export class Arena {
     }
     this.hp = ARENA.maxHp
     this.dead = false
+    this.won = false
     this.kills = 0
     this.playerRoom = undefined
+    this.visited.clear()
     this.d.weapons.setLoadout(ARENA.startAmmo)
     this.say(this.d.mode === 'zombie' ? 'Zumbis na masmorra' : 'SWAT na masmorra')
   }
@@ -287,17 +342,24 @@ export class Arena {
 
   // --- Vida ---------------------------------------------------------------------
 
-  damage(amount: number) {
-    if (this.dead || amount <= 0) return
+  /** `angle`: de onde veio, na tela (rad, horário a partir do topo); null = sem direção. */
+  damage(amount: number, angle: number | null = null) {
+    if (this.dead || this.won || amount <= 0) return
     this.hp -= amount
-    this.hurtAt = performance.now()
+    const now = performance.now()
+    // Dano contínuo (agarrão) não reacende o flash a cada passo.
+    const fresh = now - this.hurtAt > 350 || angle !== this.hurtAngle
+    if (fresh) {
+      this.hurtAt = now
+      this.hurtAngle = angle
+    }
     if (this.hp <= 0) {
       this.hp = 0
       this.dead = true
       this.emit()
       return
     }
-    if (Math.ceil(this.hp) !== this.emittedHp) this.emit()
+    if (fresh || Math.ceil(this.hp) !== this.emittedHp) this.emit()
   }
 
   // --- Passo ----------------------------------------------------------------------
@@ -331,14 +393,28 @@ export class Arena {
       a.npc.position(this.tmp)
       if (this.d.mode === 'zombie' && Math.random() < 0.3) this.dropAmmo(this.tmp)
       if (this.enemies[r.index] === 0) {
-        this.drop(Math.random() < 0.5 ? 'med' : 'ammo', r.center)
-        this.say('Sala limpa')
+        const spot = r === this.layout.end ? r.center.clone().add(new THREE.Vector3(1.6, 0, 1.6)) : r.center
+        this.drop(Math.random() < 0.5 ? 'med' : 'ammo', spot)
+        this.say(r === this.layout.end ? 'Saída liberada' : 'Sala limpa')
       } else this.emit()
     }
 
     // Entrou numa sala com inimigos e nenhum deles está na cena: aparecem.
     const room = this.layout.roomAt(feet)
-    if (room) this.playerRoom = room
+    if (room && room !== this.playerRoom) {
+      this.playerRoom = room
+      const first = !this.visited.has(room)
+      this.visited.add(room)
+      if (first && room === this.layout.end) this.say('Sala final: limpe para sair')
+      else this.emit()
+    }
+    // Saída: alçapão no centro da sala final, depois de limpá-la.
+    if (room === this.layout.end && this.exitOpen && !this.won && !this.dead) {
+      if (Math.hypot(feet.x - room.center.x, feet.z - room.center.z) < 1.1) {
+        this.won = true
+        this.say('Você escapou')
+      }
+    }
     if (room && !this.dead && this.enemies[room.index] > 0 && !actors.some((a) => a.home === room && !a.npc.isDead)) {
       this.populate(room, feet)
     }

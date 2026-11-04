@@ -1379,3 +1379,75 @@ kbd.wide {
     font-size: 36px;
   }
 }
+
+.minimap {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  padding: 0;
+  background: var(--glass-soft);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.mm-room.visited {
+  fill: rgba(242, 240, 235, 0.55);
+}
+
+.mm-room.unknown {
+  fill: rgba(242, 240, 235, 0.14);
+  stroke: rgba(242, 240, 235, 0.35);
+  stroke-width: 1;
+}
+
+.mm-room.current {
+  fill: #fff;
+  stroke: var(--hazard);
+  stroke-width: 2;
+}
+
+.mm-door {
+  fill: rgba(242, 240, 235, 0.55);
+}
+
+.mm-exit {
+  fill: #6d6b64;
+}
+
+.mm-exit.open {
+  fill: #3fae4a;
+}
+
+.mm-start {
+  fill: var(--hazard-ink);
+}
+
+.mm-enemy {
+  fill: #e0402f;
+}
+
+/* Direção do dano: arco vermelho em volta da mira, apontando para quem bateu. */
+.hurt-dir {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  animation: hurt 1.1s ease-out forwards;
+}
+
+.hurt-arc {
+  position: absolute;
+  left: -70px;
+  top: -150px;
+  width: 140px;
+  height: 34px;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  border-top: 7px solid rgba(225, 30, 20, 0.9);
+  filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.6));
+}
+
+.death-screen.won {
+  background: rgba(10, 50, 20, 0.55);
+}

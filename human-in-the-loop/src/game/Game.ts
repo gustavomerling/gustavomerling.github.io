@@ -22,7 +22,7 @@ import { createMaterials } from './world/materials'
 import { createProps } from './world/props'
 import { Sandbox, type SandboxState } from './sandbox/Sandbox'
 import { Arena, ARENA, MODE_NPC, type ArenaState, type GameMode } from './arena/Arena'
-import type { Room } from './world/dungeon'
+import { buildDungeon, DUNGEON, showcaseLayout, type Room } from './world/dungeon'
 import type { ToolId } from './sandbox/Tools'
 
 /** Campo de visão normal (graus). */
@@ -148,6 +148,8 @@ export async function createGame(
   if (sandboxMode) {
     disposers.push(buildLights(ctx.scene))
     disposers.push(buildLab(ctx.scene, physics, materials))
+    // Ao sul (atrás do jogador), pela porta da parede: um exemplar de cada tipo de sala.
+    disposers.push(buildDungeon(ctx.scene, physics, materials, showcaseLayout(new THREE.Vector3(0, 0, LAB.length / 2 + 0.5 + DUNGEON.room / 2))))
     props = createProps(ctx.scene, physics, materials)
     disposers.push(() => props?.dispose())
   }
@@ -194,6 +196,18 @@ export async function createGame(
   }
   lookAtCenter()
 
+  /** De onde veio o dano, na tela: ângulo horário a partir do topo (0 = à frente). */
+  const screenAngle = (src: THREE.Vector3) => {
+    const t = player.body.translation()
+    const dx = src.x - t.x
+    const dz = src.z - t.z
+    const s = Math.sin(look.yaw)
+    const c = Math.cos(look.yaw)
+    const fwd = -s * dx - c * dz
+    const right = c * dx - s * dz
+    return Math.atan2(right, fwd)
+  }
+
   /** Liga um cérebro novo ao corpo do ator (tipo, aparência, arma). */
   const makeBrain = (npc: Npc, kind: NpcKind): NpcBrain => {
     const config = NPC_CONFIGS[kind]
@@ -204,7 +218,7 @@ export async function createGame(
       // Tiro que acerta o jogador: empurrão e, na masmorra, dano.
       b.weapon.onHit = (e) => {
         player.shove(e.impulse.x / 80, e.impulse.z / 80)
-        arena?.damage(ARENA.shotDamage[e.region])
+        arena?.damage(ARENA.shotDamage[e.region], screenAngle(e.point.clone().addScaledVector(e.dir, -Math.max(1, e.distance))))
       }
       // Arma largada: no sandbox vira item pegável (E); na masmorra, munição no chão.
       b.weapon.onDrop = (d) => {
@@ -289,7 +303,7 @@ export async function createGame(
     collider: player.collider,
     shove: (x, z) => player.shove(x, z),
     slow: (f) => player.slow(f),
-    damage: (n) => arena?.damage(n),
+    damage: (n, from) => arena?.damage(n, from ? screenAngle(from) : null),
   }
 
   /** Debug (M / Shift+M): o NPC anda (corre) até o ponto do chão na mira. */
@@ -555,8 +569,8 @@ export async function createGame(
           forward: input.axis('KeyS', 'KeyW'),
           right: input.axis('KeyA', 'KeyD'),
           sprint: input.isDown('ShiftLeft') || input.isDown('ShiftRight'),
-          // Ctrl ficaria perigoso: Ctrl+W fecha a aba do navegador.
-          crouch: input.isDown('KeyC'),
+          // C ou Ctrl. Atenção: Ctrl+W ainda fecha a aba (o navegador não deixa bloquear fora de tela cheia).
+          crouch: input.isDown('KeyC') || input.isDown('ControlLeft') || input.isDown('ControlRight'),
           jump: input.consume('Space'),
           aiming: weapons.ads > 0.5,
         },

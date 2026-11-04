@@ -35,7 +35,13 @@ function layout(): StaticBox[] {
 
   // Paredes
   boxes.push({ size: [W + 2 * T, H, T], pos: [0, H / 2, -L / 2 - T / 2], material: 'wall' })
-  boxes.push({ size: [W + 2 * T, H, T], pos: [0, H / 2, L / 2 + T / 2], material: 'wall' })
+  // Parede sul com porta (2,4 × 2,8 m) para as salas de exemplo da masmorra.
+  const DW = 2.4
+  const DH = 2.8
+  const side = (W + 2 * T - DW) / 2
+  boxes.push({ size: [side, H, T], pos: [-(DW / 2 + side / 2), H / 2, L / 2 + T / 2], material: 'wall' })
+  boxes.push({ size: [side, H, T], pos: [DW / 2 + side / 2, H / 2, L / 2 + T / 2], material: 'wall' })
+  boxes.push({ size: [DW, H - DH, T], pos: [0, DH + (H - DH) / 2, L / 2 + T / 2], material: 'wall' })
   boxes.push({ size: [T, H, L], pos: [-W / 2 - T / 2, H / 2, 0], material: 'wall' })
   boxes.push({ size: [T, H, L], pos: [W / 2 + T / 2, H / 2, 0], material: 'wall' })
 

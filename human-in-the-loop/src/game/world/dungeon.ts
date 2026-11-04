@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 import { Physics, RAPIER } from '../engine/physics'
 import { type Materials, worldUvBox } from './materials'
+import { decorate, decorMaterials, MIDDLE_TYPES, type DecorMat, type Obstacle, type RoomType } from './roomTypes'
+
+export type { Obstacle, RoomType }
 
 /**
  * Masmorra dos modos zumbi/SWAT: salas quadradas numa grade (estilo
@@ -16,8 +19,8 @@ export const DUNGEON = {
   wallThickness: 0.4,
   doorWidth: 2.4,
   doorHeight: 2.8,
-  /** Quantas salas. */
-  rooms: 11,
+  /** Quantas salas (início + meio + fim; o ajuste de 2 portas pode somar uma ou duas). */
+  rooms: 6,
 }
 
 /** Direções: 0 = +x (leste), 1 = +z (sul), 2 = -x, 3 = -z. */
@@ -28,15 +31,6 @@ const DIRS: [number, number][] = [
   [0, -1],
 ]
 
-export interface Obstacle {
-  /** Centro (relativo ao centro da sala) e tamanho. */
-  x: number
-  z: number
-  w: number
-  h: number
-  d: number
-}
-
 export interface Room {
   index: number
   i: number
@@ -46,12 +40,14 @@ export interface Room {
   doors: [boolean, boolean, boolean, boolean]
   /** Distância (em salas, pelas portas) até a sala inicial. */
   depth: number
+  type: RoomType
   obstacles: Obstacle[]
 }
 
 export interface DungeonLayout {
   rooms: Room[]
   start: Room
+  end: Room
   /** Sala na posição de grade (i, j), se existir. */
   at(i: number, j: number): Room | undefined
   /** Sala que contém o ponto (no plano), ou undefined (porta / fora). */
@@ -72,7 +68,21 @@ export function makeRng(seed: number) {
 
 const key = (i: number, j: number) => `${i},${j}`
 
+/**
+ * Gera a masmorra. O ajuste "toda sala com 2+ portas" pode inchar o mapa;
+ * nesse caso tenta outra semente até ficar com no máximo `count + 1` salas.
+ */
 export function generateDungeon(seed: number, count = DUNGEON.rooms): DungeonLayout {
+  let best: DungeonLayout | null = null
+  for (let k = 0; k < 40; k++) {
+    const d = generateOnce(seed + k * 7919, count)
+    if (!best || d.rooms.length < best.rooms.length) best = d
+    if (d.rooms.length <= count + 1) break
+  }
+  return best!
+}
+
+function generateOnce(seed: number, count: number): DungeonLayout {
   const rng = makeRng(seed)
   const pick = <T,>(a: T[]) => a[Math.floor(rng() * a.length)]
   const cells = new Map<string, [number, number]>()
@@ -119,7 +129,8 @@ export function generateDungeon(seed: number, count = DUNGEON.rooms): DungeonLay
     center: new THREE.Vector3(i * DUNGEON.room, 0, j * DUNGEON.room),
     doors: [false, false, false, false],
     depth: 0,
-    obstacles: [],
+    type: 'start' as RoomType,
+    obstacles: [] as Obstacle[],
   }))
   const byKey = new Map(rooms.map((r) => [key(r.i, r.j), r]))
   const at = (i: number, j: number) => byKey.get(key(i, j))
@@ -170,34 +181,21 @@ export function generateDungeon(seed: number, count = DUNGEON.rooms): DungeonLay
     })
   }
 
-  // 5) Coberturas: muretas e pilares nos quadrantes (a cruz central fica livre para as portas).
+  // 5) Tipos: início, fim (a sala mais funda) e os 4 tipos de meio, embaralhados.
+  const maxDepth = Math.max(...rooms.map((r) => r.depth))
+  const end = pick(rooms.filter((r) => r.depth === maxDepth))
+  const middles = [...MIDDLE_TYPES].sort(() => rng() - 0.5)
+  let m = 0
   for (const r of rooms) {
-    if (r === start) continue
-    const quads = [
-      [1, 1],
-      [1, -1],
-      [-1, 1],
-      [-1, -1],
-    ].sort(() => rng() - 0.5)
-    const n = 2 + Math.floor(rng() * 3)
-    for (let k = 0; k < n; k++) {
-      const [sx, sz] = quads[k]
-      const x = sx * (2.6 + rng() * 1.4)
-      const z = sz * (2.6 + rng() * 1.4)
-      const kind = rng()
-      if (kind < 0.45) r.obstacles.push({ x, z, w: rng() < 0.5 ? 2.6 : 0.4, h: 1.1, d: 0 })
-      else if (kind < 0.75) r.obstacles.push({ x, z, w: 0.9, h: DUNGEON.wallHeight, d: 0.9 })
-      else r.obstacles.push({ x, z, w: 1.2, h: 1.4, d: 1.2 })
-      const o = r.obstacles[r.obstacles.length - 1]
-      // Mureta: comprida num eixo, fina no outro.
-      if (o.d === 0) o.d = o.w > 1 ? 0.4 : 2.6
-    }
+    r.type = r === start ? 'start' : r === end ? 'end' : middles[m++ % middles.length]
+    r.obstacles = decorate(r.type, rng)
   }
 
   const half = DUNGEON.room / 2
   return {
     rooms,
     start,
+    end,
     at,
     roomAt(p) {
       const i = Math.round(p.x / DUNGEON.room)
@@ -213,7 +211,8 @@ export function generateDungeon(seed: number, count = DUNGEON.rooms): DungeonLay
 interface Box {
   size: [number, number, number]
   pos: [number, number, number]
-  material: 'floor' | 'wall' | 'structure'
+  material: 'floor' | DecorMat
+  solid: boolean
 }
 
 function boxes(layout: DungeonLayout): Box[] {
@@ -231,6 +230,7 @@ function boxes(layout: DungeonLayout): Box[] {
         size: alongX ? [length, h, T] : [T, h, length],
         pos: alongX ? [cx + offset, y, cz] : [cx, y, cz + offset],
         material: 'wall',
+        solid: true,
       })
     if (!door) {
       put(0, len, H, H / 2)
@@ -242,7 +242,7 @@ function boxes(layout: DungeonLayout): Box[] {
     put(0, DW, H - DH, DH + (H - DH) / 2)
   }
   for (const r of layout.rooms) {
-    out.push({ size: [S + T, 1, S + T], pos: [r.center.x, -0.5, r.center.z], material: 'floor' })
+    out.push({ size: [S + T, 1, S + T], pos: [r.center.x, -0.5, r.center.z], material: 'floor', solid: false })
     for (let d = 0; d < 4; d++) {
       const n = layout.at(r.i + DIRS[d][0], r.j + DIRS[d][1])
       // Parede compartilhada: só a sala do lado +x/+z constrói.
@@ -252,8 +252,9 @@ function boxes(layout: DungeonLayout): Box[] {
     for (const o of r.obstacles)
       out.push({
         size: [o.w, o.h, o.d],
-        pos: [r.center.x + o.x, o.h / 2, r.center.z + o.z],
-        material: o.h >= DUNGEON.wallHeight ? 'structure' : 'wall',
+        pos: [r.center.x + o.x, (o.y ?? 0) + o.h / 2, r.center.z + o.z],
+        material: o.mat,
+        solid: o.solid !== false,
       })
   }
   return out
@@ -264,15 +265,20 @@ export function buildDungeon(scene: THREE.Scene, physics: Physics, materials: Ma
   group.name = 'dungeon'
   const geometries: THREE.BufferGeometry[] = []
   const colliders: RAPIER.Collider[] = []
+  const decor = decorMaterials()
+  const mats: Record<string, THREE.Material> = { ...decor, floor: materials.floor, wall: materials.wall, structure: materials.structure }
   for (const b of boxes(layout)) {
     const [w, h, d] = b.size
     const geo = worldUvBox(w, h, d)
     geometries.push(geo)
-    const mesh = new THREE.Mesh(geo, materials[b.material])
+    const mesh = new THREE.Mesh(geo, mats[b.material])
     mesh.position.set(...b.pos)
-    mesh.castShadow = b.material !== 'floor'
+    mesh.castShadow = b.solid
     mesh.receiveShadow = true
     group.add(mesh)
+    // O chão vira um colisor só (abaixo): o controlador do jogador engasga
+    // quando pisa bem no centro da face de uma caixa (centro de cada sala).
+    if (!b.solid) continue
     colliders.push(
       physics.world.createCollider(
         RAPIER.ColliderDesc.cuboid(w / 2, h / 2, d / 2)
@@ -281,10 +287,26 @@ export function buildDungeon(scene: THREE.Scene, physics: Physics, materials: Ma
       ),
     )
   }
+  const xs = layout.rooms.map((r) => r.center.x)
+  const zs = layout.rooms.map((r) => r.center.z)
+  const pad = DUNGEON.room / 2 + DUNGEON.wallThickness + 1
+  const minX = Math.min(...xs) - pad
+  const maxX = Math.max(...xs) + pad
+  const minZ = Math.min(...zs) - pad
+  const maxZ = Math.max(...zs) + pad
+  // Centro deslocado de propósito (nunca coincide com o centro de uma sala).
+  colliders.push(
+    physics.world.createCollider(
+      RAPIER.ColliderDesc.cuboid((maxX - minX) / 2 + 0.37, 0.5, (maxZ - minZ) / 2 + 0.53)
+        .setTranslation((minX + maxX) / 2 + 0.31, -0.5, (minZ + maxZ) / 2 + 0.47)
+        .setFriction(0.8),
+    ),
+  )
   scene.add(group)
   return () => {
     scene.remove(group)
     for (const g of geometries) g.dispose()
+    for (const m of Object.values(decor)) m.dispose()
     for (const c of colliders) physics.world.removeCollider(c, false)
   }
 }
@@ -320,5 +342,33 @@ export function buildDungeonLights(scene: THREE.Scene) {
       sun.shadow.map?.dispose()
       scene.remove(hemi, sun, sun.target)
     },
+  }
+}
+
+/**
+ * Sandbox: uma fileira com um exemplar de cada tipo de sala, ao sul do
+ * laboratório (a partir de `origin`, o centro da primeira sala, seguindo +z).
+ */
+export function showcaseLayout(origin: THREE.Vector3): DungeonLayout {
+  const types: RoomType[] = ['start', ...MIDDLE_TYPES, 'end']
+  const rng = makeRng(7)
+  const rooms: Room[] = types.map((type, j) => ({
+    index: j,
+    i: 0,
+    j,
+    center: origin.clone().add(new THREE.Vector3(0, 0, j * DUNGEON.room)),
+    // Portas norte/sul em todas (a primeira abre para o laboratório).
+    doors: [false, j < types.length - 1, false, true],
+    depth: j,
+    type,
+    obstacles: decorate(type, rng),
+  }))
+  const at = (i: number, j: number) => (i === 0 ? rooms[j] : undefined)
+  return {
+    rooms,
+    start: rooms[0],
+    end: rooms[rooms.length - 1],
+    at,
+    roomAt: () => undefined,
   }
 }

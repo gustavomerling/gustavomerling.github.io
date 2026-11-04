@@ -51,7 +51,7 @@ export interface PlayerInfo {
   shove?: (x: number, z: number) => void
   slow?: (factor: number) => void
   /** Tira vida do jogador (modos zumbi/SWAT; no sandbox não faz nada). */
-  damage?: (amount: number) => void
+  damage?: (amount: number, from?: THREE.Vector3) => void
 }
 
 /** Tudo que um cérebro recebe a cada passo fixo. */

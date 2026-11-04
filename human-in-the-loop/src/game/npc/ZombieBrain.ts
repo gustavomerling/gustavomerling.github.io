@@ -279,13 +279,13 @@ export class ZombieBrain implements NpcBrain {
           break
         }
         player.slow?.(slow)
-        player.damage?.(ZOMBIE.holdDamage * dt)
+        player.damage?.(ZOMBIE.holdDamage * dt, this.chest)
         const dir = flat.clone().setY(0).normalize()
         player.shove?.(-dir.x * ZOMBIE.pull * dt * 5, -dir.z * ZOMBIE.pull * dt * 5)
         if (this.attackT >= ZOMBIE.holdTime) {
           // Empurra para longe (no sentido zumbi → jogador).
           player.shove?.(dir.x * ZOMBIE.shove, dir.z * ZOMBIE.shove)
-          player.damage?.(ZOMBIE.shoveDamage)
+          player.damage?.(ZOMBIE.shoveDamage, this.chest)
           this.zdebug.shoves++
           this.attack = 'cooldown'
           this.attackT = 0
