@@ -43,13 +43,36 @@ export const VEHICLE = {
     latE: 0,
   },
 
+  /** Motor e caixa (ver drivetrain.ts). Torque do motor vai para as rodas traseiras. */
+  engine: {
+    /** Marcha lenta (rpm). */
+    idleRpm: 800,
+    /** Corte de giro (rpm). */
+    redlineRpm: 7000,
+    /** Curva de torque: [rpm, N·m] (pico de ~400 N·m a 4000 rpm). */
+    torqueCurve: [
+      [800, 180],
+      [2000, 300],
+      [4000, 400],
+      [5500, 370],
+      [7000, 300],
+    ] as Array<[number, number]>,
+    /** Freio-motor com acelerador solto (N·m). */
+    engineBrake: 60,
+    /** Caixa: R, N, 1, 2, 3, 4, 5. */
+    gears: [-3.2, 0, 3.6, 2.2, 1.5, 1.1, 0.9],
+    /** Relação do diferencial. */
+    finalDrive: 3.4,
+    /** Fração do torque para cada roda traseira. */
+    rearShare: 0.5,
+    /** Subida do giro em ponto morto (rpm/s). */
+    revRate: 4000,
+  },
+
   /**
-   * Torques temporários: motor e freio completos chegam nos passos 6 e 7.
-   * Motor só nas rodas traseiras.
+   * Freios (N·m por roda). Valores temporários até o passo 7 (freio final).
    */
   controls: {
-    /** Torque do motor por roda traseira com acelerador cheio (N·m). */
-    driveTorque: 1200,
     /** Torque do freio de serviço por roda (N·m). */
     brakeTorque: 3000,
     /** Torque extra do freio de mão nas rodas traseiras (N·m). */

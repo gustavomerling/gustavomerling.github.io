@@ -4,8 +4,8 @@ import { VEHICLE } from './vehicle-config'
 
 export type Vec3 = { x: number; y: number; z: number }
 
-/** Comandos de direção usados pelos pneus (ver DriveInput). */
-export type DriveCommands = { throttle: number; brake: number; handbrake: boolean }
+/** Comandos usados pelos pneus. driveTorque é o torque do motor em cada roda traseira (vem do trem de força). */
+export type DriveCommands = { brake: number; handbrake: boolean; driveTorque: number }
 
 export type Vehicle = {
   /** Número de rodas (sempre 4). */
@@ -80,7 +80,7 @@ export function createVehicle(world: RAPIER.World, chassis: RAPIER.RigidBody): V
 
     CORNERS.forEach((_, i) => {
       const rear = i >= 2
-      const drive = rear ? cmd.throttle * ctrl.driveTorque : 0
+      const drive = rear ? cmd.driveTorque : 0
       const brake = cmd.brake * ctrl.brakeTorque + (cmd.handbrake && rear ? ctrl.handbrakeTorque : 0)
 
       const point = ctl.wheelContactPoint(i)

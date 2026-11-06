@@ -33,7 +33,7 @@ export default function App() {
         <br />
         Arraste para girar a câmera · F3 = painel de debug
         <br />
-        WASD ou setas dirigem · Espaço = freio de mão · R = reiniciar
+        WASD ou setas dirigem · Espaço = freio de mão · Q/E = marcha · R = reiniciar
       </div>
       {showDebug && stats && (
         <div className="debug">
@@ -53,6 +53,13 @@ export default function App() {
             Tempo simulado <strong>{stats.simTime.toFixed(2)} s</strong>
           </div>
           {stats.clamped && <div className="warn">quadro longo cortado</div>}
+          <div className="section">Motor</div>
+          <div>
+            Marcha <strong>{stats.engine.gear}</strong> · rotação <strong>{Math.round(stats.engine.rpm)} rpm</strong>
+          </div>
+          <div>
+            Torque na roda traseira <strong>{Math.round(stats.engine.torque)} N·m</strong>
+          </div>
           <div className="section">Chassi</div>
           <div>
             Altura <strong>{stats.chassisY.toFixed(2)} m</strong>

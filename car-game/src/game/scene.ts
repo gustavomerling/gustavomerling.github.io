@@ -1,6 +1,7 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { createDrivetrain, type Drivetrain } from './drivetrain'
 import { createKeyboardInput, type DriveInput } from './input'
 import { createVehicle, type Vehicle } from './vehicle'
 import { VEHICLE } from './vehicle-config'
@@ -33,6 +34,7 @@ export type SimStats = {
   chassisY: number
   chassisSpeed: number
   wheels: WheelStats[]
+  engine: { rpm: number; gear: string; torque: number }
 }
 
 /**
@@ -82,6 +84,11 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
   scene.add(ground)
+
+  // Grade no chão (1 m por célula): mostra o movimento e a escala
+  const grid = new THREE.GridHelper(200, 200, 0x7a7f89, 0x4d525c)
+  grid.position.y = 0.005
+  scene.add(grid)
 
   // Carro visual: carroceria, cabine, saia escura e rodas (posições vêm da suspensão)
   const car = new THREE.Group()
@@ -203,6 +210,10 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
   // Ângulo de giro acumulado de cada roda (só visual)
   const wheelAngle = [0, 0, 0, 0]
 
+  // Trem de força: motor, caixa e rotação ligada às rodas traseiras
+  const drivetrain: Drivetrain = createDrivetrain(VEHICLE.engine)
+  let engineTorque = 0 // torque do motor na roda, para o painel
+
   const readChassis = () => {
     if (!chassis || !vehicle) return
     const t = chassis.translation()
@@ -261,10 +272,14 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     stepsThisFrame = 0
     while (acc >= DT && world && chassis && vehicle) {
       input = keyboard.read()
+      if (input.shiftUp) drivetrain.shift(1, chassisSpeed)
+      if (input.shiftDown) drivetrain.shift(-1, chassisSpeed)
       prevPos.copy(curPos)
       prevQuat.copy(curQuat)
       vehicle.update(DT)
-      vehicle.applyTires(DT, input)
+      const rearOmega = (vehicle.spin(2) + vehicle.spin(3)) / 2
+      engineTorque = drivetrain.update(DT, input.throttle, rearOmega)
+      vehicle.applyTires(DT, { brake: input.brake, handbrake: input.handbrake, driveTorque: engineTorque })
       world.step()
       readChassis()
       simTime += DT
@@ -315,6 +330,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
         chassisY: curPos.y,
         chassisSpeed,
         wheels: wheelStats.map((w) => ({ ...w })),
+        engine: { rpm: drivetrain.rpm, gear: drivetrain.gearLabel(), torque: engineTorque },
       })
     }
   }
@@ -355,6 +371,8 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     vehicle?.dispose()
     world?.free()
     wheelGeo.dispose()
+    grid.geometry.dispose()
+    ;(grid.material as THREE.Material).dispose()
     contactGeo.dispose()
     contactTex.dispose()
     pmrem.dispose()

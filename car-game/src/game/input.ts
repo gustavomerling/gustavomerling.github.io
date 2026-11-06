@@ -8,6 +8,10 @@ export type DriveInput = {
   steer: number
   /** Freio de mão. */
   handbrake: boolean
+  /** Marcha acima: aconteceu desde a última leitura (pulso, não estado). */
+  shiftUp: boolean
+  /** Marcha abaixo: aconteceu desde a última leitura (pulso, não estado). */
+  shiftDown: boolean
 }
 
 const THROTTLE_KEYS = ['w', 'arrowup']
@@ -23,6 +27,9 @@ const HANDBRAKE_KEYS = [' ']
  */
 export function createKeyboardInput(): { read: () => DriveInput; dispose: () => void } {
   const down = new Set<string>()
+  // Trocas de marcha pendentes: cada aperto vale uma troca, consumida na próxima leitura
+  let pendingUp = 0
+  let pendingDown = 0
 
   const isGameKey = (k: string) =>
     [...THROTTLE_KEYS, ...BRAKE_KEYS, ...LEFT_KEYS, ...RIGHT_KEYS, ...HANDBRAKE_KEYS].includes(k)
@@ -30,12 +37,20 @@ export function createKeyboardInput(): { read: () => DriveInput; dispose: () => 
   const onDown = (e: KeyboardEvent) => {
     const k = e.key.toLowerCase()
     if (isGameKey(k)) e.preventDefault()
+    if (!e.repeat) {
+      if (k === 'e') pendingUp++
+      if (k === 'q') pendingDown++
+    }
     down.add(k)
   }
   const onUp = (e: KeyboardEvent) => {
     down.delete(e.key.toLowerCase())
   }
-  const onBlur = () => down.clear()
+  const onBlur = () => {
+    down.clear()
+    pendingUp = 0
+    pendingDown = 0
+  }
 
   window.addEventListener('keydown', onDown)
   window.addEventListener('keyup', onUp)
@@ -46,11 +61,17 @@ export function createKeyboardInput(): { read: () => DriveInput; dispose: () => 
   const read = (): DriveInput => {
     const left = any(LEFT_KEYS)
     const right = any(RIGHT_KEYS)
+    const shiftUp = pendingUp > 0
+    const shiftDown = pendingDown > 0
+    pendingUp = 0
+    pendingDown = 0
     return {
       throttle: any(THROTTLE_KEYS) ? 1 : 0,
       brake: any(BRAKE_KEYS) ? 1 : 0,
       steer: (left ? -1 : 0) + (right ? 1 : 0),
       handbrake: any(HANDBRAKE_KEYS),
+      shiftUp,
+      shiftDown,
     }
   }
 
