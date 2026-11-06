@@ -32,6 +32,10 @@ export type WheelStats = {
   slipAngleDeg: number
   /** Carga da mola na roda (N): sobe na roda que recebe o peso. */
   load: number
+  /** Força longitudinal do pneu (N). */
+  fx: number
+  /** Força lateral do pneu (N). */
+  fy: number
 }
 
 export type SimStats = {
@@ -163,6 +167,29 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
   })
   scene.add(car)
 
+  // Depuração (tecla K): contorno do chassi, centro de massa e contato de cada roda
+  let showColliders = false
+  const chassisBox = new THREE.BoxGeometry(CH.x * 2, CH.y * 2, CH.z * 2)
+  const chassisEdgesGeo = new THREE.EdgesGeometry(chassisBox)
+  chassisBox.dispose()
+  const chassisEdgesMat = new THREE.LineBasicMaterial({ color: 0x00ff9c })
+  const chassisEdges = new THREE.LineSegments(chassisEdgesGeo, chassisEdgesMat)
+  chassisEdges.visible = false
+  car.add(chassisEdges)
+  const comGeo = new THREE.SphereGeometry(0.08, 12, 8)
+  const comMat = new THREE.MeshBasicMaterial({ color: 0xff3b3b })
+  const comMarker = new THREE.Mesh(comGeo, comMat)
+  comMarker.visible = false
+  car.add(comMarker)
+  const contactGeo2 = new THREE.SphereGeometry(0.1, 10, 8)
+  const contactMat2 = new THREE.MeshBasicMaterial({ color: 0xffd84d })
+  const contactMarkers = Array.from({ length: 4 }, () => {
+    const m = new THREE.Mesh(contactGeo2, contactMat2)
+    m.visible = false
+    scene.add(m)
+    return m
+  })
+
   // Sombra de contato: mancha escura suave sob o chassi, para o apoio no chão ficar legível
   const contactCanvas = document.createElement('canvas')
   contactCanvas.width = contactCanvas.height = 128
@@ -240,6 +267,8 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     slipRatio: 0,
     slipAngleDeg: 0,
     load: 0,
+    fx: 0,
+    fy: 0,
   }))
   // Ângulo de giro acumulado de cada roda (só visual)
   const wheelAngle = [0, 0, 0, 0]
@@ -281,6 +310,8 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
       wheelStats[i].slipRatio = tire.slipRatio
       wheelStats[i].slipAngleDeg = THREE.MathUtils.radToDeg(tire.slipAngle)
       wheelStats[i].load = vehicle.suspensionForce(i)
+      wheelStats[i].fx = tire.Fx
+      wheelStats[i].fy = tire.Fy
       wheelAngle[i] += vehicle.spin(i) * DT
     }
   }
@@ -345,6 +376,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     const k = e.key.toLowerCase()
     if (k === 'r') resetChassis()
     if (k === 'c') cameraMode = cameraMode === 'perseguição' ? 'livre' : 'perseguição'
+    if (k === 'k') showColliders = !showColliders
   }
   window.addEventListener('keydown', onKey)
 
@@ -429,6 +461,15 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
       }
     }
 
+    // Depuração (K): contorno, centro de massa e contato de cada roda
+    chassisEdges.visible = showColliders
+    comMarker.visible = showColliders
+    for (let i = 0; i < contactMarkers.length; i++) {
+      const p = vehicle?.contactPoint(i) ?? null
+      contactMarkers[i].visible = showColliders && p !== null
+      if (p) contactMarkers[i].position.set(p.x, p.y, p.z)
+    }
+
     updateCamera(renderPos, renderQuat, elapsed)
     // Ajustes visuais (painel F4): sol, exposição e bloom
     sun.intensity = visual.sunIntensity
@@ -511,6 +552,13 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     pmrem.dispose()
     rimGeo.dispose()
     rimMat.dispose()
+    chassisEdgesGeo.dispose()
+    chassisEdgesMat.dispose()
+    comGeo.dispose()
+    comMat.dispose()
+    contactGeo2.dispose()
+    contactMat2.dispose()
+    for (const m of contactMarkers) scene.remove(m)
     composer.dispose()
     renderer.dispose()
     renderer.domElement.remove()

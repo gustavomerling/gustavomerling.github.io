@@ -45,7 +45,42 @@ export default function App() {
         Arraste para girar a câmera · F3 = debug · F4 = ajustes visuais
         <br />
         WASD ou setas dirigem · Espaço = freio de mão · Q/E = marcha · B = ABS · C = câmera · R = reiniciar
+        <br />
+        K = colisores e centro de massa
       </div>
+      {stats && (
+        <div className="cockpit">
+          <div className="speed">
+            <strong>{Math.round(stats.chassisSpeed * 3.6)}</strong>
+            <span>km/h</span>
+          </div>
+          <div className="gear">
+            marcha <strong>{stats.engine.gear}</strong>
+          </div>
+          <div className="bar-row">
+            <span>rpm</span>
+            <div className="bar">
+              <div className="fill rpm" style={{ width: `${Math.min(100, (stats.engine.rpm / 7000) * 100)}%` }} />
+            </div>
+          </div>
+          <div className="bar-row">
+            <span>acel.</span>
+            <div className="bar">
+              <div className="fill throttle" style={{ width: pct(input?.throttle ?? 0) }} />
+            </div>
+          </div>
+          <div className="bar-row">
+            <span>freio</span>
+            <div className="bar">
+              <div className="fill brake" style={{ width: pct(input?.brake ?? 0) }} />
+            </div>
+          </div>
+          <div className="flags">
+            <span className={stats.abs ? 'on' : ''}>ABS</span>
+            <span className={input?.handbrake ? 'on' : ''}>freio de mão</span>
+          </div>
+        </div>
+      )}
       {showDebug && stats && (
         <div className="debug">
           <div>
@@ -101,7 +136,8 @@ export default function App() {
             <div key={i}>
               {WHEEL_NAMES[i]}{' '}
               slip <strong>{(w.slipRatio * 100).toFixed(0)}%</strong> · ângulo{' '}
-              <strong>{w.slipAngleDeg.toFixed(1)}°</strong>
+              <strong>{w.slipAngleDeg.toFixed(1)}°</strong> · Fx <strong>{Math.round(w.fx)}</strong> N · Fy{' '}
+              <strong>{Math.round(w.fy)}</strong> N
             </div>
           ))}
           {input && (
