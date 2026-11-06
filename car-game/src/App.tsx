@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { PHYSICS_HZ, startScene, type SimStats } from './game/scene'
+import { HIT_PENALTY, PHYSICS_HZ, startScene, type SimStats } from './game/scene'
 import { visual } from './game/visual'
 import { CAR_NAME } from './game/vehicle-config'
 
@@ -9,8 +9,9 @@ const WHEEL_NAMES = ['FD', 'FE', 'TD', 'TE']
 export default function App() {
   const mountRef = useRef<HTMLDivElement>(null)
   const [stats, setStats] = useState<SimStats | null>(null)
-  const [showDebug, setShowDebug] = useState(true)
+  const [showDebug, setShowDebug] = useState(false)
   const [showVisual, setShowVisual] = useState(false)
+  const [showHelp, setShowHelp] = useState(true)
   // Só para re-renderizar o painel quando um ajuste muda (os valores vivem em visual)
   const [, setVisualTick] = useState(0)
 
@@ -25,6 +26,7 @@ export default function App() {
         e.preventDefault()
         setShowDebug((v) => !v)
       }
+      if (e.key.toLowerCase() === 'h') setShowHelp((v) => !v)
       if (e.key === 'F4') {
         e.preventDefault()
         setShowVisual((v) => !v)
@@ -35,22 +37,131 @@ export default function App() {
   }, [])
 
   const input = stats?.input
+  const game = stats?.game ?? null
   const pct = (v: number) => `${Math.round(v * 100)}%`
 
   return (
     <>
       <div className="viewport" ref={mountRef} />
-      <div className="hud">
-        <strong>Car Game</strong> · carro <strong>{CAR_NAME}</strong> (troque com ?car=rua ou ?car=esportivo)
-        <br />
-        Arraste para girar a câmera · F3 = debug · F4 = ajustes visuais
-        <br />
-        WASD ou setas dirigem · Espaço = freio de mão · Q/E = marcha · B = ABS · C = câmera · R = reiniciar
-        <br />
-        K = colisores e centro de massa · M = mudo
-        <br />
-        Controle: RT acelera · LT freia · stick dirige · A freio de mão · LB/RB marcha · B ABS
-      </div>
+      {showHelp ? (
+        <div className="hud">
+          <strong>{game ? 'Estacionar' : 'Pista de testes'}</strong> · carro <strong>{CAR_NAME}</strong> · câmbio{' '}
+          <strong>{stats?.gearbox ?? 'automático'}</strong> (T alterna)
+          <br />
+          <strong>W</strong> acelera · <strong>S</strong> freia e, parado, dá ré · <strong>A/D</strong> dirige ·
+          soltar tudo para o carro
+          <br />
+          <strong>C</strong> câmera · <strong>R</strong> volta à largada · <strong>Espaço</strong> freio de mão ·{' '}
+          <strong>M</strong> mudo
+          <br />
+          <span className="dim">
+            Manual: Q/E marchas · B ABS · F3 debug · F4 visual · Controle: RT/LT, stick, A · <strong>H</strong>{' '}
+            esconde
+          </span>
+        </div>
+      ) : (
+        <div className="hud hud-min">
+          <strong>H</strong> ajuda
+        </div>
+      )}
+      {game && (
+        <div className="game-bar">
+          <div>
+            Nível <strong>{game.level}</strong>
+            <span className="kind">{game.kind === 'baliza' ? 'baliza' : 'vaga'}</span>
+          </div>
+          <div className={game.timeLeft < 10 ? 'time low' : 'time'}>{Math.ceil(game.timeLeft)}s</div>
+          <div>
+            Batidas <strong>{game.hits}</strong>
+          </div>
+          <div>
+            Pontos <strong>{game.total}</strong>
+          </div>
+        </div>
+      )}
+      {game && game.phase === 'playing' && game.hitAgo < 1.2 && (
+        <div className="hit-flash">
+          Batida! <strong>−{HIT_PENALTY}s</strong>
+        </div>
+      )}
+      {game && game.phase === 'playing' && (
+        <div className="slot-hint">
+          {!game.started ? (
+            game.kind === 'baliza' ? (
+              <>
+                <strong>Baliza:</strong> encaixe o carro na vaga verde entre os dois carros, rente à calçada.
+                <br />
+                Aperte <strong>W</strong> para começar.
+              </>
+            ) : (
+              <>
+                Estacione na <strong>vaga verde</strong> (siga o feixe de luz e o minimapa).
+                <br />
+                Aperte <strong>W</strong> para começar.
+              </>
+            )
+          ) : game.inSlot ? (
+            <>
+              <div className="dwell">
+                <div style={{ width: `${game.dwell * 100}%` }} />
+              </div>
+              {game.dwell > 0 ? 'Segure parado…' : 'Dentro da vaga! Solte o acelerador e pare.'}
+            </>
+          ) : game.distance < 6 ? (
+            'Quase lá: o carro inteiro precisa ficar entre as linhas'
+          ) : (
+            <>
+              Vaga a <strong>{Math.round(game.distance)} m</strong>
+            </>
+          )}
+        </div>
+      )}
+      {game && game.phase !== 'playing' && (
+        <div className="overlay">
+          <div className="card">
+            {game.phase === 'success' ? (
+              <>
+                <h2>Estacionou!</h2>
+                <div className="stars">{'★'.repeat(game.stars) + '☆'.repeat(3 - game.stars)}</div>
+                <div>
+                  Fora do centro <strong>{(game.lateral * 100).toFixed(0)} cm</strong> · torto{' '}
+                  <strong>{game.angleDeg.toFixed(1)}°</strong> · batidas <strong>{game.hits}</strong>
+                </div>
+                <div>
+                  Pontos do nível <strong>{game.score}</strong> (bônus de tempo {game.timeBonus})
+                </div>
+                <div>
+                  Total <strong>{game.total}</strong>
+                </div>
+                {game.stars < 3 && (
+                  <div className="dim">
+                    3 estrelas: sem batidas, a menos de 25 cm do centro e menos de 3° torto
+                  </div>
+                )}
+                <p>
+                  <strong>Enter</strong>: próximo nível
+                  {(game.level + 1) % 3 === 0 && ' (baliza)'}
+                </p>
+              </>
+            ) : (
+              <>
+                <h2>Tempo esgotado</h2>
+                <div>
+                  Nível <strong>{game.level}</strong> · total <strong>{game.total}</strong> pontos
+                </div>
+                {game.hits > 0 && (
+                  <div className="dim">
+                    {game.hits} batida{game.hits > 1 ? 's' : ''} custaram {game.hits * HIT_PENALTY}s
+                  </div>
+                )}
+                <p>
+                  <strong>Enter</strong>: tentar de novo
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       {stats && (
         <div className="cockpit">
           <div className="speed">

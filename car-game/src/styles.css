@@ -194,3 +194,163 @@ body,
   opacity: 1;
   font-weight: 600;
 }
+
+.viewport canvas.minimap {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  width: 260px;
+  height: auto;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+}
+
+.hud {
+  max-width: 560px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.game-bar {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 8px 18px;
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+.game-bar strong {
+  color: var(--accent);
+}
+
+.game-bar .time {
+  font-size: 28px;
+  font-weight: 700;
+  min-width: 64px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-bar .time.low {
+  color: #ff5a4d;
+}
+
+.slot-hint {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  background: rgba(0, 0, 0, 0.5);
+  font-size: 14px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.dwell {
+  width: 180px;
+  height: 8px;
+  margin: 0 auto 6px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.dwell div {
+  height: 100%;
+  background: #3dff7a;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.card {
+  min-width: 320px;
+  padding: 22px 30px;
+  text-align: center;
+  background: rgba(15, 16, 19, 0.92);
+  border-top: 3px solid var(--accent);
+  line-height: 1.7;
+}
+
+.card h2 {
+  margin: 0 0 4px;
+}
+
+.card strong {
+  color: var(--accent);
+}
+
+.card .stars {
+  font-size: 40px;
+  color: #ffd84d;
+  letter-spacing: 6px;
+}
+
+.hud {
+  max-width: 400px;
+}
+
+.hud .dim,
+.card .dim {
+  opacity: 0.6;
+}
+
+.hud-min {
+  padding: 6px 10px;
+}
+
+.game-bar .kind {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 3px;
+  background: rgba(61, 255, 122, 0.18);
+  color: #7dffa6;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.slot-hint strong {
+  color: #7dffa6;
+}
+
+.hit-flash {
+  position: fixed;
+  top: 38%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 18px;
+  background: rgba(150, 20, 20, 0.75);
+  font-size: 22px;
+  font-weight: 700;
+  pointer-events: none;
+  animation: hit-pop 1.2s ease-out forwards;
+}
+
+@keyframes hit-pop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1.3);
+  }
+  12% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

@@ -26,6 +26,8 @@ export type DrivetrainParams = {
 export type Drivetrain = {
   /** Rotação atual do motor (rpm). */
   readonly rpm: number
+  /** Marcha atual: -1 = R, 0 = N, 1 a 5. */
+  readonly gear: number
   /** Nome da marcha para exibir: "R", "N", "1" a "5". */
   gearLabel: () => string
   /**
@@ -44,6 +46,8 @@ export type Drivetrain = {
 
 const RPM_PER_RAD_S = 60 / (2 * Math.PI)
 const REVERSE_MAX_SPEED = 1.5
+/** Rotação (imposta pelas rodas) em que o freio-motor chega ao valor cheio. */
+const ENGINE_BRAKE_FULL_RPM = 3000
 
 export function createDrivetrain(p: DrivetrainParams): Drivetrain {
   const NEUTRAL = 1
@@ -68,6 +72,10 @@ export function createDrivetrain(p: DrivetrainParams): Drivetrain {
   return {
     get rpm() {
       return rpm
+    },
+
+    get gear() {
+      return gearIdx - NEUTRAL
     },
 
     gearLabel: () => {
@@ -101,12 +109,17 @@ export function createDrivetrain(p: DrivetrainParams): Drivetrain {
       const wheelRpm = Math.abs(rearOmega) * RPM_PER_RAD_S * Math.abs(r) * p.finalDrive
       rpm = Math.min(redline, Math.max(p.idleRpm, wheelRpm))
 
-      // Torque: curva com acelerador; sem acelerador, freio-motor. Corte de giro acima do limite.
-      let engine = throttle * (rpm < redline ? curve(rpm) : 0)
-      engine += (1 - throttle) * -p.engineBrake
+      // Torque da curva com acelerador (corte de giro acima do limite), em cada roda traseira;
+      // a ré inverte o sinal pela relação
+      const toWheel = Math.abs(r) * p.finalDrive * p.rearShare
+      const drive = throttle * (rpm < redline ? curve(rpm) : 0) * Math.sign(r) * toWheel
 
-      // Torque do motor para cada roda traseira (a ré inverte o sinal pela relação)
-      return engine * r * p.finalDrive * p.rearShare
+      // Freio-motor: sempre contra o giro das rodas e proporcional à rotação que elas impõem
+      // ao motor. Com o carro parado é zero (antes era um torque fixo que empurrava o carro
+      // sozinho: para trás em 1ª e para a frente em ré).
+      const engineBrake =
+        (1 - throttle) * p.engineBrake * Math.min(1, wheelRpm / ENGINE_BRAKE_FULL_RPM) * toWheel
+      return drive - Math.sign(rearOmega) * engineBrake
     },
   }
 }

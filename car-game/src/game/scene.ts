@@ -10,6 +10,11 @@ import { createCarAudio, type CarAudio } from './audio'
 import { createEffects, type Effects, type WheelFx } from './effects'
 import { buildRoad, type Road } from './road'
 import { buildTrack, type Track } from './track'
+import { createAutoGearbox, FREE_GEARBOX, PARKING_GEARBOX } from './auto'
+import { buildCarBody, createCarKit } from './car-model'
+import { buildLot, checkSlot, levelKind, type LevelKind, type Lot } from './lot'
+import { createMinimap } from './minimap'
+import { createSfx } from './sfx'
 import { visual } from './visual'
 import { createKeyboardInput, type DriveInput } from './input'
 import { createVehicle, type Vehicle } from './vehicle'
@@ -20,7 +25,7 @@ export const PHYSICS_HZ = 120
 const DT = 1 / PHYSICS_HZ
 /** Quadro longo demais (aba em segundo plano, travamento): corta para não "pular" a simulação. */
 const MAX_FRAME_TIME = 0.25
-const STATS_INTERVAL_MS = 250
+const STATS_INTERVAL_MS = 100
 
 const CH = VEHICLE.chassisHalf
 
@@ -39,7 +44,39 @@ export type WheelStats = {
   fy: number
 }
 
+/** Segundos descontados do relógio a cada batida. */
+export const HIT_PENALTY = 5
+
+export type GameStats = {
+  level: number
+  /** Tipo do nível: vaga perpendicular ou baliza. */
+  kind: LevelKind
+  /** O relógio já começou (primeira tecla de pedal)? */
+  started: boolean
+  /** Distância do carro até o centro da vaga (m). */
+  distance: number
+  /** Tempo desde a última batida (s), para o aviso na tela. */
+  hitAgo: number
+  timeLeft: number
+  hits: number
+  total: number
+  phase: 'playing' | 'success' | 'failed'
+  /** Progresso de ficar parado na vaga (0 a 1). */
+  dwell: number
+  inSlot: boolean
+  /** Afastamento do centro da vaga, através e ao longo dela (m), e ângulo em relação a ela (graus). */
+  lateral: number
+  longitudinal: number
+  angleDeg: number
+  /** Resultado do nível (quando phase = success). */
+  stars: number
+  score: number
+  timeBonus: number
+}
+
 export type SimStats = {
+  game: GameStats | null
+  gearbox: 'automático' | 'manual'
   fps: number
   stepsLastFrame: number
   accumulatorMs: number
@@ -54,7 +91,7 @@ export type SimStats = {
   /** Direção: ângulo médio das rodas dianteiras (graus, positivo = direita). */
   steerDeg: number
   /** Modo da câmera (C alterna). */
-  camera: 'perseguição' | 'livre'
+  camera: 'perseguição' | 'aérea' | 'livre'
   /** Arfagem (graus): positivo = nariz para cima. */
   pitchDeg: number
   /** Rolagem (graus): positivo = lado esquerdo para cima. */
@@ -78,7 +115,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
 
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(0x1b1d22)
-  scene.fog = new THREE.Fog(0x1b1d22, 30, 90)
+  scene.fog = new THREE.Fog(0x1b1d22, 45, 130)
 
   const pmrem = new THREE.PMREMGenerator(renderer)
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
@@ -93,7 +130,8 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     new THREE.Vector2(container.clientWidth, container.clientHeight),
     visual.bloomStrength,
     0.4,
-    0.85,
+    // Limiar acima do branco: só brilha o que emite luz (lâmpadas, faróis, feixe da vaga), não reflexos de teto
+    1.0,
   )
   composer.addPass(bloomPass)
   composer.addPass(new OutputPass())
@@ -105,14 +143,46 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
   sun.position.set(12, 18, 8)
   sun.castShadow = true
   sun.shadow.mapSize.set(2048, 2048)
-  sun.shadow.camera.left = -15
-  sun.shadow.camera.right = 15
-  sun.shadow.camera.top = 15
-  sun.shadow.camera.bottom = -15
+  sun.shadow.camera.left = -22
+  sun.shadow.camera.right = 22
+  sun.shadow.camera.top = 22
+  sun.shadow.camera.bottom = -22
   // Viés pequeno + normalBias: evita a sombra "descolar" do contato sem criar acne
   sun.shadow.bias = -0.0002
   sun.shadow.normalBias = 0.01
   scene.add(sun)
+  scene.add(sun.target)
+
+  // Modo: estacionamento (padrão) ou pista de testes (?mode=teste)
+  const params = new URLSearchParams(window.location.search)
+  const TEST = params.get('mode') === 'teste'
+  let autoGear = params.get('cambio') !== 'manual'
+  const autobox = createAutoGearbox(TEST ? FREE_GEARBOX : PARKING_GEARBOX)
+  const sfx = createSfx()
+  const minimap = TEST ? null : createMinimap(container)
+  let lot: Lot | null = null
+  let level = Math.max(1, Number(params.get('nivel')) || 1)
+  let total = 0
+  /** Pontos acumulados até o começo do nível atual (para repetir o nível sem perder o que já tinha). */
+  let totalAtLevelStart = 0
+  let hits = 0
+  let lastHitAt = -99
+  let distance = 0
+  let longitudinal = 0
+  let timeLeft = 0
+  let phase: 'playing' | 'success' | 'failed' = 'playing'
+  let started = false
+  let dwell = 0
+  let wasTouching = false
+  let hitCooldown = 0
+  let inSlot = false
+  let lateral = 0
+  let angleDeg = 0
+  let stars = 0
+  let score = 0
+  let timeBonus = 0
+  let lastTickSec = -1
+  let chassisCollider: RAPIER.Collider | null = null
 
   // Chão, grade, faixas, cones e rampa: ver track.ts (montado quando o Rapier carrega)
   let track: Track | null = null
@@ -129,19 +199,21 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     clearcoat: 1,
     clearcoatRoughness: 0.08,
   })
-  const glass = new THREE.MeshPhysicalMaterial({ color: 0x14202a, roughness: 0.05, metalness: 0.2 })
   const rubber = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.8 })
 
-  const body = new THREE.Mesh(new THREE.BoxGeometry(CH.x * 2, CH.y * 2, CH.z * 2), paint)
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.6, 2.2), glass)
-  cabin.position.set(0, 0.6, -0.2)
+  // Carroceria (car-model.ts) com luzes próprias: faróis acesos, lanterna que brilha ao frear e luz de ré
+  const carKit = createCarKit()
+  const headLit = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4dc, emissiveIntensity: 1.6 })
+  const tailLit = new THREE.MeshStandardMaterial({ color: 0x7a0b0b, emissive: 0xff1a1a, emissiveIntensity: 0.5 })
+  const reverseLit = new THREE.MeshStandardMaterial({ color: 0xd8d8d8, emissive: 0xffffff, emissiveIntensity: 0 })
+  car.add(buildCarBody(carKit, paint, CH.x, CH.y, CH.z, { head: headLit, tail: tailLit, reverse: reverseLit }))
   // Saia escura na base, levemente mais larga que a carroceria: o carro "assenta" no asfalto sem faixa de luz
   const underbody = new THREE.Mesh(
-    new THREE.BoxGeometry(CH.x * 2 + 0.04, 0.14, CH.z * 2 + 0.04),
+    new THREE.BoxGeometry(CH.x * 2 - 0.1, 0.14, CH.z * 2 - 0.3),
     new THREE.MeshStandardMaterial({ color: 0x0c0d0f, roughness: 0.9 }),
   )
-  underbody.position.y = -CH.y + 0.07
-  car.add(body, cabin, underbody)
+  underbody.position.y = -CH.y + 0.02
+  car.add(underbody)
 
   const wheelRadius = VEHICLE.wheels.radius
   const wheelGeo = new THREE.CylinderGeometry(wheelRadius, wheelRadius, VEHICLE.wheels.width, 32)
@@ -263,6 +335,8 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
   const prevPos = new THREE.Vector3()
   const prevQuat = new THREE.Quaternion()
   let chassisSpeed = 0
+  /** Velocidade medida pelo deslocamento real entre passos (m/s, suavizada). */
+  let moveSpeed = 0
   const wheelStats: WheelStats[] = Array.from({ length: 4 }, () => ({
     suspensionLength: VEHICLE.wheels.restLength,
     inContact: false,
@@ -295,7 +369,11 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     const v = chassis.linvel()
     curPos.set(t.x, t.y, t.z)
     curQuat.set(r.x, r.y, r.z, r.w)
-    chassisSpeed = Math.hypot(v.x, v.y, v.z)
+    // Só a horizontal: com o carro assentado, o Rapier pode manter uma velocidade vertical
+    // residual (~0,6 m/s) sem o corpo sair do lugar, o que travava o "pare na vaga"
+    chassisSpeed = Math.hypot(v.x, v.z)
+    const moved = Math.hypot(t.x - prevPos.x, t.z - prevPos.z) / DT
+    moveSpeed += (Math.min(moved, 50) - moveSpeed) * 0.2
     // Nariz (+z) e lado +x (esquerda do carro) no mundo: arfagem e rolagem
     const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(curQuat)
     const side = new THREE.Vector3(1, 0, 0).applyQuaternion(curQuat)
@@ -320,17 +398,20 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
 
   const resetChassis = () => {
     if (!chassis) return
-    chassis.setTranslation({ x: 0, y: VEHICLE.spawnHeight, z: 0 }, true)
-    chassis.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)
+    const sp = lot?.spawn ?? { x: 0, z: 0, yaw: 0 }
+    chassis.setTranslation({ x: sp.x, y: VEHICLE.spawnHeight, z: sp.z }, true)
+    chassis.setRotation({ x: 0, y: Math.sin(sp.yaw / 2), z: 0, w: Math.cos(sp.yaw / 2) }, true)
     chassis.setLinvel({ x: 0, y: 0, z: 0 }, true)
     chassis.setAngvel({ x: 0, y: 0, z: 0 }, true)
     readChassis()
     prevPos.copy(curPos)
     prevQuat.copy(curQuat)
+    camReady = false
   }
 
-  // Câmera: "perseguição" (atrás do carro, suave) ou "livre" (órbita com arrasto). C alterna.
-  let cameraMode: 'perseguição' | 'livre' = 'perseguição'
+  // Câmera: "perseguição" (atrás do carro, suave), "aérea" (de cima, norte para cima como no
+  // minimapa) ou "livre" (órbita com arrasto). C alterna.
+  let cameraMode: 'perseguição' | 'aérea' | 'livre' = 'perseguição'
   const camPos = new THREE.Vector3()
   const camLook = new THREE.Vector3()
   let camReady = false
@@ -350,36 +431,82 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
       return
     }
 
+    if (cameraMode === 'aérea') {
+      // Câmera um pouco a +z olhando para o carro: na tela, +x à direita e +z para baixo (igual ao minimapa)
+      const desiredA = target.clone().add(new THREE.Vector3(0, 20, 4))
+      if (!camReady) {
+        camPos.copy(desiredA)
+        camLook.copy(target)
+        camReady = true
+      }
+      camPos.lerp(desiredA, 1 - Math.exp(-5 * dt))
+      camLook.lerp(target, 1 - Math.exp(-8 * dt))
+      camera.position.copy(camPos)
+      camera.lookAt(camLook)
+      return
+    }
+
     // Direção de frente do carro, só no plano do chão
     fwdFlat.set(0, 0, 1).applyQuaternion(carQuat)
     fwdFlat.y = 0
     fwdFlat.normalize()
 
-    // Mais longe em alta velocidade; ao acelerar, a câmera fica para trás (atraso inercial)
-    const dist = 6 + Math.min(Math.abs(chassisSpeed), 30) * 0.15
+    // Estacionamento: mais alta e inclinada, para enxergar as linhas da vaga em volta do carro.
+    // Pista de testes: mais baixa, e mais longe em alta velocidade; ao acelerar, fica para trás.
+    const dist = TEST ? 6 + Math.min(Math.abs(chassisSpeed), 30) * 0.15 : 7
+    const height = TEST ? 2.4 : 4.6
     const desired = target
       .clone()
       .addScaledVector(fwdFlat, -dist - longAccel * 0.04)
-      .add(new THREE.Vector3(0, 2.4, 0))
+      .add(new THREE.Vector3(0, height, 0))
+    const look = TEST ? target : target.clone().addScaledVector(fwdFlat, 1.5)
 
     if (!camReady) {
       camPos.copy(desired)
-      camLook.copy(target)
+      camLook.copy(look)
       camReady = true
     }
     // Suavização exponencial: independe do FPS
     camPos.lerp(desired, 1 - Math.exp(-4 * dt))
-    camLook.lerp(target, 1 - Math.exp(-8 * dt))
+    camLook.lerp(look, 1 - Math.exp(-8 * dt))
     camera.position.copy(camPos)
     camera.lookAt(camLook)
+  }
+
+  /** Monta um estacionamento novo para o nível atual e põe o carro na largada. */
+  const startLevel = () => {
+    if (!world) return
+    lot?.dispose()
+    lot = buildLot(scene, world, level)
+    totalAtLevelStart = total
+    hits = 0
+    lastHitAt = -99
+    dwell = 0
+    phase = 'playing'
+    started = false
+    wasTouching = false
+    lastTickSec = -1
+    // Baliza ganha tempo extra; o relógio só começa na primeira tecla de pedal
+    timeLeft = Math.max(45, 80 - 4 * (level - 1)) + (levelKind(level) === 'baliza' ? 15 : 0)
+    resetChassis()
   }
 
   const onKey = (e: KeyboardEvent) => {
     const k = e.key.toLowerCase()
     if (k === 'r') resetChassis()
-    if (k === 'c') cameraMode = cameraMode === 'perseguição' ? 'livre' : 'perseguição'
+    if (k === 'c') {
+      cameraMode = cameraMode === 'perseguição' ? 'aérea' : cameraMode === 'aérea' ? 'livre' : 'perseguição'
+      camReady = false
+    }
+    if (k === 't') autoGear = !autoGear
+    if (k === 'enter' && !TEST && phase !== 'playing') {
+      // Sucesso: próximo nível. Falha: repete o mesmo nível, sem os pontos da tentativa.
+      if (phase === 'success') level++
+      else total = totalAtLevelStart
+      startLevel()
+    }
     if (k === 'k') showColliders = !showColliders
-    if (k === 'm') carAudio.toggleMute()
+    if (k === 'm') sfx.setMuted(carAudio.toggleMute())
   }
   window.addEventListener('keydown', onKey)
 
@@ -406,9 +533,15 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
 
     stepsThisFrame = 0
     while (acc >= DT && world && chassis && vehicle) {
-      input = keyboard.read()
-      if (input.shiftUp) drivetrain.shift(1, chassisSpeed)
-      if (input.shiftDown) drivetrain.shift(-1, chassisSpeed)
+      const raw = keyboard.read()
+      input = raw
+      if (autoGear) input = autobox.apply(DT, input, drivetrain, prevSignedSpeed)
+      else {
+        if (input.shiftUp) drivetrain.shift(1, chassisSpeed)
+        if (input.shiftDown) drivetrain.shift(-1, chassisSpeed)
+      }
+      if (phase !== 'playing') input = { ...input, throttle: 0, brake: 1, handbrake: true }
+      const speedBefore = chassisSpeed
       if (input.absToggle) absOn = !absOn
       prevPos.copy(curPos)
       prevQuat.copy(curQuat)
@@ -440,6 +573,66 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
       }
       world.step()
       readChassis()
+      if (lot && chassisCollider) {
+        hitCooldown -= DT
+        // Batida: começo de contato com carro, muro, cone ou poste, com impacto de verdade
+        let touching = false
+        const col = chassisCollider
+        const wd = world
+        // Primeiro coleta os pares, depois consulta cada um: chamar o WASM de dentro do
+        // callback de contactPairsWith corrompe a memória do Rapier ("memory access out of bounds")
+        const others: RAPIER.Collider[] = []
+        wd.contactPairsWith(col, (other) => {
+          if (lot?.obstacles.has(other.handle)) others.push(other)
+        })
+        for (const other of others) {
+          if (touching) break
+          wd.contactPair(col, other, (m) => {
+            if (m.numContacts() > 0) touching = true
+          })
+        }
+        if (phase === 'playing' && started && touching && !wasTouching && hitCooldown <= 0 && speedBefore > 0.7) {
+          // Cada batida custa tempo (e estrelas no fim)
+          hits++
+          hitCooldown = 0.6
+          timeLeft = Math.max(0, timeLeft - HIT_PENALTY)
+          lastHitAt = simTime
+          sfx.hit()
+        }
+        wasTouching = touching
+
+        if (phase === 'playing') {
+          // O relógio começa no primeiro pedal do jogador (não no freio automático do auto-hold)
+          if (!started && (raw.throttle > 0 || raw.brake > 0)) started = true
+          if (started) timeLeft -= DT
+          const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(curQuat)
+          const up = new THREE.Vector3(0, 1, 0).applyQuaternion(curQuat)
+          const c = checkSlot(lot.target, { x: curPos.x, z: curPos.z }, { x: fwd.x, z: fwd.z }, CH.x + 0.15, CH.z)
+          inSlot = c.inside && up.y > 0.7
+          lateral = c.lateral
+          longitudinal = c.longitudinal
+          angleDeg = c.angleDeg
+          distance = Math.hypot(curPos.x - lot.target.cx, curPos.z - lot.target.cz)
+          if (inSlot && moveSpeed < 0.3 && input.throttle < 0.1) dwell = Math.min(1, dwell + DT / 1.0)
+          else dwell = Math.max(0, dwell - DT * 2)
+          if (dwell >= 1) {
+            phase = 'success'
+            // 3 estrelas: sem batida, reto e centralizado; 2: no máximo uma batida e quase reto
+            stars = hits === 0 && lateral < 0.25 && angleDeg < 3 ? 3 : hits <= 1 && angleDeg < 6 ? 2 : 1
+            timeBonus = Math.max(0, Math.round(timeLeft * 10))
+            score = Math.max(100, 500 + stars * 300 + timeBonus - hits * 100)
+            total += score
+            sfx.success()
+          } else if (timeLeft <= 0) {
+            timeLeft = 0
+            phase = 'failed'
+            sfx.fail()
+          } else if (started && timeLeft < 10 && Math.ceil(timeLeft) !== lastTickSec) {
+            lastTickSec = Math.ceil(timeLeft)
+            sfx.tick()
+          }
+        }
+      }
       simTime += DT
       acc -= DT
       stepsThisFrame++
@@ -453,6 +646,10 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     car.quaternion.copy(renderQuat)
     contact.position.set(renderPos.x, 0.01, renderPos.z)
     contact.rotation.y = new THREE.Euler().setFromQuaternion(renderQuat, 'YXZ').y
+
+    // Luzes: lanterna forte ao frear, luz de ré engatada
+    tailLit.emissiveIntensity = input.brake > 0.2 || input.handbrake ? 3 : 0.5
+    reverseLit.emissiveIntensity = drivetrain.gear === -1 ? 2.5 : 0
 
     // Rodas: posição dada pela suspensão, no referencial do carro
     if (vehicle) {
@@ -489,7 +686,17 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     // Ajustes visuais (painel F4): sol, exposição e bloom
     sun.intensity = visual.sunIntensity
     const el = THREE.MathUtils.degToRad(visual.sunElevationDeg)
-    sun.position.set(Math.cos(el) * 0.83 * 24, Math.sin(el) * 24, Math.cos(el) * 0.55 * 24)
+    sun.position.set(
+      renderPos.x + Math.cos(el) * 0.83 * 24,
+      Math.sin(el) * 24,
+      renderPos.z + Math.cos(el) * 0.55 * 24,
+    )
+    sun.target.position.set(renderPos.x, 0, renderPos.z)
+    if (lot) lot.update(simTime)
+    if (lot && minimap) {
+      const f = new THREE.Vector3(0, 0, 1).applyQuaternion(renderQuat)
+      minimap.draw(lot, { x: renderPos.x, z: renderPos.z, yaw: Math.atan2(f.x, f.z) }, simTime)
+    }
     renderer.toneMappingExposure = visual.exposure
     bloomPass.strength = visual.bloomStrength
     if (visual.bloom) composer.render()
@@ -501,7 +708,49 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
       fps = (framesCount * 1000) / elapsedStats
       framesCount = 0
       statsStart = now
+      // Gancho de teste (só em desenvolvimento): pose e estado para scripts de navegador
+      if (import.meta.env.DEV) {
+        const f = new THREE.Vector3(0, 0, 1).applyQuaternion(curQuat)
+        ;(window as unknown as { __sim: unknown }).__sim = {
+          x: +curPos.x.toFixed(2),
+          z: +curPos.z.toFixed(2),
+          yawDeg: Math.round(THREE.MathUtils.radToDeg(Math.atan2(f.x, f.z))),
+          kmh: +(chassisSpeed * 3.6).toFixed(1),
+          v: chassis ? [chassis.linvel().x, chassis.linvel().y, chassis.linvel().z].map((n) => +n.toFixed(2)) : null,
+          w: chassis ? [chassis.angvel().x, chassis.angvel().y, chassis.angvel().z].map((n) => +n.toFixed(2)) : null,
+          y: +curPos.y.toFixed(3),
+          gear: drivetrain.gearLabel(),
+          phase,
+          hits,
+          timeLeft: +timeLeft.toFixed(1),
+          target: lot?.target,
+          inSlot,
+          dwell: +dwell.toFixed(2),
+        }
+      }
       onStats?.({
+        game: TEST
+          ? null
+          : {
+              level,
+              kind: lot?.kind ?? levelKind(level),
+              started,
+              distance,
+              hitAgo: simTime - lastHitAt,
+              timeLeft,
+              hits,
+              total,
+              phase,
+              dwell,
+              inSlot,
+              lateral,
+              longitudinal,
+              angleDeg,
+              stars,
+              score,
+              timeBonus,
+            },
+        gearbox: autoGear ? 'automático' : 'manual',
         fps,
         stepsLastFrame: stepsThisFrame,
         accumulatorMs: acc * 1000,
@@ -529,21 +778,38 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     world = new RAPIER.World({ x: 0, y: -9.81, z: 0 })
     world.timestep = DT
 
-    track = buildTrack(scene, world)
-    road = buildRoad(scene, world)
+    // Chão físico (o visual vem do estacionamento ou da pista de testes)
+    if (TEST) {
+      track = buildTrack(scene, world)
+      road = buildRoad(scene, world)
+    } else {
+      world.createCollider(RAPIER.ColliderDesc.cuboid(200, 0.5, 200).setTranslation(0, -0.5, 0))
+    }
 
     chassis = world.createRigidBody(
       RAPIER.RigidBodyDesc.dynamic().setTranslation(0, VEHICLE.spawnHeight, 0),
     )
     // densidade = massa / volume da caixa
     const volume = CH.x * 2 * (CH.y * 2) * (CH.z * 2)
-    world.createCollider(
+    chassisCollider = world.createCollider(
       RAPIER.ColliderDesc.cuboid(CH.x, CH.y, CH.z).setDensity(VEHICLE.mass / volume),
       chassis,
     )
 
     vehicle = createVehicle(world, chassis, (h) => track?.muOf(h) ?? 1)
-    resetChassis()
+    if (TEST) resetChassis()
+    else startLevel()
+    // Gancho de teste (só em desenvolvimento): põe o carro numa pose (x, z, rumo em graus)
+    if (import.meta.env.DEV) {
+      ;(window as unknown as { __teleport: unknown }).__teleport = (x: number, z: number, yawDeg: number) => {
+        const r = THREE.MathUtils.degToRad(yawDeg)
+        chassis?.setTranslation({ x, y: 1.0, z }, true)
+        chassis?.setRotation({ x: 0, y: Math.sin(r / 2), z: 0, w: Math.cos(r / 2) }, true)
+        chassis?.setLinvel({ x: 0, y: 0, z: 0 }, true)
+        chassis?.setAngvel({ x: 0, y: 0, z: 0 }, true)
+        started = true
+      }
+    }
     frame = requestAnimationFrame(tick)
   })
 
@@ -557,17 +823,23 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     window.removeEventListener('pointermove', onMove)
     window.removeEventListener('resize', onResize)
     vehicle?.dispose()
+    lot?.dispose() // antes de liberar o mundo: remove os colisores dele
     world?.free()
     wheelGeo.dispose()
     track?.dispose()
     road?.dispose()
     effects?.dispose()
     carAudio.dispose()
+    minimap?.dispose()
     contactGeo.dispose()
     contactTex.dispose()
     pmrem.dispose()
     rimGeo.dispose()
     rimMat.dispose()
+    carKit.dispose()
+    headLit.dispose()
+    tailLit.dispose()
+    reverseLit.dispose()
     chassisEdgesGeo.dispose()
     chassisEdgesMat.dispose()
     comGeo.dispose()

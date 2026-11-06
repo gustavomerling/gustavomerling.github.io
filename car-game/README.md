@@ -20,10 +20,18 @@ npm run dev      # desenvolvimento
 npm run build    # gera dist/ (publicado em /car-game/dist/)
 ```
 
+Jogo: **estacionar** na vaga verde de um estacionamento sorteado a cada nível. Níveis de vaga
+perpendicular e, a cada três, de **baliza** (vaga paralela entre dois carros, na rua ao sul).
+Carros parados, cones a partir do nível 4, relógio (começa no primeiro pedal), cada batida custa
+5 s, e 1 a 3 estrelas por centralização, ângulo e batidas. Tempo esgotado repete o nível.
+`?nivel=N` começa num nível. Câmbio automático (padrão, com "auto-hold": soltar tudo para o carro)
+ou manual (`T` alterna, ou `?cambio=manual`). A pista de testes original continua em `?mode=teste`.
+
 Carros: `?car=rua` (padrão) ou `?car=esportivo`.
 
 Controles: WASD ou setas dirigem · Espaço freio de mão · Q/E marchas · B ABS · C câmera ·
-K colisores · M mudo · R reinicia · F3 debug · F4 ajustes visuais. Controle: RT/LT, stick, A, LB/RB, B.
+K colisores · M mudo · R volta à largada · Enter próximo nível / tentar de novo · H ajuda ·
+F3 debug · F4 ajustes visuais. Controle: RT/LT, stick, A, LB/RB, B.
 
 ---
 
