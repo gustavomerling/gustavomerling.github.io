@@ -29,6 +29,10 @@ export type Vehicle = {
   suspensionForce: (i: number) => number
   /** Velocidade angular da roda i (rad/s), para girar o modelo. */
   spin: (i: number) => number
+  /** Ponto de contato da roda i com o chão (mundo), ou null no ar. */
+  contactPoint: (i: number) => Vec3 | null
+  /** Aderência da superfície sob a roda i (1 = asfalto). */
+  surfaceMu: (i: number) => number
   /** Ângulo de esterçamento da roda i (rad, positivo = para +x do modelo). Só dianteiras. */
   steerAngle: (i: number) => number
   /** Ângulo médio da direção (rad, positivo = para +x do modelo), para o painel. */
@@ -79,6 +83,10 @@ export function createVehicle(
   const steering: SteeringParams = VEHICLE.steering
   let steerCenter = 0
   const wheelSteer = [0, 0, 0, 0]
+
+  // Contato de cada roda no último passo (para marcas e poeira)
+  const contactPts: Array<Vec3 | null> = [null, null, null, null]
+  const contactMu = [1, 1, 1, 1]
 
   CORNERS.forEach(([x, z], i) => {
     ctl.addWheel(
@@ -151,6 +159,7 @@ export function createVehicle(
       if (!ctl.wheelIsInContact(i) || !point || !normal) {
         // No ar: sem força de contato, só a roda gira livre com motor e freio
         tires[i] = { Fx: 0, Fy: 0, slipRatio: 0, slipAngle: 0 }
+        contactPts[i] = null
         spin[i] = integrateSpin(tire, spin[i], 0, drive, brake, dt)
         return
       }
@@ -172,6 +181,8 @@ export function createVehicle(
       // Aderência da superfície onde a roda está (terra, areia...)
       const ground = ctl.wheelGroundObject(i)
       const mu = ground ? muOf(ground.handle) : 1
+      contactPts[i] = { x: point.x, y: point.y, z: point.z }
+      contactMu[i] = mu
       const tireNow = mu === 1 ? tire : { ...tire, muLong: tire.muLong * mu, muLat: tire.muLat * mu }
 
       const r = tireForce(tireNow, load, vLong, vLat, spin[i])
@@ -192,6 +203,8 @@ export function createVehicle(
     tire: (i) => tires[i],
     suspensionForce: (i) => ctl.wheelSuspensionForce(i) ?? 0,
     spin: (i) => spin[i],
+    contactPoint: (i) => contactPts[i],
+    surfaceMu: (i) => contactMu[i],
     steerAngle: (i) => wheelSteer[i],
     steerCenter: () => steerCenter,
     suspensionLength: (i) => ctl.wheelSuspensionLength(i) ?? w.restLength,

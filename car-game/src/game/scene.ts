@@ -6,6 +6,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { createDrivetrain, type Drivetrain } from './drivetrain'
+import { createEffects, type Effects, type WheelFx } from './effects'
 import { buildRoad, type Road } from './road'
 import { buildTrack, type Track } from './track'
 import { visual } from './visual'
@@ -111,6 +112,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
   // Chão, grade, faixas, cones e rampa: ver track.ts (montado quando o Rapier carrega)
   let track: Track | null = null
   let road: Road | null = null
+  const effects: Effects | null = createEffects(scene)
 
   // Carro visual: carroceria, cabine, saia escura e rodas (posições vêm da suspensão)
   const car = new THREE.Group()
@@ -386,6 +388,21 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
         // Direita do carro = +1 para o usuário; o modelo gira para +x (esquerda), então o sinal é invertido em vehicle.ts
         steer: input.steer,
       })
+      // Marcas de pneu e poeira, com o contato e o escorregamento deste passo
+      if (effects) {
+        const wheelFx: WheelFx[] = []
+        for (let i = 0; i < 4; i++) {
+          const t = vehicle.tire(i)
+          wheelFx.push({
+            inContact: vehicle.inContact(i),
+            point: vehicle.contactPoint(i),
+            mu: vehicle.surfaceMu(i),
+            slipRatio: t.slipRatio,
+            slipAngle: t.slipAngle,
+          })
+        }
+        effects.update(DT, wheelFx, chassisSpeed)
+      }
       world.step()
       readChassis()
       simTime += DT
@@ -488,6 +505,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     wheelGeo.dispose()
     track?.dispose()
     road?.dispose()
+    effects?.dispose()
     contactGeo.dispose()
     contactTex.dispose()
     pmrem.dispose()
