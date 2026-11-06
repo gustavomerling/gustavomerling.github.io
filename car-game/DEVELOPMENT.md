@@ -1,5 +1,8 @@
 # Plano de desenvolvimento
 
+> **Situação:** passos 0 a 10 aprovados (✅). Passos 11 a 23 implementados em sequência,
+> sem marcação de aprovação: o teste de cada um fica a seu cargo. Marque ✅ conforme aprovar.
+
 Cada passo termina com algo **testável**. Fluxo: eu implemento, faço
 `npm run build`, você testa e aprova, e só então sigo para o próximo.
 Ao aprovar, o passo é commitado junto com o `dist/`.

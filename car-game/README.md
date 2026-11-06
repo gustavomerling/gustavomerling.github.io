@@ -7,8 +7,23 @@ completo (suspensão, pneus, motor, freios, direção), e não uma animação.
 Stack: **Vite + React + TypeScript + Three.js**. Publicado no GitHub Pages em
 `/car-game/dist/`.
 
-> Status: **hello world** (passo 0 do [DEVELOPMENT.md](DEVELOPMENT.md)). Cena com
-> chão, sol, ambiente HDR e um carro-placeholder de caixas e cilindros.
+> Status: **todos os passos implementados** (0 a 23 do [DEVELOPMENT.md](DEVELOPMENT.md)).
+> Passos 0 a 10 foram testados e aprovados um a um. Os passos 11 a 23 foram implementados
+> em sequência, sem teste individual: a validação no navegador é a próxima etapa.
+
+## Como rodar
+
+```bash
+cd car-game
+npm install
+npm run dev      # desenvolvimento
+npm run build    # gera dist/ (publicado em /car-game/dist/)
+```
+
+Carros: `?car=rua` (padrão) ou `?car=esportivo`.
+
+Controles: WASD ou setas dirigem · Espaço freio de mão · Q/E marchas · B ABS · C câmera ·
+K colisores · M mudo · R reinicia · F3 debug · F4 ajustes visuais. Controle: RT/LT, stick, A, LB/RB, B.
 
 ---
 
