@@ -13,7 +13,7 @@ Requisitos e decisões: ver [README](README.md).
 | # | Passo | Como testar |
 |---|-------|-------------|
 | 0 ✅ | **Hello world**: Vite + React + Three.js, cena com chão, sol, ambiente HDR, carro-placeholder e órbita por arrasto. | A cena aparece, o arrasto gira a câmera e a janela redimensiona sem problema. |
-| 1 | **Loop de física**: passo fixo (120 Hz) desacoplado do render, com interpolação visual. Painel de debug mostra FPS e passos por quadro. | Girar a janela ou trocar de aba não muda a velocidade da simulação. |
+| 1 ✅ | **Loop de física**: passo fixo (120 Hz) desacoplado do render, com interpolação visual. Painel de debug mostra FPS e passos por quadro. | Girar a janela ou trocar de aba não muda a velocidade da simulação. |
 | 2 | **Entrada de controles**: teclado (W/A/S/D ou setas, espaço para freio de mão) mapeado para acelerador, direção, freio. Estado visível no debug. | Cada tecla muda o valor certo no painel. |
 
 ## Fase B: Física do veículo

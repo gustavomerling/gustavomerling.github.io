@@ -1,12 +1,32 @@
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 
+/** Frequência da simulação física (passo fixo). */
+export const PHYSICS_HZ = 120
+const DT = 1 / PHYSICS_HZ
+/** Quadro longo demais (aba em segundo plano, travamento): corta para não "pular" a simulação. */
+const MAX_FRAME_TIME = 0.25
+const STATS_INTERVAL_MS = 250
+
+export type SimStats = {
+  fps: number
+  stepsLastFrame: number
+  accumulatorMs: number
+  simTime: number
+  clamped: boolean
+}
+
+// Placeholder de simulação: o carro anda em círculo. Só serve para provar o loop.
+const CIRCLE_RADIUS = 6
+const CIRCLE_SPEED = 3 // m/s
+
 /**
- * Hello world: cena com chão, um carro-placeholder (caixas e cilindros),
- * sombras, iluminação com ambiente HDR e câmera orbital simples.
+ * Hello world + loop de física: cena com chão, carro-placeholder, sombras,
+ * iluminação HDR e câmera orbital. A simulação roda em passo fixo; o render
+ * interpola entre os dois últimos estados.
  * Devolve uma função de limpeza para o React.
  */
-export function startScene(container: HTMLElement): () => void {
+export function startScene(container: HTMLElement, onStats?: (s: SimStats) => void): () => void {
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.setSize(container.clientWidth, container.clientHeight)
@@ -85,6 +105,18 @@ export function startScene(container: HTMLElement): () => void {
   })
   scene.add(car)
 
+  // Estado da simulação: ângulo do carro no círculo, atual e do passo anterior
+  let simAngle = 0
+  let prevAngle = 0
+  let simTime = 0
+  let acc = 0
+
+  const placeCar = (a: number) => {
+    car.position.set(Math.cos(a) * CIRCLE_RADIUS, 0, Math.sin(a) * CIRCLE_RADIUS)
+    car.rotation.y = -a
+  }
+  placeCar(0)
+
   // Órbita simples por arrasto
   let yaw = 0.6
   let pitch = 0.3
@@ -121,9 +153,36 @@ export function startScene(container: HTMLElement): () => void {
   }
   window.addEventListener('resize', onResize)
 
+  // Loop: passo fixo de física, render a cada quadro com interpolação
+  let last = performance.now()
+  let statsStart = last
+  let framesCount = 0
+  let fps = 0
+  let stepsThisFrame = 0
+  let clamped = false
   let frame = 0
-  const tick = () => {
+
+  const tick = (now: number) => {
     frame = requestAnimationFrame(tick)
+
+    let elapsed = (now - last) / 1000
+    last = now
+    clamped = elapsed > MAX_FRAME_TIME
+    if (clamped) elapsed = MAX_FRAME_TIME
+    acc += elapsed
+
+    stepsThisFrame = 0
+    while (acc >= DT) {
+      prevAngle = simAngle
+      simAngle += (CIRCLE_SPEED / CIRCLE_RADIUS) * DT
+      simTime += DT
+      acc -= DT
+      stepsThisFrame++
+    }
+
+    const alpha = acc / DT
+    placeCar(prevAngle + (simAngle - prevAngle) * alpha)
+
     camera.position.set(
       Math.sin(yaw) * Math.cos(pitch) * radius,
       Math.sin(pitch) * radius + 1,
@@ -131,8 +190,23 @@ export function startScene(container: HTMLElement): () => void {
     )
     camera.lookAt(0, 0.8, 0)
     renderer.render(scene, camera)
+
+    framesCount++
+    const elapsedStats = now - statsStart
+    if (elapsedStats >= STATS_INTERVAL_MS) {
+      fps = (framesCount * 1000) / elapsedStats
+      framesCount = 0
+      statsStart = now
+      onStats?.({
+        fps,
+        stepsLastFrame: stepsThisFrame,
+        accumulatorMs: acc * 1000,
+        simTime,
+        clamped,
+      })
+    }
   }
-  tick()
+  frame = requestAnimationFrame(tick)
 
   return () => {
     cancelAnimationFrame(frame)

@@ -45,3 +45,25 @@ body,
 .hud strong {
   color: var(--accent);
 }
+
+.debug {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  min-width: 220px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.55);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  pointer-events: none;
+}
+
+.debug strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.debug .warn {
+  color: #ffb347;
+}
