@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { PHYSICS_HZ, startScene, type SimStats } from './game/scene'
 import { visual } from './game/visual'
+import { CAR_NAME } from './game/vehicle-config'
 
 // Ordem das rodas em vehicle.ts: 0 e 1 dianteiras (0 no lado direito do carro), 2 e 3 traseiras
 const WHEEL_NAMES = ['FD', 'FE', 'TD', 'TE']
@@ -40,7 +41,7 @@ export default function App() {
     <>
       <div className="viewport" ref={mountRef} />
       <div className="hud">
-        <strong>Car Game</strong> · hello world
+        <strong>Car Game</strong> · carro <strong>{CAR_NAME}</strong> (troque com ?car=rua ou ?car=esportivo)
         <br />
         Arraste para girar a câmera · F3 = debug · F4 = ajustes visuais
         <br />

@@ -1,8 +1,11 @@
 /**
  * Parâmetros do veículo. Tudo em SI (metros, kg, N).
- * Eixo: +z é a frente do carro, +y para cima, origem no centro do chassi.
+ * Eixo: +z é a frente do carro, +x é a esquerda do carro, +y para cima, origem no centro do chassi.
+ *
+ * Dois carros: "rua" (padrão) e "esportivo". Escolha pela URL: ?car=esportivo
  */
-export const VEHICLE = {
+
+const BASE = {
   /** Massa do chassi (kg). */
   mass: 1200,
   /** Meia-medida da caixa do chassi (colisor e carroceria). */
@@ -13,7 +16,7 @@ export const VEHICLE = {
   wheels: {
     /** Raio da roda (m). */
     radius: 0.36,
-    /** Largura da roda (m), só visual por enquanto. */
+    /** Largura da roda (m). */
     width: 0.3,
     /** Metade da bitola (distância do centro até a roda, em x). */
     trackHalf: 1.0,
@@ -119,4 +122,37 @@ export const VEHICLE = {
       rear: 8000,
     },
   },
-} as const
+}
+
+export type VehicleConfig = typeof BASE
+
+/** Esportivo: mais leve, motor que gira mais alto e entrega mais torque, mais aderência e freio, direção direta e suspensão firme. */
+const SPORT: VehicleConfig = {
+  ...BASE,
+  mass: 1100,
+  tire: { ...BASE.tire, muLong: 1.12, muLat: 1.1 },
+  engine: {
+    ...BASE.engine,
+    redlineRpm: 7800,
+    torqueCurve: [
+      [800, 200],
+      [2500, 340],
+      [5000, 430],
+      [6500, 420],
+      [7800, 360],
+    ],
+    gears: [-3.2, 0, 3.0, 2.0, 1.45, 1.1, 0.9],
+    finalDrive: 3.7,
+  },
+  steering: { ...BASE.steering, maxAngleLow: 0.5, maxAngleHigh: 0.07 },
+  brakes: { ...BASE.brakes, front: 4300, rear: 3300 },
+  suspension: { ...BASE.suspension, stiffness: 42, antiRoll: { front: 18000, rear: 12000 } },
+}
+
+/** Nome do carro escolhido pela URL (?car=esportivo). Padrão: rua. */
+export const CAR_NAME: 'rua' | 'esportivo' =
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('car') === 'esportivo'
+    ? 'esportivo'
+    : 'rua'
+
+export const VEHICLE: VehicleConfig = CAR_NAME === 'esportivo' ? SPORT : BASE
