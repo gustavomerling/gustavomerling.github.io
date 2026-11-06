@@ -2,6 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat'
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { createDrivetrain, type Drivetrain } from './drivetrain'
+import { buildTrack, type Track } from './track'
 import { createKeyboardInput, type DriveInput } from './input'
 import { createVehicle, type Vehicle } from './vehicle'
 import { VEHICLE } from './vehicle-config'
@@ -87,19 +88,8 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
   sun.shadow.normalBias = 0.01
   scene.add(sun)
 
-  // Chão visual (asfalto placeholder); o colisor fica em y ∈ [-1, 0]
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(200, 200),
-    new THREE.MeshStandardMaterial({ color: 0x3a3d43, roughness: 0.9, metalness: 0 }),
-  )
-  ground.rotation.x = -Math.PI / 2
-  ground.receiveShadow = true
-  scene.add(ground)
-
-  // Grade no chão (1 m por célula): mostra o movimento e a escala
-  const grid = new THREE.GridHelper(200, 200, 0x7a7f89, 0x4d525c)
-  grid.position.y = 0.005
-  scene.add(grid)
+  // Chão, grade, faixas, cones e rampa: ver track.ts (montado quando o Rapier carrega)
+  let track: Track | null = null
 
   // Carro visual: carroceria, cabine, saia escura e rodas (posições vêm da suspensão)
   const car = new THREE.Group()
@@ -431,7 +421,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     world = new RAPIER.World({ x: 0, y: -9.81, z: 0 })
     world.timestep = DT
 
-    world.createCollider(RAPIER.ColliderDesc.cuboid(200, 0.5, 200).setTranslation(0, -0.5, 0))
+    track = buildTrack(scene, world)
 
     chassis = world.createRigidBody(
       RAPIER.RigidBodyDesc.dynamic().setTranslation(0, VEHICLE.spawnHeight, 0),
@@ -460,8 +450,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     vehicle?.dispose()
     world?.free()
     wheelGeo.dispose()
-    grid.geometry.dispose()
-    ;(grid.material as THREE.Material).dispose()
+    track?.dispose()
     contactGeo.dispose()
     contactTex.dispose()
     pmrem.dispose()
