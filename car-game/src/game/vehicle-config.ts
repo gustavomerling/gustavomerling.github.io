@@ -110,5 +110,13 @@ export const VEHICLE = {
     relaxation: 4,
     /** Força máxima que uma mola aplica (N). */
     maxForce: 40000,
+    /**
+     * Barra estabilizadora por eixo (N/m): puxa uma roda para cima quando a do outro lado
+     * comprime mais. Dá rolagem controlada em curva. Mais alto = carro mais "plano".
+     */
+    antiRoll: {
+      front: 12000,
+      rear: 8000,
+    },
   },
 } as const

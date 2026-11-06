@@ -76,11 +76,16 @@ export default function App() {
           <div>
             Velocidade <strong>{stats.chassisSpeed.toFixed(2)} m/s</strong>
           </div>
-          <div className="section">Suspensão</div>
+          <div>
+            Arfagem <strong>{stats.pitchDeg.toFixed(1)}°</strong> (+ nariz para cima) · Rolagem{' '}
+            <strong>{stats.rollDeg.toFixed(1)}°</strong> (+ esquerda para cima)
+          </div>
+          <div className="section">Suspensão e carga</div>
           {stats.wheels.map((w, i) => (
             <div key={i}>
               {WHEEL_NAMES[i]}{' '}
-              <strong>{w.suspensionLength.toFixed(2)} m</strong> {w.inContact ? 'no chão' : 'no ar'}
+              <strong>{w.suspensionLength.toFixed(2)} m</strong> · carga <strong>{Math.round(w.load)} N</strong>{' '}
+              {w.inContact ? '' : '(no ar)'}
             </div>
           ))}
           <div className="section">Pneus</div>

@@ -94,10 +94,35 @@ export function createVehicle(world: RAPIER.World, chassis: RAPIER.RigidBody): V
     ctl.setWheelSideFrictionStiffness(i, 0)
   })
 
+  /**
+   * Barra estabilizadora: por eixo, se uma roda comprime mais que a outra, empurra o chassi
+   * para cima no lado que está mais baixo e para baixo no outro (impulsos iguais e opostos).
+   */
+  const applyAntiRoll = (dt: number, q: RAPIER.Rotation, t: Vec3) => {
+    const up = rotateByQuat({ x: 0, y: 1, z: 0 }, q)
+    const pairs: Array<[number, number, number]> = [
+      [0, 1, s.antiRoll.front], // eixo dianteiro: roda -x e roda +x
+      [2, 3, s.antiRoll.rear], // eixo traseiro
+    ]
+    for (const [neg, pos, k] of pairs) {
+      const lenNeg = ctl.wheelSuspensionLength(neg) ?? w.restLength
+      const lenPos = ctl.wheelSuspensionLength(pos) ?? w.restLength
+      // Se a roda +x comprime mais (lenPos menor), F > 0 e o lado +x sobe
+      const F = k * (lenNeg - lenPos)
+      const pPos = add(t, rotateByQuat({ x: CORNERS[pos][0], y: w.connectionY, z: CORNERS[pos][1] }, q))
+      const pNeg = add(t, rotateByQuat({ x: CORNERS[neg][0], y: w.connectionY, z: CORNERS[neg][1] }, q))
+      chassis.applyImpulseAtPoint(scale(up, F * dt), pPos, true)
+      chassis.applyImpulseAtPoint(scale(up, -F * dt), pNeg, true)
+    }
+  }
+
   const applyTires = (dt: number, cmd: DriveCommands) => {
     const q = chassis.rotation()
+    const tr = chassis.translation()
     // Frente do carro (+z local) no referencial do mundo
     const f0 = rotateByQuat({ x: 0, y: 0, z: 1 }, q)
+
+    applyAntiRoll(dt, q, { x: tr.x, y: tr.y, z: tr.z })
 
     // Direção: o volante vai até o alvo (limitado pela velocidade de giro) e o alvo depende da velocidade
     const lv = chassis.linvel()

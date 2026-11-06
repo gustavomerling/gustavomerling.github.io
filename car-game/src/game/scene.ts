@@ -22,6 +22,8 @@ export type WheelStats = {
   slipRatio: number
   /** Ângulo de escorregamento (graus). */
   slipAngleDeg: number
+  /** Carga da mola na roda (N): sobe na roda que recebe o peso. */
+  load: number
 }
 
 export type SimStats = {
@@ -38,6 +40,10 @@ export type SimStats = {
   abs: boolean
   /** Direção: ângulo médio das rodas dianteiras (graus, positivo = direita). */
   steerDeg: number
+  /** Arfagem (graus): positivo = nariz para cima. */
+  pitchDeg: number
+  /** Rolagem (graus): positivo = lado esquerdo para cima. */
+  rollDeg: number
 }
 
 /**
@@ -211,9 +217,13 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     inContact: false,
     slipRatio: 0,
     slipAngleDeg: 0,
+    load: 0,
   }))
   // Ângulo de giro acumulado de cada roda (só visual)
   const wheelAngle = [0, 0, 0, 0]
+  // Inclinação do chassi (rad), para o painel
+  let pitchRad = 0
+  let rollRad = 0
 
   // ABS: alternado com B
   let absOn: boolean = VEHICLE.brakes.absDefault
@@ -230,12 +240,18 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     curPos.set(t.x, t.y, t.z)
     curQuat.set(r.x, r.y, r.z, r.w)
     chassisSpeed = Math.hypot(v.x, v.y, v.z)
+    // Nariz (+z) e lado +x (esquerda do carro) no mundo: arfagem e rolagem
+    const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(curQuat)
+    const side = new THREE.Vector3(1, 0, 0).applyQuaternion(curQuat)
+    pitchRad = Math.asin(THREE.MathUtils.clamp(fwd.y, -1, 1))
+    rollRad = Math.asin(THREE.MathUtils.clamp(side.y, -1, 1))
     for (let i = 0; i < vehicle.wheelCount; i++) {
       const tire = vehicle.tire(i)
       wheelStats[i].suspensionLength = vehicle.suspensionLength(i)
       wheelStats[i].inContact = vehicle.inContact(i)
       wheelStats[i].slipRatio = tire.slipRatio
       wheelStats[i].slipAngleDeg = THREE.MathUtils.radToDeg(tire.slipAngle)
+      wheelStats[i].load = vehicle.suspensionForce(i)
       wheelAngle[i] += vehicle.spin(i) * DT
     }
   }
@@ -351,6 +367,8 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
         abs: absOn,
         // Positivo = direita do carro (oposto ao eixo +x do modelo)
         steerDeg: -THREE.MathUtils.radToDeg(vehicle?.steerCenter() ?? 0),
+        pitchDeg: THREE.MathUtils.radToDeg(pitchRad),
+        rollDeg: THREE.MathUtils.radToDeg(rollRad),
       })
     }
   }

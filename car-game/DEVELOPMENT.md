@@ -26,7 +26,7 @@ Requisitos e decisões: ver [README](README.md).
 | 6 ✅ | **Motor e transmissão**: curva de torque simplificada, marchas manuais (Q/E). | Subir de marcha muda o RPM e a aceleração. |
 | 7 ✅ | **Freios e ABS opcional**: freio por roda, freio de mão (espaço). | Frear reto para em distância crível; o freio de mão trava as traseiras. |
 | 8 ✅ | **Direção**: esterçamento com limite que diminui com a velocidade. | Em alta velocidade o volante responde menos; em baixa, o carro vira fechado. |
-| 9 | **Transferência de peso**: frear inclina o carro para frente, acelerar para trás, curva para o lado externo. | A carroceria rola e arfa de forma visível. |
+| 9 ✅ | **Transferência de peso**: frear inclina o carro para frente, acelerar para trás, curva para o lado externo. | A carroceria rola e arfa de forma visível. |
 
 ## Fase C: Câmera e mundo
 
