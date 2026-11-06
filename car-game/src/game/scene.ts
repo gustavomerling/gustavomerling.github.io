@@ -6,6 +6,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { createDrivetrain, type Drivetrain } from './drivetrain'
+import { createCarAudio, type CarAudio } from './audio'
 import { createEffects, type Effects, type WheelFx } from './effects'
 import { buildRoad, type Road } from './road'
 import { buildTrack, type Track } from './track'
@@ -117,6 +118,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
   let track: Track | null = null
   let road: Road | null = null
   const effects: Effects | null = createEffects(scene)
+  const carAudio: CarAudio = createCarAudio()
 
   // Carro visual: carroceria, cabine, saia escura e rodas (posições vêm da suspensão)
   const car = new THREE.Group()
@@ -377,6 +379,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     if (k === 'r') resetChassis()
     if (k === 'c') cameraMode = cameraMode === 'perseguição' ? 'livre' : 'perseguição'
     if (k === 'k') showColliders = !showColliders
+    if (k === 'm') carAudio.toggleMute()
   }
   window.addEventListener('keydown', onKey)
 
@@ -459,6 +462,18 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
         wheelMeshes[i].rotation.x = wheelAngle[i]
         wheelMeshes[i].rotation.y = vehicle.steerAngle(i)
       }
+    }
+
+    // Áudio: motor pelo rpm e pelo acelerador; chiado pelo maior escorregamento entre as rodas
+    if (vehicle) {
+      let squeal = 0
+      for (let i = 0; i < 4; i++) {
+        if (!vehicle.inContact(i)) continue
+        const t = vehicle.tire(i)
+        const level = Math.abs(t.slipRatio) / 0.5 + Math.abs(t.slipAngle) / 0.25
+        squeal = Math.max(squeal, Math.min(1, level))
+      }
+      carAudio.update({ rpm: drivetrain.rpm, throttle: input.throttle, squeal })
     }
 
     // Depuração (K): contorno, centro de massa e contato de cada roda
@@ -547,6 +562,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     track?.dispose()
     road?.dispose()
     effects?.dispose()
+    carAudio.dispose()
     contactGeo.dispose()
     contactTex.dispose()
     pmrem.dispose()

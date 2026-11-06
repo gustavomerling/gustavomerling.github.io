@@ -46,7 +46,7 @@ export default function App() {
         <br />
         WASD ou setas dirigem · Espaço = freio de mão · Q/E = marcha · B = ABS · C = câmera · R = reiniciar
         <br />
-        K = colisores e centro de massa
+        K = colisores e centro de massa · M = mudo
         <br />
         Controle: RT acelera · LT freia · stick dirige · A freio de mão · LB/RB marcha · B ABS
       </div>
