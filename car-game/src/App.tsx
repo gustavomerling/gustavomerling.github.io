@@ -36,7 +36,7 @@ export default function App() {
         <br />
         Arraste para girar a câmera · F3 = painel de debug
         <br />
-        WASD ou setas dirigem · Espaço = freio de mão · Q/E = marcha · B = ABS · R = reiniciar
+        WASD ou setas dirigem · Espaço = freio de mão · Q/E = marcha · B = ABS · C = câmera · R = reiniciar
       </div>
       {showDebug && stats && (
         <div className="debug">

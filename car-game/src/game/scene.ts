@@ -40,6 +40,8 @@ export type SimStats = {
   abs: boolean
   /** Direção: ângulo médio das rodas dianteiras (graus, positivo = direita). */
   steerDeg: number
+  /** Modo da câmera (C alterna). */
+  camera: 'perseguição' | 'livre'
   /** Arfagem (graus): positivo = nariz para cima. */
   pitchDeg: number
   /** Rolagem (graus): positivo = lado esquerdo para cima. */
@@ -224,6 +226,9 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
   // Inclinação do chassi (rad), para o painel
   let pitchRad = 0
   let rollRad = 0
+  // Aceleração longitudinal (m/s²) e velocidade com sinal no passo anterior
+  let longAccel = 0
+  let prevSignedSpeed = 0
 
   // ABS: alternado com B
   let absOn: boolean = VEHICLE.brakes.absDefault
@@ -243,6 +248,10 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     // Nariz (+z) e lado +x (esquerda do carro) no mundo: arfagem e rolagem
     const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(curQuat)
     const side = new THREE.Vector3(1, 0, 0).applyQuaternion(curQuat)
+    // Aceleração longitudinal (suavizada), para a câmera ficar para trás ao acelerar
+    const signedSpeed = v.x * fwd.x + v.y * fwd.y + v.z * fwd.z
+    longAccel += ((signedSpeed - prevSignedSpeed) / DT - longAccel) * 0.2
+    prevSignedSpeed = signedSpeed
     pitchRad = Math.asin(THREE.MathUtils.clamp(fwd.y, -1, 1))
     rollRad = Math.asin(THREE.MathUtils.clamp(side.y, -1, 1))
     for (let i = 0; i < vehicle.wheelCount; i++) {
@@ -267,8 +276,55 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     prevQuat.copy(curQuat)
   }
 
+  // Câmera: "perseguição" (atrás do carro, suave) ou "livre" (órbita com arrasto). C alterna.
+  let cameraMode: 'perseguição' | 'livre' = 'perseguição'
+  const camPos = new THREE.Vector3()
+  const camLook = new THREE.Vector3()
+  let camReady = false
+  const fwdFlat = new THREE.Vector3()
+
+  const updateCamera = (carPos: THREE.Vector3, carQuat: THREE.Quaternion, dt: number) => {
+    const target = carPos.clone().add(new THREE.Vector3(0, 0.8, 0))
+
+    if (cameraMode === 'livre') {
+      camera.position.set(
+        target.x + Math.sin(yaw) * Math.cos(pitch) * radius,
+        target.y + Math.sin(pitch) * radius + 1,
+        target.z + Math.cos(yaw) * Math.cos(pitch) * radius,
+      )
+      camera.lookAt(target)
+      camReady = false // ao voltar à perseguição, a câmera começa de onde o carro está
+      return
+    }
+
+    // Direção de frente do carro, só no plano do chão
+    fwdFlat.set(0, 0, 1).applyQuaternion(carQuat)
+    fwdFlat.y = 0
+    fwdFlat.normalize()
+
+    // Mais longe em alta velocidade; ao acelerar, a câmera fica para trás (atraso inercial)
+    const dist = 6 + Math.min(Math.abs(chassisSpeed), 30) * 0.15
+    const desired = target
+      .clone()
+      .addScaledVector(fwdFlat, -dist - longAccel * 0.04)
+      .add(new THREE.Vector3(0, 2.4, 0))
+
+    if (!camReady) {
+      camPos.copy(desired)
+      camLook.copy(target)
+      camReady = true
+    }
+    // Suavização exponencial: independe do FPS
+    camPos.lerp(desired, 1 - Math.exp(-4 * dt))
+    camLook.lerp(target, 1 - Math.exp(-8 * dt))
+    camera.position.copy(camPos)
+    camera.lookAt(camLook)
+  }
+
   const onKey = (e: KeyboardEvent) => {
-    if (e.key.toLowerCase() === 'r') resetChassis()
+    const k = e.key.toLowerCase()
+    if (k === 'r') resetChassis()
+    if (k === 'c') cameraMode = cameraMode === 'perseguição' ? 'livre' : 'perseguição'
   }
   window.addEventListener('keydown', onKey)
 
@@ -338,13 +394,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
       }
     }
 
-    const target = renderPos.clone().add(new THREE.Vector3(0, 0.8, 0))
-    camera.position.set(
-      target.x + Math.sin(yaw) * Math.cos(pitch) * radius,
-      target.y + Math.sin(pitch) * radius + 1,
-      target.z + Math.cos(yaw) * Math.cos(pitch) * radius,
-    )
-    camera.lookAt(target)
+    updateCamera(renderPos, renderQuat, elapsed)
     renderer.render(scene, camera)
 
     framesCount++
@@ -367,6 +417,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
         abs: absOn,
         // Positivo = direita do carro (oposto ao eixo +x do modelo)
         steerDeg: -THREE.MathUtils.radToDeg(vehicle?.steerCenter() ?? 0),
+        camera: cameraMode,
         pitchDeg: THREE.MathUtils.radToDeg(pitchRad),
         rollDeg: THREE.MathUtils.radToDeg(rollRad),
       })

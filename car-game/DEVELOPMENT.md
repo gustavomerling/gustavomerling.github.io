@@ -32,7 +32,7 @@ Requisitos e decisões: ver [README](README.md).
 
 | # | Passo | Como testar |
 |---|-------|-------------|
-| 10 | **Câmera de perseguição**: suave, com atraso pela aceleração. Tecla C alterna com câmera livre. | A câmera acompanha sem tremer e a sensação de velocidade aumenta. |
+| 10 ✅ | **Câmera de perseguição**: suave, com atraso pela aceleração. Tecla C alterna com câmera livre. | A câmera acompanha sem tremer e a sensação de velocidade aumenta. |
 | 11 | **Pista de teste**: área plana com marcações, cones e rampa. | O carro sobe a rampa e faz manobras na pista. |
 | 12 | **Superfícies**: asfalto, terra e areia com aderência diferente. | Na areia o carro perde tração e derrapa mais. |
 | 13 | **Estradas**: trecho com curvas, subida e descida, gerado a partir de uma lista de pontos. | Dirigir o trecho inteiro sem sair da pista. |
