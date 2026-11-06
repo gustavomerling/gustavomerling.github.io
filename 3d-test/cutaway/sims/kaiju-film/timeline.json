@@ -1,0 +1,12 @@
+{
+  "duration": 21.0,
+  "script": [
+    {"t": 3.0, "act": "head"},
+    {"t": 5.8, "act": "chest"},
+    {"t": 8.6, "act": "arm"},
+    {"t": 11.4, "act": "tail"},
+    {"t": 14.2, "act": "exploded"},
+    {"t": 17.2, "act": "assemble"},
+    {"t": 18.4, "act": "roar"}
+  ]
+}

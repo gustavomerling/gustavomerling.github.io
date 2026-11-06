@@ -1,0 +1,4 @@
+node_modules/
+cutaway-out/
+__pycache__/
+*.pyc

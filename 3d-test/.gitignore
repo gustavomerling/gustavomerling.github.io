@@ -1,0 +1,13 @@
+# the skill's upstream clone metadata and installs
+cutaway/.git-upstream/
+cutaway/node_modules/
+cutaway/docs/*.gif
+# render scratch: keep only the final film, the page, the score and two review sheets
+cutaway-out/*
+!cutaway-out/kaiju.mp4
+!cutaway-out/kaiju-score.wav
+!cutaway-out/kaiju-r16-stack.png
+!cutaway-out/kaiju-film-beats2.png
+!cutaway-out/dist/
+cutaway-out/dist/*
+!cutaway-out/dist/kaiju-film.html
