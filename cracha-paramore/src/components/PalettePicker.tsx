@@ -5,6 +5,7 @@ import {
   ARTIST_LABEL,
   COLOR_PALETTES,
   MONO_PALETTES,
+  albumVariations,
   getPalette,
   paletteLabel,
   type AlbumInfo,
@@ -39,15 +40,20 @@ function AlbumGrid({
 }) {
   return (
     <div className="grid grid-cols-3 gap-x-2.5 gap-y-4">
-      {palettes.map((palette) => {
-        const album = palette.album!
-        const selected = palette.id === value
+      {palettes.map((first) => {
+        const album = first.album!
+        const variations = albumVariations(first)
+        const current = variations.find((p) => p.id === value)
+        const selected = Boolean(current)
+        const palette = current ?? first
         return (
           <button
-            key={palette.id}
+            key={first.id}
             type="button"
             aria-pressed={selected}
-            onClick={() => onChange(palette.id)}
+            onClick={() => {
+              if (!selected) onChange(first.id)
+            }}
             className="group min-w-0 text-left"
           >
             <div
@@ -91,6 +97,59 @@ function AlbumGrid({
   )
 }
 
+/** Miniatura do crachá com as cores da paleta. */
+function MiniBadge({ palette }: { palette: Palette }) {
+  return (
+    <span
+      className="flex aspect-[54/86] w-7 shrink-0 overflow-hidden rounded-[3px] border border-white/20"
+      style={{ backgroundColor: palette.bg }}
+    >
+      <span className="w-[26%]" style={{ backgroundColor: palette.block }} />
+      <span className="mt-auto h-[14%] flex-1" style={{ backgroundColor: palette.accent }} />
+    </span>
+  )
+}
+
+function VariationPicker({
+  palette,
+  value,
+  onChange,
+}: {
+  palette: Palette
+  value: PaletteId
+  onChange: (id: PaletteId) => void
+}) {
+  const variations = albumVariations(palette)
+  if (variations.length < 2) return null
+  return (
+    <div>
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
+        Variações · {palette.album!.title}
+      </p>
+      <div className="grid grid-cols-3 gap-2">
+        {variations.map((variation) => {
+          const selected = variation.id === value
+          return (
+            <button
+              key={variation.id}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onChange(variation.id)}
+              className={cn(
+                'relative flex items-center gap-2 rounded-lg border-2 p-2 text-left transition',
+                selected ? 'border-primary bg-white/[0.04]' : 'border-white/10 hover:border-white/30',
+              )}
+            >
+              <MiniBadge palette={variation} />
+              <span className="text-[12px] font-medium text-white/80">{variation.variation}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function MonoOption({
   palette,
   selected,
@@ -110,12 +169,7 @@ function MonoOption({
         selected ? 'border-primary bg-white/[0.04]' : 'border-white/10 hover:border-white/30',
       )}
     >
-      <span
-        className="flex aspect-[54/86] w-7 shrink-0 overflow-hidden rounded-[3px] border border-white/20"
-        style={{ backgroundColor: palette.bg }}
-      >
-        <span className="w-[26%]" style={{ backgroundColor: palette.block }} />
-      </span>
+      <MiniBadge palette={palette} />
       <span className="text-[12px] font-medium text-white/80">{palette.name}</span>
       {selected && <CheckMark />}
     </button>
@@ -130,7 +184,9 @@ export function PalettePicker({ value, onChange }: PalettePickerProps) {
     if (selected.album) setTab(selected.album.artist)
   }, [value])
 
-  const byArtist = (artist: Artist) => COLOR_PALETTES.filter((p) => p.album?.artist === artist)
+  // Um cartão por álbum (a primeira variação representa o álbum)
+  const byArtist = (artist: Artist) =>
+    COLOR_PALETTES.filter((p) => p.album?.artist === artist && albumVariations(p)[0] === p)
 
   return (
     <div className="space-y-4">
@@ -150,6 +206,10 @@ export function PalettePicker({ value, onChange }: PalettePickerProps) {
           <AlbumGrid palettes={byArtist('hayley')} value={value} onChange={onChange} />
         </TabsContent>
       </Tabs>
+
+      {selected.album?.artist === tab && (
+        <VariationPicker palette={selected} value={value} onChange={onChange} />
+      )}
 
       <div>
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">

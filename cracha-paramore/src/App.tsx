@@ -141,7 +141,7 @@ export default function App() {
       await ensureFontsReady()
       await new Promise((resolve) => window.setTimeout(resolve, 60))
       const data: BadgeData = { ...badgeData, photo }
-      const base = `cracha-paramore-equipe-${slugify(name)}-v${variant}-${palette.id}`
+      const base = `cracha-paramore-press-${slugify(name)}-v${variant}-${palette.id}`
 
       if (kind === 'png') {
         const canvas = createBadgeCanvas(data, 300)
@@ -179,10 +179,7 @@ export default function App() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex shrink-0 flex-col leading-none">
             <span className="whitespace-nowrap font-display text-[18px] font-bold leading-none tracking-[-0.045em] text-white sm:text-[21px]">
-              PARAMORE
-            </span>
-            <span className="mt-1.5 text-[8px] font-semibold uppercase tracking-[0.52em] text-primary sm:text-[9px]">
-              Brasil
+              PARAMORE BRASIL
             </span>
           </div>
 
@@ -378,7 +375,7 @@ export default function App() {
         <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-8 text-[11px] leading-relaxed text-white/30 sm:flex-row sm:items-end sm:justify-between sm:px-6">
           <div>
             <p className="font-display text-sm font-bold tracking-tight text-white/55">
-              PARAMORE <span className="text-primary">BRASIL</span>
+              PARAMORE BRASIL
             </p>
             <p className="mt-2 max-w-xl">
               Projeto de fã, sem vínculo oficial com Paramore ou Hayley Williams. As capas dos
