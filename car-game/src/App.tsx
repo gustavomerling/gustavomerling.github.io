@@ -60,6 +60,13 @@ export default function App() {
           <div>
             Velocidade <strong>{stats.chassisSpeed.toFixed(2)} m/s</strong>
           </div>
+          <div className="section">Suspensão</div>
+          {stats.wheels.map((w, i) => (
+            <div key={i}>
+              {['FE', 'FD', 'TE', 'TD'][i]}{' '}
+              <strong>{w.suspensionLength.toFixed(2)} m</strong> {w.inContact ? 'no chão' : 'no ar'}
+            </div>
+          ))}
           {input && (
             <>
               <div className="section">Entrada</div>
