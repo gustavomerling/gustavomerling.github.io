@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { createKeyboardInput, type DriveInput } from './input'
 
 /** Frequência da simulação física (passo fixo). */
 export const PHYSICS_HZ = 120
@@ -14,6 +15,7 @@ export type SimStats = {
   accumulatorMs: number
   simTime: number
   clamped: boolean
+  input: DriveInput
 }
 
 // Placeholder de simulação: o carro anda em círculo. Só serve para provar o loop.
@@ -162,6 +164,10 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
   let clamped = false
   let frame = 0
 
+  // Entrada: lida a cada passo de física, para o que o veículo recebe ser o que foi lido na simulação
+  const keyboard = createKeyboardInput()
+  let input: DriveInput = keyboard.read()
+
   const tick = (now: number) => {
     frame = requestAnimationFrame(tick)
 
@@ -173,6 +179,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
 
     stepsThisFrame = 0
     while (acc >= DT) {
+      input = keyboard.read()
       prevAngle = simAngle
       simAngle += (CIRCLE_SPEED / CIRCLE_RADIUS) * DT
       simTime += DT
@@ -203,6 +210,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
         accumulatorMs: acc * 1000,
         simTime,
         clamped,
+        input,
       })
     }
   }
@@ -210,6 +218,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
 
   return () => {
     cancelAnimationFrame(frame)
+    keyboard.dispose()
     renderer.domElement.removeEventListener('pointerdown', onDown)
     window.removeEventListener('pointerup', onUp)
     window.removeEventListener('pointermove', onMove)

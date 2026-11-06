@@ -13,11 +13,17 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'd') setShowDebug((v) => !v)
+      if (e.key === 'F3') {
+        e.preventDefault()
+        setShowDebug((v) => !v)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  const input = stats?.input
+  const pct = (v: number) => `${Math.round(v * 100)}%`
 
   return (
     <>
@@ -25,7 +31,9 @@ export default function App() {
       <div className="hud">
         <strong>Car Game</strong> · hello world
         <br />
-        Arraste para girar a câmera · D = painel de debug
+        Arraste para girar a câmera · F3 = painel de debug
+        <br />
+        WASD ou setas dirigem · Espaço = freio de mão
       </div>
       {showDebug && stats && (
         <div className="debug">
@@ -45,6 +53,24 @@ export default function App() {
             Tempo simulado <strong>{stats.simTime.toFixed(2)} s</strong>
           </div>
           {stats.clamped && <div className="warn">quadro longo cortado</div>}
+          {input && (
+            <>
+              <div className="section">Entrada</div>
+              <div>
+                Acelerador <strong>{pct(input.throttle)}</strong>
+              </div>
+              <div>
+                Freio <strong>{pct(input.brake)}</strong>
+              </div>
+              <div>
+                Direção <strong>{input.steer > 0 ? 'direita' : input.steer < 0 ? 'esquerda' : 'centro'}</strong>{' '}
+                ({input.steer.toFixed(0)})
+              </div>
+              <div>
+                Freio de mão <strong>{input.handbrake ? 'sim' : 'não'}</strong>
+              </div>
+            </>
+          )}
         </div>
       )}
     </>

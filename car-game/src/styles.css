@@ -67,3 +67,12 @@ body,
 .debug .warn {
   color: #ffb347;
 }
+
+.debug .section {
+  margin-top: 6px;
+  color: var(--fg);
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+}
