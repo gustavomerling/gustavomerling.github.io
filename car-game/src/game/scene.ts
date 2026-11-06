@@ -14,7 +14,14 @@ const STATS_INTERVAL_MS = 250
 
 const CH = VEHICLE.chassisHalf
 
-export type WheelStats = { suspensionLength: number; inContact: boolean }
+export type WheelStats = {
+  suspensionLength: number
+  inContact: boolean
+  /** Escorregamento longitudinal (adimensional). */
+  slipRatio: number
+  /** Ângulo de escorregamento (graus). */
+  slipAngleDeg: number
+}
 
 export type SimStats = {
   fps: number
@@ -190,7 +197,11 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
   const wheelStats: WheelStats[] = Array.from({ length: 4 }, () => ({
     suspensionLength: VEHICLE.wheels.restLength,
     inContact: false,
+    slipRatio: 0,
+    slipAngleDeg: 0,
   }))
+  // Ângulo de giro acumulado de cada roda (só visual)
+  const wheelAngle = [0, 0, 0, 0]
 
   const readChassis = () => {
     if (!chassis || !vehicle) return
@@ -201,8 +212,12 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     curQuat.set(r.x, r.y, r.z, r.w)
     chassisSpeed = Math.hypot(v.x, v.y, v.z)
     for (let i = 0; i < vehicle.wheelCount; i++) {
+      const tire = vehicle.tire(i)
       wheelStats[i].suspensionLength = vehicle.suspensionLength(i)
       wheelStats[i].inContact = vehicle.inContact(i)
+      wheelStats[i].slipRatio = tire.slipRatio
+      wheelStats[i].slipAngleDeg = THREE.MathUtils.radToDeg(tire.slipAngle)
+      wheelAngle[i] += vehicle.spin(i) * DT
     }
   }
 
@@ -249,6 +264,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
       prevPos.copy(curPos)
       prevQuat.copy(curQuat)
       vehicle.update(DT)
+      vehicle.applyTires(DT, input)
       world.step()
       readChassis()
       simTime += DT
@@ -270,6 +286,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
       for (let i = 0; i < wheelMeshes.length; i++) {
         const p = vehicle.wheelLocal(i)
         wheelMeshes[i].position.set(p.x, p.y, p.z)
+        wheelMeshes[i].rotation.x = wheelAngle[i]
       }
     }
 

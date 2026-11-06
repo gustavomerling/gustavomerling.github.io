@@ -27,6 +27,35 @@ export const VEHICLE = {
     maxTravel: 0.3,
   },
 
+  tire: {
+    /** Inércia da roda (kg·m²). */
+    inertia: 2.0,
+    /** Atrito de pico: longitudinal e lateral (asfalto seco). */
+    muLong: 1.05,
+    muLat: 1.0,
+    /** Pacejka longitudinal (rigidez, forma, curvatura). */
+    longB: 10,
+    longC: 1.65,
+    longE: 0.8,
+    /** Pacejka lateral (rigidez, forma, curvatura). */
+    latB: 8,
+    latC: 1.3,
+    latE: 0,
+  },
+
+  /**
+   * Torques temporários: motor e freio completos chegam nos passos 6 e 7.
+   * Motor só nas rodas traseiras.
+   */
+  controls: {
+    /** Torque do motor por roda traseira com acelerador cheio (N·m). */
+    driveTorque: 1200,
+    /** Torque do freio de serviço por roda (N·m). */
+    brakeTorque: 3000,
+    /** Torque extra do freio de mão nas rodas traseiras (N·m). */
+    handbrakeTorque: 2500,
+  },
+
   suspension: {
     /** Rigidez da mola. Mais alto = mais dura. */
     stiffness: 30,

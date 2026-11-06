@@ -67,6 +67,14 @@ export default function App() {
               <strong>{w.suspensionLength.toFixed(2)} m</strong> {w.inContact ? 'no chão' : 'no ar'}
             </div>
           ))}
+          <div className="section">Pneus</div>
+          {stats.wheels.map((w, i) => (
+            <div key={i}>
+              {['FE', 'FD', 'TE', 'TD'][i]}{' '}
+              slip <strong>{(w.slipRatio * 100).toFixed(0)}%</strong> · ângulo{' '}
+              <strong>{w.slipAngleDeg.toFixed(1)}°</strong>
+            </div>
+          ))}
           {input && (
             <>
               <div className="section">Entrada</div>
