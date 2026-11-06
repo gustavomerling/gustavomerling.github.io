@@ -12,6 +12,8 @@ export type DriveInput = {
   shiftUp: boolean
   /** Marcha abaixo: aconteceu desde a última leitura (pulso, não estado). */
   shiftDown: boolean
+  /** Alterna o ABS: aconteceu desde a última leitura (pulso). */
+  absToggle: boolean
 }
 
 const THROTTLE_KEYS = ['w', 'arrowup']
@@ -30,6 +32,7 @@ export function createKeyboardInput(): { read: () => DriveInput; dispose: () => 
   // Trocas de marcha pendentes: cada aperto vale uma troca, consumida na próxima leitura
   let pendingUp = 0
   let pendingDown = 0
+  let pendingAbs = 0
 
   const isGameKey = (k: string) =>
     [...THROTTLE_KEYS, ...BRAKE_KEYS, ...LEFT_KEYS, ...RIGHT_KEYS, ...HANDBRAKE_KEYS].includes(k)
@@ -40,6 +43,7 @@ export function createKeyboardInput(): { read: () => DriveInput; dispose: () => 
     if (!e.repeat) {
       if (k === 'e') pendingUp++
       if (k === 'q') pendingDown++
+      if (k === 'b') pendingAbs++
     }
     down.add(k)
   }
@@ -50,6 +54,7 @@ export function createKeyboardInput(): { read: () => DriveInput; dispose: () => 
     down.clear()
     pendingUp = 0
     pendingDown = 0
+    pendingAbs = 0
   }
 
   window.addEventListener('keydown', onDown)
@@ -63,8 +68,10 @@ export function createKeyboardInput(): { read: () => DriveInput; dispose: () => 
     const right = any(RIGHT_KEYS)
     const shiftUp = pendingUp > 0
     const shiftDown = pendingDown > 0
+    const absToggle = pendingAbs > 0
     pendingUp = 0
     pendingDown = 0
+    pendingAbs = 0
     return {
       throttle: any(THROTTLE_KEYS) ? 1 : 0,
       brake: any(BRAKE_KEYS) ? 1 : 0,
@@ -72,6 +79,7 @@ export function createKeyboardInput(): { read: () => DriveInput; dispose: () => 
       handbrake: any(HANDBRAKE_KEYS),
       shiftUp,
       shiftDown,
+      absToggle,
     }
   }
 

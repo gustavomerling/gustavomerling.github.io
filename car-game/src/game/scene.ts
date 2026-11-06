@@ -35,6 +35,7 @@ export type SimStats = {
   chassisSpeed: number
   wheels: WheelStats[]
   engine: { rpm: number; gear: string; torque: number }
+  abs: boolean
 }
 
 /**
@@ -210,6 +211,9 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
   // Ângulo de giro acumulado de cada roda (só visual)
   const wheelAngle = [0, 0, 0, 0]
 
+  // ABS: alternado com B
+  let absOn: boolean = VEHICLE.brakes.absDefault
+
   // Trem de força: motor, caixa e rotação ligada às rodas traseiras
   const drivetrain: Drivetrain = createDrivetrain(VEHICLE.engine)
   let engineTorque = 0 // torque do motor na roda, para o painel
@@ -274,12 +278,18 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
       input = keyboard.read()
       if (input.shiftUp) drivetrain.shift(1, chassisSpeed)
       if (input.shiftDown) drivetrain.shift(-1, chassisSpeed)
+      if (input.absToggle) absOn = !absOn
       prevPos.copy(curPos)
       prevQuat.copy(curQuat)
       vehicle.update(DT)
       const rearOmega = (vehicle.spin(2) + vehicle.spin(3)) / 2
       engineTorque = drivetrain.update(DT, input.throttle, rearOmega)
-      vehicle.applyTires(DT, { brake: input.brake, handbrake: input.handbrake, driveTorque: engineTorque })
+      vehicle.applyTires(DT, {
+        brake: input.brake,
+        handbrake: input.handbrake,
+        driveTorque: engineTorque,
+        abs: absOn,
+      })
       world.step()
       readChassis()
       simTime += DT
@@ -331,6 +341,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
         chassisSpeed,
         wheels: wheelStats.map((w) => ({ ...w })),
         engine: { rpm: drivetrain.rpm, gear: drivetrain.gearLabel(), torque: engineTorque },
+        abs: absOn,
       })
     }
   }

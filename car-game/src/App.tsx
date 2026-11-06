@@ -33,7 +33,7 @@ export default function App() {
         <br />
         Arraste para girar a câmera · F3 = painel de debug
         <br />
-        WASD ou setas dirigem · Espaço = freio de mão · Q/E = marcha · R = reiniciar
+        WASD ou setas dirigem · Espaço = freio de mão · Q/E = marcha · B = ABS · R = reiniciar
       </div>
       {showDebug && stats && (
         <div className="debug">
@@ -59,6 +59,9 @@ export default function App() {
           </div>
           <div>
             Torque na roda traseira <strong>{Math.round(stats.engine.torque)} N·m</strong>
+          </div>
+          <div>
+            ABS <strong>{stats.abs ? 'ligado' : 'desligado'}</strong>
           </div>
           <div className="section">Chassi</div>
           <div>

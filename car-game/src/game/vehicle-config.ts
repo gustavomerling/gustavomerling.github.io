@@ -69,14 +69,20 @@ export const VEHICLE = {
     revRate: 4000,
   },
 
-  /**
-   * Freios (N·m por roda). Valores temporários até o passo 7 (freio final).
-   */
-  controls: {
-    /** Torque do freio de serviço por roda (N·m). */
-    brakeTorque: 3000,
+  /** Freios (N·m por roda). Dianteiros mais fortes: o peso vai para a frente na frenagem. */
+  brakes: {
+    /** Torque do freio de serviço em cada roda dianteira (N·m). */
+    front: 3200,
+    /** Torque do freio de serviço em cada roda traseira (N·m). */
+    rear: 2600,
     /** Torque extra do freio de mão nas rodas traseiras (N·m). */
-    handbrakeTorque: 2500,
+    handbrake: 2500,
+    /** ABS ligado ao iniciar. Alterna com B. */
+    absDefault: true,
+    /** Com ABS, a roda que passa desse escorregamento longitudinal (negativo) solta o freio. */
+    absSlipLimit: -0.2,
+    /** Fração do freio mantida quando o ABS atua (pulsação). */
+    absReduction: 0.25,
   },
 
   suspension: {

@@ -5,7 +5,13 @@ import { VEHICLE } from './vehicle-config'
 export type Vec3 = { x: number; y: number; z: number }
 
 /** Comandos usados pelos pneus. driveTorque é o torque do motor em cada roda traseira (vem do trem de força). */
-export type DriveCommands = { brake: number; handbrake: boolean; driveTorque: number }
+export type DriveCommands = {
+  brake: number
+  handbrake: boolean
+  driveTorque: number
+  /** ABS ligado: solta o freio da roda que trava. */
+  abs: boolean
+}
 
 export type Vehicle = {
   /** Número de rodas (sempre 4). */
@@ -49,7 +55,7 @@ export function createVehicle(world: RAPIER.World, chassis: RAPIER.RigidBody): V
   const w = VEHICLE.wheels
   const s = VEHICLE.suspension
   const tire: TireParams = { ...VEHICLE.tire, radius: w.radius }
-  const ctrl = VEHICLE.controls
+  const brakes = VEHICLE.brakes
 
   // Velocidade angular de cada roda e último resultado do pneu (para debug)
   const spin = [0, 0, 0, 0]
@@ -81,7 +87,10 @@ export function createVehicle(world: RAPIER.World, chassis: RAPIER.RigidBody): V
     CORNERS.forEach((_, i) => {
       const rear = i >= 2
       const drive = rear ? cmd.driveTorque : 0
-      const brake = cmd.brake * ctrl.brakeTorque + (cmd.handbrake && rear ? ctrl.handbrakeTorque : 0)
+      // Freio por roda: dianteiro ou traseiro, mais o freio de mão nas traseiras
+      let brake = cmd.brake * (rear ? brakes.rear : brakes.front) + (cmd.handbrake && rear ? brakes.handbrake : 0)
+      // ABS: a roda que trava (escorregamento além do limite) tem o freio reduzido
+      if (cmd.abs && tires[i].slipRatio < brakes.absSlipLimit) brake *= brakes.absReduction
 
       const point = ctl.wheelContactPoint(i)
       const normal = ctl.wheelContactNormal(i)
