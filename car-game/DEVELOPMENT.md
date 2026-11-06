@@ -20,7 +20,7 @@ Requisitos e decisões: ver [README](README.md).
 
 | # | Passo | Como testar |
 |---|-------|-------------|
-| 3 | **Chassi e chão físico**: carro como corpo rígido com massa e centro de massa, colidindo com o chão. Sem rodas ainda. | O carro cai, assenta no chão e não atravessa. |
+| 3 ✅ | **Chassi e chão físico**: carro como corpo rígido com massa e centro de massa, colidindo com o chão. Sem rodas ainda. | O carro cai, assenta no chão e não atravessa. |
 | 4 | **Suspensão**: quatro rodas com raycast e molas/amortecedores. Parâmetros em um arquivo de dados. | Empurrar o carro: ele balança e volta a assentar. |
 | 5 | **Pneus**: força longitudinal e lateral com curva de escorregamento. | Acelerar e frear com tração; em curva, o carro sai de frente sem tração e a derrapagem aparece. |
 | 6 | **Motor e transmissão**: curva de torque simplificada, marchas manuais (Q/E). | Subir de marcha muda o RPM e a aceleração. |
