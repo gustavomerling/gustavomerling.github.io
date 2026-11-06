@@ -76,3 +76,40 @@ body,
   letter-spacing: 0.08em;
   font-size: 11px;
 }
+
+.visual-panel {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  width: 260px;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.6);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.visual-panel label {
+  display: block;
+  margin-top: 8px;
+}
+
+.visual-panel label.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.visual-panel input[type='range'] {
+  display: block;
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.visual-panel .section {
+  margin-bottom: 4px;
+  color: var(--fg);
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+}

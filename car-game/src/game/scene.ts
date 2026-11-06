@@ -1,9 +1,14 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { createDrivetrain, type Drivetrain } from './drivetrain'
 import { buildRoad, type Road } from './road'
 import { buildTrack, type Track } from './track'
+import { visual } from './visual'
 import { createKeyboardInput, type DriveInput } from './input'
 import { createVehicle, type Vehicle } from './vehicle'
 import { VEHICLE } from './vehicle-config'
@@ -75,6 +80,20 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
 
   const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 200)
 
+  // Pós-processamento: render da cena, bloom (brilho suave) e saída com tone mapping
+  const composer = new EffectComposer(renderer)
+  composer.addPass(new RenderPass(scene, camera))
+  const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(container.clientWidth, container.clientHeight),
+    visual.bloomStrength,
+    0.4,
+    0.85,
+  )
+  composer.addPass(bloomPass)
+  composer.addPass(new OutputPass())
+  composer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  composer.setSize(container.clientWidth, container.clientHeight)
+
   // Sol
   const sun = new THREE.DirectionalLight(0xfff1dd, 2.2)
   sun.position.set(12, 18, 8)
@@ -119,11 +138,17 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
   const wheelRadius = VEHICLE.wheels.radius
   const wheelGeo = new THREE.CylinderGeometry(wheelRadius, wheelRadius, VEHICLE.wheels.width, 32)
   wheelGeo.rotateZ(Math.PI / 2) // eixo ao longo de x
+  // Aro metálico: disco prateado um pouco mais largo que o pneu, filho da roda (gira junto)
+  const rimGeo = new THREE.CylinderGeometry(wheelRadius * 0.6, wheelRadius * 0.6, VEHICLE.wheels.width + 0.02, 24)
+  rimGeo.rotateZ(Math.PI / 2)
+  const rimMat = new THREE.MeshStandardMaterial({ color: 0xb8bcc4, metalness: 1, roughness: 0.28 })
+
   const wheelMeshes: THREE.Mesh[] = []
   for (let i = 0; i < 4; i++) {
     const wheel = new THREE.Mesh(wheelGeo, rubber)
     // Ordem YXZ: o giro (x) acontece no eixo da roda, depois o esterçamento (y) a gira
     wheel.rotation.order = 'YXZ'
+    wheel.add(new THREE.Mesh(rimGeo, rimMat))
     car.add(wheel)
     wheelMeshes.push(wheel)
   }
@@ -187,6 +212,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     const w = container.clientWidth
     const h = container.clientHeight
     renderer.setSize(w, h)
+    composer.setSize(w, h)
     camera.aspect = w / h
     camera.updateProjectionMatrix()
   }
@@ -387,7 +413,14 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     }
 
     updateCamera(renderPos, renderQuat, elapsed)
-    renderer.render(scene, camera)
+    // Ajustes visuais (painel F4): sol, exposição e bloom
+    sun.intensity = visual.sunIntensity
+    const el = THREE.MathUtils.degToRad(visual.sunElevationDeg)
+    sun.position.set(Math.cos(el) * 0.83 * 24, Math.sin(el) * 24, Math.cos(el) * 0.55 * 24)
+    renderer.toneMappingExposure = visual.exposure
+    bloomPass.strength = visual.bloomStrength
+    if (visual.bloom) composer.render()
+    else renderer.render(scene, camera)
 
     framesCount++
     const elapsedStats = now - statsStart
@@ -458,6 +491,9 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     contactGeo.dispose()
     contactTex.dispose()
     pmrem.dispose()
+    rimGeo.dispose()
+    rimMat.dispose()
+    composer.dispose()
     renderer.dispose()
     renderer.domElement.remove()
   }

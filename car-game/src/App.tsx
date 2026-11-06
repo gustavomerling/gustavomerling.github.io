@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { PHYSICS_HZ, startScene, type SimStats } from './game/scene'
+import { visual } from './game/visual'
 
 // Ordem das rodas em vehicle.ts: 0 e 1 dianteiras (0 no lado direito do carro), 2 e 3 traseiras
 const WHEEL_NAMES = ['FD', 'FE', 'TD', 'TE']
@@ -8,6 +9,9 @@ export default function App() {
   const mountRef = useRef<HTMLDivElement>(null)
   const [stats, setStats] = useState<SimStats | null>(null)
   const [showDebug, setShowDebug] = useState(true)
+  const [showVisual, setShowVisual] = useState(false)
+  // Só para re-renderizar o painel quando um ajuste muda (os valores vivem em visual)
+  const [, setVisualTick] = useState(0)
 
   useEffect(() => {
     if (!mountRef.current) return
@@ -19,6 +23,10 @@ export default function App() {
       if (e.key === 'F3') {
         e.preventDefault()
         setShowDebug((v) => !v)
+      }
+      if (e.key === 'F4') {
+        e.preventDefault()
+        setShowVisual((v) => !v)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -34,7 +42,7 @@ export default function App() {
       <div className="hud">
         <strong>Car Game</strong> · hello world
         <br />
-        Arraste para girar a câmera · F3 = painel de debug
+        Arraste para girar a câmera · F3 = debug · F4 = ajustes visuais
         <br />
         WASD ou setas dirigem · Espaço = freio de mão · Q/E = marcha · B = ABS · C = câmera · R = reiniciar
       </div>
@@ -114,6 +122,78 @@ export default function App() {
               </div>
             </>
           )}
+        </div>
+      )}
+      {showVisual && (
+        <div className="visual-panel">
+          <div className="section">Ajustes visuais</div>
+          <label>
+            Sol (intensidade) <strong>{visual.sunIntensity.toFixed(1)}</strong>
+            <input
+              type="range"
+              min={0}
+              max={4}
+              step={0.1}
+              value={visual.sunIntensity}
+              onChange={(e) => {
+                visual.sunIntensity = Number(e.target.value)
+                setVisualTick((t) => t + 1)
+              }}
+            />
+          </label>
+          <label>
+            Sol (altura) <strong>{visual.sunElevationDeg}°</strong>
+            <input
+              type="range"
+              min={10}
+              max={85}
+              step={1}
+              value={visual.sunElevationDeg}
+              onChange={(e) => {
+                visual.sunElevationDeg = Number(e.target.value)
+                setVisualTick((t) => t + 1)
+              }}
+            />
+          </label>
+          <label>
+            Exposição <strong>{visual.exposure.toFixed(2)}</strong>
+            <input
+              type="range"
+              min={0.4}
+              max={1.8}
+              step={0.05}
+              value={visual.exposure}
+              onChange={(e) => {
+                visual.exposure = Number(e.target.value)
+                setVisualTick((t) => t + 1)
+              }}
+            />
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={visual.bloom}
+              onChange={(e) => {
+                visual.bloom = e.target.checked
+                setVisualTick((t) => t + 1)
+              }}
+            />
+            Brilho (bloom)
+          </label>
+          <label>
+            Força do brilho <strong>{visual.bloomStrength.toFixed(2)}</strong>
+            <input
+              type="range"
+              min={0}
+              max={1.5}
+              step={0.05}
+              value={visual.bloomStrength}
+              onChange={(e) => {
+                visual.bloomStrength = Number(e.target.value)
+                setVisualTick((t) => t + 1)
+              }}
+            />
+          </label>
         </div>
       )}
     </>
