@@ -1,6 +1,7 @@
 import type RAPIER from '@dimforge/rapier3d-compat'
 import { integrateSpin, tireForce, type TireParams, type TireResult } from './tires'
 import { VEHICLE } from './vehicle-config'
+import { ackermann, maxSteerAngle, steerTowards, type SteeringParams } from './steering'
 
 export type Vec3 = { x: number; y: number; z: number }
 
@@ -11,6 +12,8 @@ export type DriveCommands = {
   driveTorque: number
   /** ABS ligado: solta o freio da roda que trava. */
   abs: boolean
+  /** Direção: -1 (esquerda do carro) a 1 (direita do carro). */
+  steer: number
 }
 
 export type Vehicle = {
@@ -26,6 +29,10 @@ export type Vehicle = {
   suspensionForce: (i: number) => number
   /** Velocidade angular da roda i (rad/s), para girar o modelo. */
   spin: (i: number) => number
+  /** Ângulo de esterçamento da roda i (rad, positivo = para +x do modelo). Só dianteiras. */
+  steerAngle: (i: number) => number
+  /** Ângulo médio da direção (rad, positivo = para +x do modelo), para o painel. */
+  steerCenter: () => number
   /** Comprimento atual da suspensão da roda i (m). */
   suspensionLength: (i: number) => number
   /** A roda i toca o chão? */
@@ -35,7 +42,10 @@ export type Vehicle = {
   dispose: () => void
 }
 
-/** Rodas na ordem: 0 frente-esquerda, 1 frente-direita, 2 traseira-esquerda, 3 traseira-direita. */
+/**
+ * Rodas na ordem: 0 frente em x negativo (direita do carro), 1 frente em x positivo (esquerda do carro),
+ * 2 e 3 as traseiras. Com a frente em +z, +x é a esquerda do carro.
+ */
 const CORNERS: Array<[number, number]> = [
   [-VEHICLE.wheels.trackHalf, VEHICLE.wheels.wheelbaseHalf],
   [VEHICLE.wheels.trackHalf, VEHICLE.wheels.wheelbaseHalf],
@@ -61,6 +71,11 @@ export function createVehicle(world: RAPIER.World, chassis: RAPIER.RigidBody): V
   const spin = [0, 0, 0, 0]
   const tires: TireResult[] = CORNERS.map(() => ({ Fx: 0, Fy: 0, slipRatio: 0, slipAngle: 0 }))
 
+  // Direção: ângulo médio (suavizado) e o ângulo de cada roda dianteira (Ackermann)
+  const steering: SteeringParams = VEHICLE.steering
+  let steerCenter = 0
+  const wheelSteer = [0, 0, 0, 0]
+
   CORNERS.forEach(([x, z], i) => {
     ctl.addWheel(
       { x, y: w.connectionY, z },
@@ -84,6 +99,16 @@ export function createVehicle(world: RAPIER.World, chassis: RAPIER.RigidBody): V
     // Frente do carro (+z local) no referencial do mundo
     const f0 = rotateByQuat({ x: 0, y: 0, z: 1 }, q)
 
+    // Direção: o volante vai até o alvo (limitado pela velocidade de giro) e o alvo depende da velocidade
+    const lv = chassis.linvel()
+    const speed = Math.hypot(lv.x, lv.y, lv.z)
+    // cmd.steer é direita do carro (+1); o modelo gira para +x (esquerda do carro): sinal invertido
+    const target = -cmd.steer * maxSteerAngle(steering, speed)
+    steerCenter = steerTowards(steerCenter, target, steering.rate, dt)
+    const ack = ackermann(steering, steerCenter)
+    wheelSteer[0] = ack.atNegX // roda 0 está em x negativo
+    wheelSteer[1] = ack.atPosX // roda 1 está em x positivo
+
     CORNERS.forEach((_, i) => {
       const rear = i >= 2
       const drive = rear ? cmd.driveTorque : 0
@@ -101,9 +126,13 @@ export function createVehicle(world: RAPIER.World, chassis: RAPIER.RigidBody): V
         return
       }
 
-      // Base do contato: f (frente projetada no chão) e s (lateral, à direita do carro)
+      // Base do contato: f (frente projetada no chão) e s (lateral; +x, esquerda do carro)
+      // Rodas dianteiras giram: a direção de rolagem é a frente girada pelo esterçamento da roda
       const n = normalize(normal)
-      const f = normalize(sub(f0, scale(n, dot(f0, n))))
+      const f0p = normalize(sub(f0, scale(n, dot(f0, n))))
+      const s0 = cross(n, f0p)
+      const steerRad = wheelSteer[i]
+      const f = add(scale(f0p, Math.cos(steerRad)), scale(s0, Math.sin(steerRad)))
       const s = cross(n, f)
 
       const v = chassis.velocityAtPoint(point)
@@ -129,6 +158,8 @@ export function createVehicle(world: RAPIER.World, chassis: RAPIER.RigidBody): V
     tire: (i) => tires[i],
     suspensionForce: (i) => ctl.wheelSuspensionForce(i) ?? 0,
     spin: (i) => spin[i],
+    steerAngle: (i) => wheelSteer[i],
+    steerCenter: () => steerCenter,
     suspensionLength: (i) => ctl.wheelSuspensionLength(i) ?? w.restLength,
     inContact: (i) => ctl.wheelIsInContact(i),
     wheelLocal: (i) => {

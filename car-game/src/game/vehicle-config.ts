@@ -69,6 +69,22 @@ export const VEHICLE = {
     revRate: 4000,
   },
 
+  /** Direção (ver steering.ts). Só as rodas dianteiras esterçam. */
+  steering: {
+    /** Distância entre eixos (m). */
+    wheelbase: 2.7,
+    /** Bitola (m). */
+    track: 2.0,
+    /** Esterçamento máximo parado (rad, ~35°). */
+    maxAngleLow: 0.61,
+    /** Esterçamento máximo em alta velocidade (rad, ~6°). */
+    maxAngleHigh: 0.1,
+    /** Velocidade em que o máximo chega ao mínimo (m/s). */
+    highSpeed: 25,
+    /** Velocidade de giro do volante (rad/s). */
+    rate: 2.5,
+  },
+
   /** Freios (N·m por roda). Dianteiros mais fortes: o peso vai para a frente na frenagem. */
   brakes: {
     /** Torque do freio de serviço em cada roda dianteira (N·m). */

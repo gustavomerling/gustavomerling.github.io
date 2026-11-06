@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { PHYSICS_HZ, startScene, type SimStats } from './game/scene'
 
+// Ordem das rodas em vehicle.ts: 0 e 1 dianteiras (0 no lado direito do carro), 2 e 3 traseiras
+const WHEEL_NAMES = ['FD', 'FE', 'TD', 'TE']
+
 export default function App() {
   const mountRef = useRef<HTMLDivElement>(null)
   const [stats, setStats] = useState<SimStats | null>(null)
@@ -63,6 +66,9 @@ export default function App() {
           <div>
             ABS <strong>{stats.abs ? 'ligado' : 'desligado'}</strong>
           </div>
+          <div>
+            Direção <strong>{stats.steerDeg.toFixed(1)}°</strong>
+          </div>
           <div className="section">Chassi</div>
           <div>
             Altura <strong>{stats.chassisY.toFixed(2)} m</strong>
@@ -73,14 +79,14 @@ export default function App() {
           <div className="section">Suspensão</div>
           {stats.wheels.map((w, i) => (
             <div key={i}>
-              {['FE', 'FD', 'TE', 'TD'][i]}{' '}
+              {WHEEL_NAMES[i]}{' '}
               <strong>{w.suspensionLength.toFixed(2)} m</strong> {w.inContact ? 'no chão' : 'no ar'}
             </div>
           ))}
           <div className="section">Pneus</div>
           {stats.wheels.map((w, i) => (
             <div key={i}>
-              {['FE', 'FD', 'TE', 'TD'][i]}{' '}
+              {WHEEL_NAMES[i]}{' '}
               slip <strong>{(w.slipRatio * 100).toFixed(0)}%</strong> · ângulo{' '}
               <strong>{w.slipAngleDeg.toFixed(1)}°</strong>
             </div>

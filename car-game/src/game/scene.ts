@@ -36,6 +36,8 @@ export type SimStats = {
   wheels: WheelStats[]
   engine: { rpm: number; gear: string; torque: number }
   abs: boolean
+  /** Direção: ângulo médio das rodas dianteiras (graus, positivo = direita). */
+  steerDeg: number
 }
 
 /**
@@ -120,6 +122,8 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
   const wheelMeshes: THREE.Mesh[] = []
   for (let i = 0; i < 4; i++) {
     const wheel = new THREE.Mesh(wheelGeo, rubber)
+    // Ordem YXZ: o giro (x) acontece no eixo da roda, depois o esterçamento (y) a gira
+    wheel.rotation.order = 'YXZ'
     car.add(wheel)
     wheelMeshes.push(wheel)
   }
@@ -289,6 +293,8 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
         handbrake: input.handbrake,
         driveTorque: engineTorque,
         abs: absOn,
+        // Direita do carro = +1 para o usuário; o modelo gira para +x (esquerda), então o sinal é invertido em vehicle.ts
+        steer: input.steer,
       })
       world.step()
       readChassis()
@@ -312,6 +318,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
         const p = vehicle.wheelLocal(i)
         wheelMeshes[i].position.set(p.x, p.y, p.z)
         wheelMeshes[i].rotation.x = wheelAngle[i]
+        wheelMeshes[i].rotation.y = vehicle.steerAngle(i)
       }
     }
 
@@ -342,6 +349,8 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
         wheels: wheelStats.map((w) => ({ ...w })),
         engine: { rpm: drivetrain.rpm, gear: drivetrain.gearLabel(), torque: engineTorque },
         abs: absOn,
+        // Positivo = direita do carro (oposto ao eixo +x do modelo)
+        steerDeg: -THREE.MathUtils.radToDeg(vehicle?.steerCenter() ?? 0),
       })
     }
   }
