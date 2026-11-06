@@ -57,7 +57,11 @@ const CORNERS: Array<[number, number]> = [
  * Suspensão com quatro rodas (controlador de veículo do Rapier, por raycast).
  * Cada roda tem uma mola e amortecedor; o chassi é o corpo rígido dado.
  */
-export function createVehicle(world: RAPIER.World, chassis: RAPIER.RigidBody): Vehicle {
+export function createVehicle(
+  world: RAPIER.World,
+  chassis: RAPIER.RigidBody,
+  muOf: (colliderHandle: number) => number = () => 1,
+): Vehicle {
   const ctl = world.createVehicleController(chassis)
   ctl.indexUpAxis = 1
   ctl.setIndexForwardAxis = 2
@@ -165,7 +169,12 @@ export function createVehicle(world: RAPIER.World, chassis: RAPIER.RigidBody): V
       const vLat = dot(v, s)
       const load = Math.max(ctl.wheelSuspensionForce(i) ?? 0, 0)
 
-      const r = tireForce(tire, load, vLong, vLat, spin[i])
+      // Aderência da superfície onde a roda está (terra, areia...)
+      const ground = ctl.wheelGroundObject(i)
+      const mu = ground ? muOf(ground.handle) : 1
+      const tireNow = mu === 1 ? tire : { ...tire, muLong: tire.muLong * mu, muLat: tire.muLat * mu }
+
+      const r = tireForce(tireNow, load, vLong, vLat, spin[i])
       tires[i] = r
 
       // Força do pneu no chassi, aplicada no ponto de contato

@@ -6,7 +6,17 @@ import * as THREE from 'three'
  * Cada objeto tem visual (Three.js) e colisor estático (Rapier).
  */
 
-export type Track = { dispose: () => void }
+export type Track = {
+  dispose: () => void
+  /** Fator de aderência da superfície do colisor (1 = asfalto). */
+  muOf: (colliderHandle: number) => number
+}
+
+/** Superfícies: fator de aderência (multiplica o atrito do pneu) e área no chão. */
+const SURFACES = [
+  { name: 'terra', mu: 0.7, color: 0x6b4f35, x: -14, z: 0, w: 12, d: 20 },
+  { name: 'areia', mu: 0.45, color: 0xc9b27c, x: -14, z: -32, w: 12, d: 16 },
+] as const
 
 const CONE_RADIUS = 0.2
 const CONE_HEIGHT = 0.7
@@ -45,6 +55,9 @@ export function buildTrack(scene: THREE.Scene, world: RAPIER.World): Track {
     return g
   }
 
+  // Aderência por colisor (handle). O asfalto (chão) é o padrão 1.
+  const muByHandle = new Map<number, number>()
+
   // Chão: visual e colisor (colisor em y ∈ [-1, 0])
   const ground = add(
     new THREE.Mesh(
@@ -55,6 +68,23 @@ export function buildTrack(scene: THREE.Scene, world: RAPIER.World): Track {
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
   world.createCollider(RAPIER.ColliderDesc.cuboid(200, 0.5, 200).setTranslation(0, -0.5, 0))
+
+  // Superfícies: placas finas sobre o chão (topo em y = 0.02), com o próprio atrito
+  for (const s of SURFACES) {
+    const m = add(
+      new THREE.Mesh(
+        geo(new THREE.PlaneGeometry(s.w, s.d)),
+        mat(new THREE.MeshStandardMaterial({ color: s.color, roughness: 1, metalness: 0 })),
+      ),
+    )
+    m.rotation.x = -Math.PI / 2
+    m.position.set(s.x, 0.01, s.z)
+    m.receiveShadow = true
+    const col = world.createCollider(
+      RAPIER.ColliderDesc.cuboid(s.w / 2, 0.01, s.d / 2).setTranslation(s.x, 0.01, s.z),
+    )
+    muByHandle.set(col.handle, s.mu)
+  }
 
   // Grade de 1 m: mostra movimento e escala
   const grid = add(new THREE.GridHelper(400, 400, 0x7a7f89, 0x4d525c))
@@ -119,5 +149,6 @@ export function buildTrack(scene: THREE.Scene, world: RAPIER.World): Track {
       for (const g of geometries) g.dispose()
       for (const m of materials) m.dispose()
     },
+    muOf: (h) => muByHandle.get(h) ?? 1,
   }
 }

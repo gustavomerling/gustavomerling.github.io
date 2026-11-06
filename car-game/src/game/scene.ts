@@ -2,6 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat'
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { createDrivetrain, type Drivetrain } from './drivetrain'
+import { buildRoad, type Road } from './road'
 import { buildTrack, type Track } from './track'
 import { createKeyboardInput, type DriveInput } from './input'
 import { createVehicle, type Vehicle } from './vehicle'
@@ -90,6 +91,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
 
   // Chão, grade, faixas, cones e rampa: ver track.ts (montado quando o Rapier carrega)
   let track: Track | null = null
+  let road: Road | null = null
 
   // Carro visual: carroceria, cabine, saia escura e rodas (posições vêm da suspensão)
   const car = new THREE.Group()
@@ -422,6 +424,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     world.timestep = DT
 
     track = buildTrack(scene, world)
+    road = buildRoad(scene, world)
 
     chassis = world.createRigidBody(
       RAPIER.RigidBodyDesc.dynamic().setTranslation(0, VEHICLE.spawnHeight, 0),
@@ -433,7 +436,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
       chassis,
     )
 
-    vehicle = createVehicle(world, chassis)
+    vehicle = createVehicle(world, chassis, (h) => track?.muOf(h) ?? 1)
     resetChassis()
     frame = requestAnimationFrame(tick)
   })
@@ -451,6 +454,7 @@ export function startScene(container: HTMLElement, onStats?: (s: SimStats) => vo
     world?.free()
     wheelGeo.dispose()
     track?.dispose()
+    road?.dispose()
     contactGeo.dispose()
     contactTex.dispose()
     pmrem.dispose()
