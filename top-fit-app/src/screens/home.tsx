@@ -1,14 +1,17 @@
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Dumbbell, Flame, HeartPulse, Play } from 'lucide-react';
+import { Check, Crosshair, Dumbbell, Flame, Footprints, HeartPulse, Pencil, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AvatarView } from '@/components/avatar';
+import { Input } from '@/components/ui/input';
+import { MonthCalendar } from '@/components/calendar';
 import { cn } from '@/lib/utils';
-import { dayKey, MONTHS, relativeDay, WEEKDAYS_SHORT, weekStreak } from '@/lib/dates';
-import { exerciseCount, MIN_STRENGTH, type Goal } from '@/lib/training';
-import { useApp, useLevel } from '@/store/useApp';
+import { dayKey, relativeDay, weekStreak } from '@/lib/dates';
+import { ALL_GROUPS, exerciseCount, FOCUS_PRESETS, focusName, MIN_STRENGTH, type Goal } from '@/lib/training';
+import { GRUPO_NOME, type Grupo } from '@/data/exercises';
+import { useApp, useLevel, type StartOptions } from '@/store/useApp';
 
 const DURATIONS = [20, 30, 45, 60, 75, 90];
 const CARDIO = [0, 10, 15, 20, 30];
@@ -32,8 +35,13 @@ export function Home({ onOpenWorkout }: { onOpenWorkout: () => void }) {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).length;
 
-  const start = (min: number, cardio: number) => {
-    startCheckin(min, cardio);
+  const activities = useApp((s) => s.activities);
+  const meals = useApp((s) => s.meals);
+  const filled = useMemo(() => new Set(checkins.map((c) => dayKey(c.date))), [checkins]);
+  const dotted = useMemo(() => new Set([...activities.map((a) => a.day), ...meals.map((m) => m.day)]), [activities, meals]);
+
+  const start = (min: number, cardio: number, opts: StartOptions) => {
+    startCheckin(min, cardio, opts);
     setPickTime(false);
     onOpenWorkout();
   };
@@ -89,7 +97,7 @@ export function Home({ onOpenWorkout }: { onOpenWorkout: () => void }) {
         <Stat label="Semanas seguidas" value={streak} icon={streak > 0 ? <Flame className="size-4 text-orange-400" /> : null} />
       </div>
 
-      <Calendar dates={checkins.map((c) => c.date)} />
+      <MonthCalendar filled={filled} dotted={dotted} />
 
       {last && (
         <p className="text-center text-sm text-muted-foreground">
@@ -116,70 +124,6 @@ function Stat({ label, value, icon }: { label: string; value: number; icon?: Rea
   );
 }
 
-function Calendar({ dates }: { dates: string[] }) {
-  const today = new Date();
-  const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
-  const done = useMemo(() => new Set(dates.map(dayKey)), [dates]);
-
-  const y = cursor.getFullYear();
-  const m = cursor.getMonth();
-  const first = new Date(y, m, 1).getDay();
-  const days = new Date(y, m + 1, 0).getDate();
-  const cells: (number | null)[] = [...Array(first).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
-  const todayKey = dayKey(today);
-  const isCurrentMonth = y === today.getFullYear() && m === today.getMonth();
-
-  return (
-    <Card>
-      <CardContent className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={() => setCursor(new Date(y, m - 1, 1))} aria-label="Mês anterior">
-            <ChevronLeft />
-          </Button>
-          <span className="font-semibold">
-            {MONTHS[m]} {y}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={isCurrentMonth}
-            onClick={() => setCursor(new Date(y, m + 1, 1))}
-            aria-label="Próximo mês"
-          >
-            <ChevronRight />
-          </Button>
-        </div>
-        <div className="grid grid-cols-7 gap-1 text-center text-xs">
-          {WEEKDAYS_SHORT.map((d, i) => (
-            <div key={i} className="pb-1 text-muted-foreground">
-              {d}
-            </div>
-          ))}
-          {cells.map((d, i) => {
-            if (!d) return <div key={i} />;
-            const k = dayKey(new Date(y, m, d));
-            const has = done.has(k);
-            return (
-              <div key={i} className="flex justify-center">
-                <div
-                  className={cn(
-                    'flex size-9 items-center justify-center rounded-full text-sm',
-                    has && 'bg-primary font-bold text-primary-foreground',
-                    !has && k === todayKey && 'ring-1 ring-primary',
-                    !has && k > todayKey && 'text-muted-foreground/50',
-                  )}
-                >
-                  {d}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function CheckinDialog({
   open,
   onOpenChange,
@@ -187,34 +131,63 @@ function CheckinDialog({
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  onStart: (minutes: number, cardio: number) => void;
+  onStart: (minutes: number, cardio: number, opts: StartOptions) => void;
 }) {
   const goal = useApp((s) => s.profile!.goal);
+  const commute = useApp((s) => s.profile!.commute);
+  const setCommute = useApp((s) => s.setCommute);
   const prefs = useApp((s) => s.checkinPrefs);
   const [minutes, setMinutes] = useState(prefs?.minutes ?? 45);
   const [cardio, setCardio] = useState(prefs ? (prefs.cardio === prefs.minutes ? SO_CARDIO : prefs.cardio) : CARDIO_PADRAO[goal]);
+  const [groups, setGroups] = useState<Grupo[]>([]);
+  const [walked, setWalked] = useState(!!prefs?.walked && !!commute);
+  const [editCommute, setEditCommute] = useState(false);
+  const [km, setKm] = useState('');
+  const [walkMin, setWalkMin] = useState('');
 
   const valid = (c: number) => c === SO_CARDIO || minutes - c >= MIN_STRENGTH;
   // Se o tempo diminuiu e o cardio escolhido não cabe mais, usa o maior que cabe
   const cardioOk = valid(cardio) ? cardio : [...CARDIO].reverse().find(valid)!;
   const cardioMin = cardioOk === SO_CARDIO ? minutes : cardioOk;
   const n = exerciseCount(goal, minutes - cardioMin);
+  const walkOn = walked && !!commute;
 
-  const resumo =
-    cardioOk === SO_CARDIO
-      ? `${minutes} min de cardio`
-      : `${n} exercícios${cardioMin ? ` + ${cardioMin} min de cardio` : ''}`;
+  const toggleGroup = (g: Grupo) => setGroups((gs) => (gs.includes(g) ? gs.filter((x) => x !== g) : [...gs, g]));
+  const sameAs = (list: Grupo[]) => list.length === groups.length && list.every((g) => groups.includes(g));
+
+  const openCommuteEditor = () => {
+    setKm(commute ? String(commute.km).replace('.', ',') : '');
+    setWalkMin(commute ? String(commute.minutes) : '');
+    setEditCommute(true);
+  };
+  const kmN = Number(km.replace(',', '.'));
+  const minN = Number(walkMin);
+  const commuteValid = kmN > 0 && kmN <= 50 && minN > 0 && minN <= 300;
+  const saveCommute = () => {
+    setCommute({ km: kmN, minutes: minN });
+    setEditCommute(false);
+    setWalked(true);
+  };
+
+  const parts: string[] = [];
+  if (cardioOk === SO_CARDIO) parts.push(`${minutes} min de cardio`);
+  else {
+    parts.push(`${n} exercícios${groups.length ? ` de ${focusName(groups).toLowerCase()}` : ''}`);
+    if (cardioMin) parts.push(`${cardioMin} min de cardio`);
+  }
+  if (walkOn) parts.push(`caminhada de ${commute!.minutes} min`);
+  const resumo = parts.join(' + ');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-h-[92dvh] max-w-sm overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Treino de hoje</DialogTitle>
           <DialogDescription>O treino é montado para caber no seu tempo.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">
-          <div className="text-sm font-medium">Quanto tempo você tem?</div>
+          <div className="text-sm font-medium">Quanto tempo você tem na academia?</div>
           <div className="grid grid-cols-6 gap-1.5">
             {DURATIONS.map((m) => (
               <Chip key={m} selected={minutes === m} onClick={() => setMinutes(m)}>
@@ -227,7 +200,7 @@ function CheckinDialog({
 
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 text-sm font-medium">
-            <HeartPulse className="size-4 text-primary" /> Cardio
+            <HeartPulse className="size-4 text-primary" /> Cardio na academia
           </div>
           <div className="grid grid-cols-3 gap-1.5">
             {CARDIO.map((c) => (
@@ -241,16 +214,129 @@ function CheckinDialog({
           </div>
         </div>
 
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5 text-sm font-medium">
+            <Footprints className="size-4 text-primary" /> Caminhada até a academia
+          </div>
+          {editCommute ? (
+            <div className="space-y-2 rounded-xl border p-3">
+              <p className="text-xs text-muted-foreground">Ida e volta somadas. Fica salvo para os próximos checkins.</p>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  Distância (km)
+                  <Input inputMode="decimal" placeholder="2" value={km} onChange={(e) => setKm(e.target.value.replace(/[^\d.,]/g, ''))} className="h-10 text-base text-foreground" />
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  Tempo (min)
+                  <Input inputMode="numeric" placeholder="20" value={walkMin} onChange={(e) => setWalkMin(e.target.value.replace(/[^\d]/g, '').slice(0, 3))} className="h-10 text-base text-foreground" />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={() => setEditCommute(false)}>
+                  Cancelar
+                </Button>
+                <Button disabled={!commuteValid} onClick={saveCommute}>
+                  Salvar trajeto
+                </Button>
+              </div>
+            </div>
+          ) : commute ? (
+            <div className="flex items-stretch gap-2">
+              <button
+                type="button"
+                onClick={() => setWalked(!walked)}
+                className={cn(
+                  'flex flex-1 items-center gap-3 rounded-xl border p-3 text-left transition',
+                  walkOn ? 'border-primary bg-primary/10' : 'hover:bg-muted/50',
+                )}
+              >
+                <div className={cn('flex size-5 shrink-0 items-center justify-center rounded-md border', walkOn && 'border-primary bg-primary text-primary-foreground')}>
+                  {walkOn && <Check className="size-3.5" />}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold">Fui (ou vou) a pé</div>
+                  <div className="text-xs text-muted-foreground">
+                    {commute.km.toLocaleString('pt-BR')} km · {commute.minutes} min, conta como cardio fora do tempo do treino
+                  </div>
+                </div>
+              </button>
+              <Button variant="outline" size="icon" className="h-auto w-10" onClick={openCommuteEditor} aria-label="Editar trajeto">
+                <Pencil />
+              </Button>
+            </div>
+          ) : (
+            <button type="button" onClick={openCommuteEditor} className="w-full rounded-xl border border-dashed p-3 text-left text-sm text-muted-foreground hover:bg-muted/50">
+              Vai a pé para a academia? Cadastre o trajeto e ele conta como cardio.
+            </button>
+          )}
+        </div>
+
+        {cardioOk !== SO_CARDIO && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 text-sm font-medium">
+              <Crosshair className="size-4 text-primary" /> Foco
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <Pill selected={groups.length === 0} onClick={() => setGroups([])}>
+                Automático
+              </Pill>
+              {FOCUS_PRESETS.map((p) => (
+                <Pill key={p.nome} selected={groups.length > 0 && sameAs(p.grupos)} onClick={() => setGroups(p.grupos)}>
+                  {p.nome}
+                </Pill>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {ALL_GROUPS.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => toggleGroup(g)}
+                  className={cn(
+                    'h-9 rounded-lg border px-1 text-xs font-medium transition',
+                    groups.includes(g) ? 'border-primary bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted/50',
+                  )}
+                >
+                  {GRUPO_NOME[g]}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {groups.length ? 'Só os grupos marcados entram no treino.' : 'O app escolhe a parte do corpo mais descansada.'}
+            </p>
+          </div>
+        )}
+
         <div className="rounded-xl bg-muted/60 p-3 text-center text-sm">
           <span className="text-muted-foreground">Hoje: </span>
           <span className="font-semibold">{resumo}</span>
         </div>
 
-        <Button size="lg" className="h-12 text-base" onClick={() => onStart(minutes, cardioMin)}>
+        <Button
+          size="lg"
+          className="h-12 text-base"
+          disabled={editCommute}
+          onClick={() => onStart(minutes, cardioMin, { groups: cardioOk === SO_CARDIO ? undefined : groups, walked: walkOn })}
+        >
           <Play /> Começar treino
         </Button>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Pill({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'h-8 rounded-full border px-3 text-xs font-semibold transition',
+        selected ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted/50',
+      )}
+    >
+      {children}
+    </button>
   );
 }
 

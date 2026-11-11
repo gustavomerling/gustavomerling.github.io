@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { useApp } from '@/store/useApp';
+import { ACCENTS } from '@/lib/theme';
 import { bodyPrims, boxCorners, depth, poseAt, project, solve, type AnimDef, type Prim, type View } from './rig';
 
 /** Fecho convexo (monotone chain) dos pontos projetados. */
@@ -21,7 +23,6 @@ function hull(pts: [number, number][]) {
 /** Cantos arredondados das caixas */
 const BOX_ROUND = 0.025;
 
-const BODY_COLOR = '#16a34a';
 const EQUIP_COLOR = '#171717';
 const FAR_OPACITY = 0.35;
 /** Equipamento levemente transparente para deixar ver as mãos/membros atrás dele */
@@ -54,6 +55,9 @@ function useAnimTime(ref: React.RefObject<Element | null>) {
 export function ExerciseFigure({ def, view, className, time }: { def: AnimDef; view: View; className?: string; time?: number }) {
   const ref = useRef<SVGSVGElement>(null);
   const clock = useAnimTime(ref);
+  // Corpo na cor de destaque escolhida (tom escuro o bastante para o fundo branco)
+  const accent = useApp((s) => s.theme.accent);
+  const BODY_COLOR = ACCENTS.find((a) => a.id === accent)?.figure ?? '#16a34a';
   const t = time ?? clock;
 
   const joints = solve(poseAt(def, t), def);

@@ -1,4 +1,4 @@
-import { EXERCISES, EXERCISE_BY_ID, type Equip, type Exercise, type Grupo } from '@/data/exercises';
+import { EXERCISES, EXERCISE_BY_ID, GRUPO_NOME, type Equip, type Exercise, type Grupo } from '@/data/exercises';
 
 export type Goal = 'hipertrofia' | 'emagrecimento' | 'forca' | 'saude';
 
@@ -8,6 +8,13 @@ export const GOALS: { id: Goal; nome: string; desc: string }[] = [
   { id: 'forca', nome: 'Ficar mais forte', desc: 'Cargas altas, poucas repetições' },
   { id: 'saude', nome: 'Saúde e disposição', desc: 'Condicionamento e bem-estar' },
 ];
+
+/** Uma série registrada. Nos isométricos, `reps` são segundos. */
+export interface SetLog {
+  reps?: number;
+  kg?: number;
+  done: boolean;
+}
 
 export interface SessionExercise {
   uid: string;
@@ -23,6 +30,17 @@ export interface SessionExercise {
   weightKg?: number;
   /** Distância percorrida no cardio (km) */
   distanceKm?: number;
+  /** Musculação: séries feitas (pode ter mais ou menos que o previsto) */
+  log?: SetLog[];
+  /** Séries contadas pelo cronômetro de descanso durante o treino */
+  setsDone?: number;
+}
+
+/** Como a pessoa se sentiu no treino (preenchido ao finalizar). */
+export interface CheckinRating {
+  /** 1 = muito leve … 5 = exaustivo */
+  effort?: 1 | 2 | 3 | 4 | 5;
+  note?: string;
 }
 
 export interface Checkin {
@@ -37,6 +55,9 @@ export interface Checkin {
   exercises: SessionExercise[];
   /** Exercícios já trocados nesta sessão (não voltam no Refresh) */
   skipped: string[];
+  /** Grupos escolhidos no checkin (ausente = automático pela recuperação) */
+  chosenGroups?: Grupo[];
+  rating?: CheckinRating;
 }
 
 // ---------- Cargas ----------
@@ -58,6 +79,73 @@ export function weightHistory(checkins: Checkin[], exerciseId: string) {
     for (const se of c.exercises)
       if (se.exerciseId === exerciseId && se.done && se.weightKg != null) out.push({ date: c.date, kg: se.weightKg });
   return out;
+}
+
+// ---------- Séries ----------
+
+/** Faixa de repetições (ou segundos) da prescrição: "8–12" → {min: 8, max: 12}. */
+export function parseTarget(reps: string) {
+  const m = reps.match(/(\d+)(?:\s*[–-]\s*(\d+))?/);
+  if (!m) return null;
+  const min = Number(m[1]);
+  return { min, max: m[2] ? Number(m[2]) : min };
+}
+
+/** Última vez em que o exercício foi feito (checkins concluídos). */
+export function lastPerformance(history: Checkin[], exerciseId: string) {
+  for (let i = history.length - 1; i >= 0; i--)
+    for (const se of history[i].exercises)
+      if (se.exerciseId === exerciseId && (se.done || se.log?.some((r) => r.done))) return { date: history[i].date, se };
+  return null;
+}
+
+/** Séries iniciais: repete a carga da última vez; reps no topo da faixa. */
+export function initLog(ex: Exercise, sets: number, reps: string, history: Checkin[]): SetLog[] {
+  const target = parseTarget(reps);
+  const last = lastPerformance(history, ex.id)?.se;
+  const lastRows = last?.log?.filter((r) => r.done) ?? [];
+  const lastKg = usesWeight(ex) ? (lastRows.at(-1)?.kg ?? last?.weightKg) : undefined;
+  return Array.from({ length: sets }, (_, i) => ({
+    done: false,
+    kg: usesWeight(ex) ? (lastRows[i]?.kg ?? lastKg) : undefined,
+    reps: target?.max,
+  }));
+}
+
+/** Recalcula os campos resumidos (feito, carga, nº de séries) a partir das séries. */
+export function syncFromLog(se: SessionExercise): SessionExercise {
+  if (!se.log) return se;
+  const doneRows = se.log.filter((r) => r.done);
+  const kg = [...doneRows].reverse().find((r) => r.kg != null)?.kg;
+  return { ...se, sets: se.log.length, done: se.log.length > 0 && doneRows.length === se.log.length, weightKg: kg };
+}
+
+const fmtN = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+
+/** Texto da última vez + sugestão de progressão de carga. */
+export function progression(ex: Exercise, reps: string, history: Checkin[]) {
+  const last = lastPerformance(history, ex.id);
+  if (!last) return null;
+  const rows = last.se.log?.filter((r) => r.done) ?? [];
+  const target = parseTarget(reps);
+  const unit = ex.tempo ? ' s' : '';
+  let text: string;
+  if (rows.length) {
+    const kgs = new Set(rows.map((r) => r.kg));
+    const repsTxt = rows.map((r) => (r.reps ?? '–') + unit).join(', ');
+    if (kgs.size === 1 && rows[0].kg != null) text = `${fmtN(rows[0].kg)} kg × ${repsTxt}`;
+    else if (rows.some((r) => r.kg != null)) text = rows.map((r) => `${r.kg != null ? fmtN(r.kg) : '–'} kg × ${r.reps ?? '–'}`).join(', ');
+    else text = `${rows.length} ${rows.length === 1 ? 'série' : 'séries'}: ${repsTxt}`;
+  } else if (last.se.weightKg != null) text = `${fmtN(last.se.weightKg)} kg`;
+  else return null;
+
+  // Progressão: fez todas as séries no topo da faixa com a mesma carga → sobe um degrau
+  let suggestKg: number | undefined;
+  const lastKg = rows.at(-1)?.kg;
+  if (usesWeight(ex) && lastKg != null && target && rows.length > 0 && rows.length === (last.se.log?.length ?? 0)) {
+    if (rows.every((r) => r.kg === lastKg && (r.reps ?? 0) >= target.max)) suggestKg = lastKg + weightStep(ex);
+  }
+  return { date: last.date, text, suggestKg };
 }
 
 // ---------- Níveis ----------
@@ -84,7 +172,7 @@ export function levelInfo(completed: number) {
 
 // ---------- Divisão por recuperação ----------
 
-const ALL_GROUPS: Grupo[] = ['quadriceps', 'costas', 'peito', 'posterior', 'gluteos', 'ombros', 'biceps', 'triceps', 'panturrilha', 'core'];
+export const ALL_GROUPS: Grupo[] = ['quadriceps', 'costas', 'peito', 'posterior', 'gluteos', 'ombros', 'biceps', 'triceps', 'panturrilha', 'core'];
 
 /** Quanto espaço cada grupo merece no treino (grupos grandes primeiro). */
 const PESO: Record<Grupo, number> = {
@@ -103,6 +191,26 @@ const SPLITS: Record<1 | 2 | 3, { nome: string; grupos: Grupo[] }[]> = {
     { nome: 'Pernas', grupos: ['quadriceps', 'posterior', 'gluteos', 'panturrilha'] },
   ],
 };
+
+/** Atalhos de foco no checkin. */
+export const FOCUS_PRESETS: { nome: string; grupos: Grupo[] }[] = [
+  { nome: 'Corpo inteiro', grupos: ALL_GROUPS },
+  { nome: 'Superiores', grupos: ['peito', 'costas', 'ombros', 'biceps', 'triceps'] },
+  { nome: 'Inferiores', grupos: ['quadriceps', 'posterior', 'gluteos', 'panturrilha'] },
+  { nome: 'Empurrar', grupos: ['peito', 'ombros', 'triceps'] },
+  { nome: 'Puxar', grupos: ['costas', 'biceps'] },
+  { nome: 'Braços', grupos: ['biceps', 'triceps'] },
+];
+
+const sameSet = (a: Grupo[], b: Grupo[]) => a.length === b.length && a.every((g) => b.includes(g));
+
+/** Nome do foco a partir dos grupos: atalho conhecido ou "Peito, Costas e Bíceps". */
+export function focusName(grupos: Grupo[]) {
+  const preset = [...FOCUS_PRESETS, ...SPLITS[2], ...SPLITS[3]].find((p) => sameSet(p.grupos, grupos));
+  if (preset) return preset.nome;
+  const names = ALL_GROUPS.filter((g) => grupos.includes(g)).map((g) => GRUPO_NOME[g]);
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} e ${names.at(-1)}` : (names[0] ?? 'Treino');
+}
 
 const WEEK_H = 168;
 
@@ -194,21 +302,45 @@ function scoreExercise(ex: Exercise, ctx: GenContext, preferCompound: boolean, r
 }
 
 function candidates(grupo: Grupo, ctx: GenContext, exclude: Set<string>) {
-  return EXERCISES.filter((e) => e.grupo === grupo && e.nivel <= ctx.nivel && !ctx.blocked.includes(e.id) && !exclude.has(e.id));
+  return EXERCISES.filter((e) => e.grupo === grupo && !e.extra && e.nivel <= ctx.nivel && !ctx.blocked.includes(e.id) && !exclude.has(e.id));
 }
 
 function recentIds(history: Checkin[]) {
   return history.slice(-3).reverse().map((c) => c.exercises.map((e) => e.exerciseId));
 }
 
-export function generateCheckin(ctx: GenContext, minutes: number, cardioMin = 0, now = Date.now()): Checkin {
+export interface CheckinOptions {
+  /** Grupos escolhidos pela pessoa; vazio = automático */
+  groups?: Grupo[];
+  /** Caminhada até a academia (não ocupa o tempo do treino) */
+  commute?: { km: number; minutes: number };
+}
+
+/** Card da caminhada até a academia, já marcado como feito. */
+export function commuteExercise(c: { km: number; minutes: number }): SessionExercise {
+  return {
+    uid: uid(),
+    exerciseId: 'caminhada-academia',
+    sets: 1,
+    reps: `${c.minutes} min`,
+    restSec: 0,
+    minutes: c.minutes,
+    distanceKm: c.km,
+    detail: 'Ida e volta a pé. Conta como cardio e não ocupa o tempo do treino.',
+    done: true,
+  };
+}
+
+export function generateCheckin(ctx: GenContext, minutes: number, cardioMin = 0, opts: CheckinOptions = {}, now = Date.now()): Checkin {
   const hs = hoursSince(ctx.history, now);
 
-  // 1. Escolhe o foco: a parte do corpo mais descansada
-  const options = SPLITS[ctx.nivel];
-  const split = options
-    .map((o) => ({ o, s: o.grupos.reduce((a, g) => a + hs[g], 0) / o.grupos.length + Math.random() }))
-    .sort((a, b) => b.s - a.s)[0].o;
+  // 1. Escolhe o foco: o que a pessoa pediu ou a parte do corpo mais descansada
+  const picked = opts.groups?.filter((g) => g !== 'cardio') ?? [];
+  const split = picked.length
+    ? { nome: focusName(picked), grupos: picked }
+    : SPLITS[ctx.nivel]
+        .map((o) => ({ o, s: o.grupos.reduce((a, g) => a + hs[g], 0) / o.grupos.length + Math.random() }))
+        .sort((a, b) => b.s - a.s)[0].o;
 
   // 2. Distribui as vagas entre os grupos do foco
   const n = exerciseCount(ctx.goal, minutes - cardioMin);
@@ -244,7 +376,7 @@ export function generateCheckin(ctx: GenContext, minutes: number, cardioMin = 0,
     return ca - cb || PESO[b.ex.grupo] - PESO[a.ex.grupo] || a.slot - b.slot;
   });
 
-  const exercises: SessionExercise[] = chosen.map(({ ex }) => ({ uid: uid(), exerciseId: ex.id, done: false, ...prescribe(ex, ctx.goal, ctx.nivel) }));
+  const exercises: SessionExercise[] = chosen.map(({ ex }) => newSessionExercise(ex, ctx.goal, ctx.nivel, 0, true, ctx.history));
 
   // 4. Cardio no fim (depois da musculação, para não roubar energia da força)
   if (cardioMin > 0) {
@@ -254,6 +386,7 @@ export function generateCheckin(ctx: GenContext, minutes: number, cardioMin = 0,
       exercises.push(newSessionExercise(ex, ctx.goal, ctx.nivel, cardioMin, exercises.length > 0));
     }
   }
+  if (opts.commute) exercises.unshift(commuteExercise(opts.commute));
 
   return {
     id: uid(),
@@ -262,6 +395,7 @@ export function generateCheckin(ctx: GenContext, minutes: number, cardioMin = 0,
     cardioMin,
     focus: chosen.length ? (cardioMin > 0 ? `${split.nome} + cardio` : split.nome) : 'Cardio',
     skipped: [],
+    chosenGroups: picked.length ? picked : undefined,
     exercises,
   };
 }
@@ -289,7 +423,40 @@ export function alternatives(current: Exercise, session: Checkin, ctx: GenContex
   return candidates(current.grupo, ctx, inSession).sort((a, b) => score(b) - score(a) || a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
-export function newSessionExercise(ex: Exercise, goal: Goal, nivel: Nivel, cardioMin = 20, afterStrength = true): SessionExercise {
-  const p = ex.grupo === 'cardio' ? prescribeCardio(ex, goal, nivel, cardioMin, afterStrength) : prescribe(ex, goal, nivel);
-  return { uid: uid(), exerciseId: ex.id, done: false, ...p };
+export function newSessionExercise(ex: Exercise, goal: Goal, nivel: Nivel, cardioMin = 20, afterStrength = true, history: Checkin[] = []): SessionExercise {
+  if (ex.grupo === 'cardio') return { uid: uid(), exerciseId: ex.id, done: false, ...prescribeCardio(ex, goal, nivel, cardioMin, afterStrength) };
+  const p = prescribe(ex, goal, nivel);
+  return { uid: uid(), exerciseId: ex.id, done: false, ...p, log: initLog(ex, p.sets, p.reps, history) };
+}
+
+/** Grupos de musculação presentes na sessão, na ordem padrão. */
+export function sessionGroups(session: Checkin): Grupo[] {
+  const set = new Set(session.exercises.map((e) => EXERCISE_BY_ID[e.exerciseId]?.grupo).filter((g): g is Grupo => !!g && g !== 'cardio'));
+  return ALL_GROUPS.filter((g) => set.has(g));
+}
+
+/** Troca os exercícios ainda não começados do grupo `from` por exercícios do grupo `to`. */
+export function replaceGroup(session: Checkin, from: Grupo, to: Grupo, ctx: GenContext): Checkin {
+  const recent = recentIds(ctx.history);
+  const used = new Set(session.exercises.map((e) => e.exerciseId));
+  let first = !session.exercises.some((e) => EXERCISE_BY_ID[e.exerciseId]?.grupo === to);
+  const exercises: SessionExercise[] = [];
+  for (const se of session.exercises) {
+    const ex = EXERCISE_BY_ID[se.exerciseId];
+    if (!ex || ex.grupo !== from || se.done || se.log?.some((r) => r.done)) {
+      exercises.push(se);
+      continue;
+    }
+    const cands = candidates(to, ctx, used);
+    if (!cands.length) continue; // acabaram as opções do grupo novo: sai do treino
+    const pick = cands.map((e) => ({ e, s: scoreExercise(e, ctx, first, recent) })).sort((a, b) => b.s - a.s)[0].e;
+    first = false;
+    used.add(pick.id);
+    exercises.push({ ...newSessionExercise(pick, ctx.goal, ctx.nivel, 0, true, ctx.history), uid: se.uid });
+  }
+  const next = { ...session, exercises };
+  const grupos = sessionGroups(next);
+  const hasCardio = exercises.some((e) => EXERCISE_BY_ID[e.exerciseId]?.grupo === 'cardio' && e.exerciseId !== 'caminhada-academia');
+  const nome = grupos.length ? focusName(grupos) : 'Cardio';
+  return { ...next, focus: hasCardio && grupos.length ? `${nome} + cardio` : nome };
 }

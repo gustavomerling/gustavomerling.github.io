@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR" class="dark">
+<html lang="pt-BR" class="dark" data-accent="lima">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" href="/top-fit-app/dist/favicon.svg" type="image/svg+xml" />
@@ -11,6 +11,21 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="TOP Fit" />
     <title>T.O.P. Fit App</title>
+    <script>
+      // Aplica o tema salvo antes de pintar (evita piscar o tema escuro no modo claro)
+      try {
+        var t = (JSON.parse(localStorage.getItem('top-fit-app') || '{}').state || {}).theme;
+        if (t) {
+          var dark = t.mode === 'sistema' ? matchMedia('(prefers-color-scheme: dark)').matches : t.mode !== 'claro';
+          var r = document.documentElement;
+          r.classList.toggle('dark', dark);
+          r.dataset.accent = t.accent || 'lima';
+          r.style.colorScheme = dark ? 'dark' : 'light';
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#0a0a0a' : '#f7f7f7');
+          if (!dark) document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').setAttribute('content', 'default');
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

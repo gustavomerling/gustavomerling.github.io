@@ -17,10 +17,12 @@ export function AnimationsPage() {
   const onlyId = params.get('id');
   const groups = new Map<Grupo, Exercise[]>();
   for (const e of EXERCISES) {
+    if (e.extra) continue;
     if ((onlyGroup && e.grupo !== onlyGroup) || (onlyId && e.id !== onlyId)) continue;
     groups.set(e.grupo, [...(groups.get(e.grupo) ?? []), e]);
   }
-  const done = EXERCISES.filter((e) => ANIMS[e.id]).length;
+  const all = EXERCISES.filter((e) => !e.extra);
+  const done = all.filter((e) => ANIMS[e.id]).length;
 
   return (
     <main className="pt-safe pb-safe mx-auto max-w-3xl space-y-6 px-4 pb-10">
@@ -31,7 +33,7 @@ export function AnimationsPage() {
         <div className="flex-1">
           <h1 className="text-xl font-bold">Animações</h1>
           <p className="text-sm text-muted-foreground">
-            {done} de {EXERCISES.length} exercícios animados
+            {done} de {all.length} exercícios animados
           </p>
         </div>
       </header>
@@ -49,8 +51,8 @@ export function AnimationsPage() {
                   </div>
                   <div className="flex shrink-0 flex-wrap justify-end gap-1">
                     {tagsOf(e).slice(-1).map((t) => (
-                      <Badge key={t} variant="secondary" className="font-normal">
-                        {t}
+                      <Badge key={t.label} variant="secondary" className="font-normal">
+                        {t.label}
                       </Badge>
                     ))}
                   </div>

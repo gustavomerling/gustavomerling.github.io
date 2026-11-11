@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Home as HomeIcon, LineChart, User } from 'lucide-react';
+import { BookOpen, Home as HomeIcon, LineChart, User } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/store/useApp';
@@ -9,11 +9,14 @@ import { Workout } from '@/screens/workout';
 import { Evolution } from '@/screens/evolution';
 import { Profile } from '@/screens/profile';
 import { AnimationsPage } from '@/screens/animations';
+import { Diary } from '@/screens/diary';
+import { applyTheme, isDark } from '@/lib/theme';
 
-type Tab = 'inicio' | 'evolucao' | 'perfil';
+type Tab = 'inicio' | 'diario' | 'evolucao' | 'perfil';
 
 const TABS: { id: Tab; label: string; icon: typeof HomeIcon }[] = [
   { id: 'inicio', label: 'Início', icon: HomeIcon },
+  { id: 'diario', label: 'Diário', icon: BookOpen },
   { id: 'evolucao', label: 'Evolução', icon: LineChart },
   { id: 'perfil', label: 'Perfil', icon: User },
 ];
@@ -28,13 +31,32 @@ function useHash() {
   return hash;
 }
 
+/** Mantém o <html> no tema escolhido (e acompanha o sistema no modo automático). */
+function useTheme() {
+  const theme = useApp((s) => s.theme);
+  useEffect(() => {
+    applyTheme(theme);
+    if (theme.mode !== 'sistema') return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const on = () => applyTheme(theme);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, [theme]);
+  return isDark(theme) ? 'dark' : 'light';
+}
+
+export function ThemedToaster() {
+  const mode = useTheme();
+  return <Toaster position="top-center" theme={mode} />;
+}
+
 export default function App() {
   const hash = useHash();
   if (hash.startsWith('#/animacoes')) {
     return (
       <>
         <AnimationsPage />
-        <Toaster position="top-center" />
+        <ThemedToaster />
       </>
     );
   }
@@ -59,6 +81,7 @@ function MainApp() {
     content = (
       <>
         {tab === 'inicio' && <Home onOpenWorkout={() => setWorkoutOpen(true)} />}
+        {tab === 'diario' && <Diary />}
         {tab === 'evolucao' && <Evolution onOpenWorkout={() => setWorkoutOpen(true)} />}
         {tab === 'perfil' && <Profile />}
       </>
@@ -76,7 +99,7 @@ function MainApp() {
 
       {showNav && (
         <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t bg-background/90 backdrop-blur">
-          <div className="mx-auto grid max-w-md grid-cols-3">
+          <div className="mx-auto grid max-w-md grid-cols-4">
             {TABS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -93,7 +116,7 @@ function MainApp() {
           </div>
         </nav>
       )}
-      <Toaster position="top-center" />
+      <ThemedToaster />
     </>
   );
 }

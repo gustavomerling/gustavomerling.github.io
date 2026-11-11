@@ -317,13 +317,35 @@ function CheckinDetail({ checkin, onClose, onReopened }: { checkin: Checkin | nu
             </DialogDescription>
           </DialogHeader>
 
+          {c.rating && (
+            <div className="space-y-1 rounded-lg bg-muted/60 px-3 py-2 text-sm">
+              {c.rating.effort && (
+                <div>
+                  <span className="text-muted-foreground">Esforço: </span>
+                  <span className="font-semibold">
+                    {c.rating.effort}/5 · {['', 'Muito leve', 'Leve', 'Moderado', 'Pesado', 'Exaustivo'][c.rating.effort]}
+                  </span>
+                </div>
+              )}
+              {c.rating.note && <p className="text-muted-foreground">{c.rating.note}</p>}
+            </div>
+          )}
+
           <ul className="space-y-2">
             {c.exercises.map((se) => {
               const ex = EXERCISE_BY_ID[se.exerciseId];
+              const rows = se.log?.filter((r) => r.done) ?? [];
               return (
-                <li key={se.uid} className="flex items-center gap-2.5 text-sm">
-                  {se.done ? <CircleCheck className="size-4 shrink-0 text-primary" /> : <Circle className="size-4 shrink-0 text-muted-foreground" />}
-                  <span className={cn('min-w-0 flex-1', !se.done && 'text-muted-foreground')}>{ex?.nome ?? se.exerciseId}</span>
+                <li key={se.uid} className="flex items-start gap-2.5 text-sm">
+                  {se.done ? <CircleCheck className="mt-0.5 size-4 shrink-0 text-primary" /> : <Circle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
+                  <span className={cn('min-w-0 flex-1', !se.done && 'text-muted-foreground')}>
+                    {ex?.nome ?? se.exerciseId}
+                    {rows.length > 0 && (
+                      <span className="block text-xs text-muted-foreground">
+                        {rows.length} {rows.length === 1 ? 'série' : 'séries'}: {rows.map((r) => (r.kg != null ? `${fmtN(r.kg)}×${r.reps ?? '–'}` : `${r.reps ?? '–'}${ex?.tempo ? ' s' : ''}`)).join(', ')}
+                      </span>
+                    )}
+                  </span>
                   {se.weightKg != null && (
                     <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-primary">
                       <Weight className="size-3" /> {fmtN(se.weightKg)} kg

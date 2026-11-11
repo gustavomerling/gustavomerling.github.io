@@ -15,7 +15,15 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon-180x180.png'],
+      workbox: {
+        // Versão nova assume na hora e limpa caches antigos
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+      },
       manifest: {
+        // id fixo: o celular reconhece o app instalado como o mesmo e aplica as mudanças do manifest
+        id: base,
         name: 'T.O.P. Fit App',
         short_name: 'TOP Fit',
         description: 'Treinos Organizados e Práticos',

@@ -25,6 +25,8 @@ export interface Exercise {
   /** Exercício isométrico, medido em segundos */
   tempo?: boolean;
   instrucoes: string;
+  /** Não é sorteado no treino (ex.: caminhada até a academia, adicionada pelo checkin) */
+  extra?: boolean;
 }
 
 export const GRUPO_LABEL: Record<Grupo, string> = {
@@ -67,14 +69,46 @@ export const EQUIP_LABEL: Record<Equip, string> = {
 
 export const EQUIP_ORDER: Equip[] = ['maquina', 'polia', 'halteres', 'barra', 'kettlebell', 'elastico', 'corporal'];
 
-/** Tags exibidas no card: região + equipamento (+ "Livre" para pesos livres). */
-export function tagsOf(ex: Exercise): string[] {
-  if (ex.grupo === 'cardio') return ['Cardio', ex.equip === 'maquina' ? 'Máquina' : 'Livre'];
-  const tags = [GRUPO_LABEL[ex.grupo]];
-  if (ex.grupo === 'biceps') tags.push('Bíceps');
-  if (ex.grupo === 'triceps') tags.push('Tríceps');
-  if (ex.equip === 'halteres' || ex.equip === 'barra' || ex.equip === 'kettlebell') tags.push('Livre');
-  tags.push(EQUIP_LABEL[ex.equip]);
+/** Músculos que também trabalham nos multiarticulares (por grupo; exceções por id). */
+const SECUNDARIOS_GRUPO: Partial<Record<Grupo, Grupo[]>> = {
+  peito: ['triceps', 'ombros'],
+  costas: ['biceps'],
+  ombros: ['triceps'],
+  triceps: ['peito'],
+  quadriceps: ['gluteos'],
+  posterior: ['gluteos'],
+  gluteos: ['quadriceps'],
+};
+const SECUNDARIOS_ID: Record<string, Grupo[]> = {
+  'levantamento-terra': ['gluteos', 'costas'],
+  'kettlebell-swing': ['gluteos', 'core'],
+  'elevacao-pelvica': ['posterior'],
+  'elevacao-pelvica-maquina': ['posterior'],
+  'pike-pushup': ['triceps'],
+  'barra-fixa': ['biceps', 'core'],
+  'bulgaro': ['gluteos', 'posterior'],
+  'afundo': ['gluteos', 'posterior'],
+  'passada': ['quadriceps', 'posterior'],
+};
+
+export function secondaryOf(ex: Exercise): Grupo[] {
+  if (!ex.composto || ex.grupo === 'cardio') return [];
+  return SECUNDARIOS_ID[ex.id] ?? SECUNDARIOS_GRUPO[ex.grupo] ?? [];
+}
+
+export type Tag = { label: string; kind: 'main' | 'sec' | 'equip' };
+
+/** Tags do card: músculo principal, músculos auxiliares e equipamento (+ "Livre" para pesos livres). */
+export function tagsOf(ex: Exercise): Tag[] {
+  if (ex.grupo === 'cardio')
+    return [
+      { label: 'Cardio', kind: 'main' },
+      { label: ex.equip === 'maquina' ? 'Máquina' : 'Livre', kind: 'equip' },
+    ];
+  const tags: Tag[] = [{ label: GRUPO_NOME[ex.grupo], kind: 'main' }];
+  for (const g of secondaryOf(ex)) tags.push({ label: GRUPO_NOME[g], kind: 'sec' });
+  if (ex.equip === 'halteres' || ex.equip === 'barra' || ex.equip === 'kettlebell') tags.push({ label: 'Livre', kind: 'equip' });
+  tags.push({ label: EQUIP_LABEL[ex.equip], kind: 'equip' });
   return tags;
 }
 
@@ -206,6 +240,7 @@ export const EXERCISES: Exercise[] = [
   E('corrida-rua', 'Corrida ou caminhada ao ar livre', 'cardio', 'corporal', false, 1, 'Alterne trote e caminhada se precisar. O importante é manter o tempo em movimento.'),
   E('pular-corda', 'Pular corda', 'cardio', 'corporal', false, 2, 'Saltos baixos na ponta dos pés, girando a corda com os punhos. Descanse caminhando quando precisar.'),
   E('circuito-aerobico', 'Circuito aeróbico', 'cardio', 'corporal', false, 1, 'Alterne 40 s de polichinelo, corrida parada e agachamento com 20 s de pausa, sem parar até o fim do tempo.'),
+  { id: 'caminhada-academia', nome: 'Caminhada até a academia', grupo: 'cardio', equip: 'corporal', composto: false, nivel: 1, extra: true, instrucoes: 'Ida e volta a pé. Passo firme, em ritmo de quem está com um pouco de pressa.' },
 ];
 
 export const EXERCISE_BY_ID: Record<string, Exercise> = Object.fromEntries(EXERCISES.map((e) => [e.id, e]));

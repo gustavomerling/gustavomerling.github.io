@@ -49,25 +49,26 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
+    --h: 128;
+    --background: oklch(0.975 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.145 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
+    --primary: oklch(0.58 0.19 var(--h));
+    --primary-foreground: oklch(0.99 0 0);
+    --secondary: oklch(0.94 0 0);
     --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
+    --muted: oklch(0.94 0 0);
+    --muted-foreground: oklch(0.5 0 0);
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
+    --ring: oklch(0.58 0.19 var(--h));
+    --chart-1: oklch(0.58 0.19 var(--h));
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
@@ -90,8 +91,8 @@
     --card-foreground: oklch(0.985 0 0);
     --popover: oklch(0.205 0 0);
     --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.87 0.2 128);
-    --primary-foreground: oklch(0.2 0.05 128);
+    --primary: oklch(0.85 0.17 var(--h));
+    --primary-foreground: oklch(0.2 0.05 var(--h));
     --secondary: oklch(0.269 0 0);
     --secondary-foreground: oklch(0.985 0 0);
     --muted: oklch(0.269 0 0);
@@ -101,8 +102,8 @@
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.87 0.2 128);
-    --chart-1: oklch(0.87 0.2 128);
+    --ring: oklch(0.85 0.17 var(--h));
+    --chart-1: oklch(0.85 0.17 var(--h));
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
@@ -116,6 +117,19 @@
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
 }
+
+/* Cores de destaque fixas (Perfil > Aparência). Lima mantém o tom original do app. */
+:root[data-accent="lima"] { --h: 128; }
+:root[data-accent="verde"] { --h: 162; }
+:root[data-accent="ciano"] { --h: 210; }
+:root[data-accent="azul"] { --h: 255; }
+:root[data-accent="violeta"] { --h: 295; }
+:root[data-accent="rosa"] { --h: 352; }
+:root[data-accent="laranja"] { --h: 50; }
+.dark[data-accent="lima"] { --primary: oklch(0.87 0.2 128); --ring: oklch(0.87 0.2 128); --chart-1: oklch(0.87 0.2 128); }
+:root[data-accent="azul"], :root[data-accent="violeta"] { --primary-foreground: oklch(0.99 0 0); }
+.dark[data-accent="azul"] { --primary: oklch(0.72 0.16 255); --ring: oklch(0.72 0.16 255); --chart-1: oklch(0.72 0.16 255); }
+.dark[data-accent="violeta"] { --primary: oklch(0.72 0.17 295); --ring: oklch(0.72 0.17 295); --chart-1: oklch(0.72 0.17 295); }
 
 @layer base {
   * {
